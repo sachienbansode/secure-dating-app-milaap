@@ -4,6 +4,7 @@
 Milaap is a mobile-first dating application designed for the Indian market featuring OTP-based authentication, AES-256-GCM data encryption at rest, AI-assisted messaging via OpenAI, photo uploads, respect-based matchmaking, and 12 advanced cultural features.
 
 ## Recent Changes
+- 2026-02-10: Added "Interested In" gender preference multiselect (Male/Female/Trans/Couple) to profile form, auto-filters discover profiles by preference, added Couple as gender option
 - 2026-02-10: Implemented Features 8-12: Chat Cool-Down (tone escalation detection, 5-min pauses, repeat offender bans), Enhanced Report & Block (AI chat analysis, auto-deactivation, blocking), Date Readiness Indicator (Chat-only/Voice-ready/Meet-ready), No-Phone-Number Culture (AI blocks contact sharing, mutual consent unlock with 24h cool-off), Photo Authenticity Score (AI verification with scored badges)
 - 2026-02-10: Added admin Feature Toggles panel for all 5 new features plus screenshot protection
 - 2026-02-10: Added welcome tagline overlay on login with chime sound, animation, and admin-configurable taglines via Profile > Admin > Welcome Taglines
