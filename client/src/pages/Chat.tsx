@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useRoute, Link, useLocation } from "wouter";
-import { ArrowLeft, Send, Sparkles, MoreVertical, ShieldCheck, Phone, Video, Paperclip, CheckCheck } from "lucide-react";
+import { ArrowLeft, Send, Sparkles, MoreVertical, ShieldCheck, Phone, Video, Paperclip, CheckCheck, Flag, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -26,6 +26,9 @@ export default function Chat() {
   const queryClient = useQueryClient();
   const [input, setInput] = useState("");
   const [aiMode, setAiMode] = useState(false);
+  const [showReport, setShowReport] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const [showMenu, setShowMenu] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { data: session, isLoading: checkingSession } = useQuery({
@@ -57,6 +60,33 @@ export default function Chat() {
     },
   });
 
+  const aiSuggestMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/ai/suggest", { matchId });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      if (data.suggestion) {
+        setInput(data.suggestion);
+      }
+      setAiMode(false);
+    },
+    onError: () => {
+      setAiMode(false);
+    },
+  });
+
+  const reportMutation = useMutation({
+    mutationFn: async (data: { reportedUserId: string; reason: string }) => {
+      const res = await apiRequest("POST", "/api/report", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      setShowReport(false);
+      setReportReason("");
+    },
+  });
+
   useEffect(() => {
     if (!checkingSession && !session?.user) {
       setLocation("/");
@@ -80,22 +110,21 @@ export default function Chat() {
   }
 
   const currentUserId = session.user.id;
+  const otherUserId = matchData ? (matchData.userId === currentUserId ? matchData.targetUserId : matchData.userId) : null;
 
   const handleSend = () => {
     if (!input.trim() || !matchId) return;
-    sendMutation.mutate({ matchId, content: input });
+    sendMutation.mutate({ matchId, content: input, isAiGenerated: false });
     setInput("");
   };
 
   const handleAiSuggest = () => {
-    const suggestions = [
-      "That sounds amazing! I'd love to hear more about that. 🎨",
-      "Ha, that's so cool! We should definitely meet up for chai sometime. ☕",
-      "I'm really enjoying our conversation! What else do you like to do? 😊",
-      "That's really interesting. I think we have a lot in common! 💫",
-    ];
-    setInput(suggestions[Math.floor(Math.random() * suggestions.length)]);
-    setAiMode(false);
+    aiSuggestMutation.mutate();
+  };
+
+  const handleReport = () => {
+    if (!otherUserId || !reportReason) return;
+    reportMutation.mutate({ reportedUserId: otherUserId, reason: reportReason });
   };
 
   if (!matchId) return <div>Invalid chat</div>;
@@ -126,16 +155,33 @@ export default function Chat() {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 relative">
           <Button variant="ghost" size="icon" className="text-muted-foreground rounded-full w-9 h-9">
             <Phone size={18} />
           </Button>
           <Button variant="ghost" size="icon" className="text-muted-foreground rounded-full w-9 h-9">
             <Video size={18} />
           </Button>
-          <Button variant="ghost" size="icon" className="text-muted-foreground rounded-full w-9 h-9">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground rounded-full w-9 h-9"
+            onClick={() => setShowMenu(!showMenu)}
+            data-testid="button-menu"
+          >
             <MoreVertical size={18} />
           </Button>
+          {showMenu && (
+            <div className="absolute top-full right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden z-30 w-48">
+              <button
+                className="w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                onClick={() => { setShowReport(true); setShowMenu(false); }}
+                data-testid="button-report-user"
+              >
+                <Flag size={14} /> Report User
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
@@ -171,6 +217,9 @@ export default function Chat() {
                   }`}
                 >
                   {msg.content}
+                  {msg.isAiGenerated && (
+                    <Sparkles size={10} className="inline-block ml-1 opacity-60" />
+                  )}
                   {isMe && (
                     <div className="absolute bottom-1 right-2 opacity-70">
                       <CheckCheck size={12} className={msg.isRead ? "text-white" : "text-white/50"} />
@@ -201,15 +250,22 @@ export default function Chat() {
                   <span className="text-xs font-bold uppercase tracking-wider text-purple-600">AI Assistant</span>
                 </div>
                 <p className="text-sm text-gray-800 mb-4 font-medium leading-relaxed">
-                  Let me suggest something thoughtful to say...
+                  {aiSuggestMutation.isPending 
+                    ? "Crafting the perfect message for you..." 
+                    : "Let me suggest something thoughtful to say..."}
                 </p>
                 <div className="flex gap-3">
                   <Button
                     data-testid="button-use-ai-suggestion"
                     className="h-10 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-xl flex-1 shadow-purple-200 shadow-md"
                     onClick={handleAiSuggest}
+                    disabled={aiSuggestMutation.isPending}
                   >
-                    Generate Suggestion
+                    {aiSuggestMutation.isPending ? (
+                      <><Loader2 size={16} className="animate-spin mr-2" /> Generating...</>
+                    ) : (
+                      "Generate Suggestion"
+                    )}
                   </Button>
                   <Button
                     variant="ghost"
@@ -219,6 +275,9 @@ export default function Chat() {
                     Dismiss
                   </Button>
                 </div>
+                {aiSuggestMutation.isError && (
+                  <p className="text-xs text-red-500 mt-2">Could not generate suggestion. Try again later.</p>
+                )}
               </div>
             </motion.div>
           )}
@@ -266,6 +325,62 @@ export default function Chat() {
           <Send size={20} className={input.trim() ? "ml-0.5" : ""} />
         </Button>
       </div>
+
+      <AnimatePresence>
+        {showReport && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center"
+            onClick={(e) => { if (e.target === e.currentTarget) setShowReport(false); }}
+          >
+            <motion.div
+              initial={{ y: 300 }}
+              animate={{ y: 0 }}
+              exit={{ y: 300 }}
+              className="bg-white w-full max-w-lg rounded-t-3xl p-6 space-y-4"
+            >
+              <h3 className="text-lg font-heading font-bold text-center">Report User</h3>
+              <p className="text-sm text-muted-foreground text-center">Why are you reporting {profile?.name || "this user"}?</p>
+              <div className="space-y-2">
+                {["Inappropriate behavior", "Fake profile", "Harassment", "Spam", "Other"].map((reason) => (
+                  <button
+                    key={reason}
+                    onClick={() => setReportReason(reason)}
+                    className={`w-full text-left px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                      reportReason === reason ? "bg-red-50 border-red-200 border text-red-700" : "bg-gray-50 border border-gray-100 text-gray-700 hover:bg-gray-100"
+                    }`}
+                    data-testid={`button-report-reason-${reason.toLowerCase().replace(/\s/g, "-")}`}
+                  >
+                    {reason}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-3 pt-2">
+                <Button
+                  variant="ghost"
+                  className="flex-1 rounded-xl"
+                  onClick={() => setShowReport(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="flex-1 rounded-xl bg-red-600 hover:bg-red-700 text-white"
+                  onClick={handleReport}
+                  disabled={!reportReason || reportMutation.isPending}
+                  data-testid="button-submit-report"
+                >
+                  {reportMutation.isPending ? "Reporting..." : "Submit Report"}
+                </Button>
+              </div>
+              {reportMutation.isSuccess && (
+                <p className="text-green-600 text-sm text-center">Report submitted. Thank you for keeping Milaap safe.</p>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

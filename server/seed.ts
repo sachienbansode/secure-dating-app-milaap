@@ -80,11 +80,29 @@ const bios = [
   "Poetry writer and sunset chaser. 🌅",
 ];
 
-const photos = [
-  "/profiles/indian_girl_1.jpg",
+const malePhotos = [
   "/profiles/indian_guy_1.jpg",
-  "/profiles/indian_girl_2.jpg",
   "/profiles/indian_guy_2.jpg",
+  "/profiles/indian_man_1_1.jpg",
+  "/profiles/indian_man_1_2.jpg",
+  "/profiles/indian_man_1_3.jpg",
+  "/profiles/indian_man_1_4.jpg",
+  "/profiles/indian_man_1_5.jpg",
+];
+
+const femalePhotos = [
+  "/profiles/indian_girl_1.jpg",
+  "/profiles/indian_girl_2.jpg",
+  "/profiles/indian_woman_1_1.jpg",
+  "/profiles/indian_woman_1_2.jpg",
+  "/profiles/indian_woman_1_3.jpg",
+  "/profiles/indian_woman_1_5.jpg",
+];
+
+const neutralPhotos = [
+  "/profiles/indian_person_1_1.jpg",
+  "/profiles/indian_person_1_2.jpg",
+  "/profiles/indian_person_1_3.jpg",
   "/profiles/generic_indian_1.jpg",
   "/profiles/generic_indian_2.jpg",
   "/profiles/generic_indian_3.jpg",
@@ -122,7 +140,8 @@ async function seed() {
       const respectScore = Math.floor(Math.random() * (100 - 80) + 80);
       const bio = getRandom(bios);
       const interests = getRandomSubset(interestsList, 3 + Math.floor(Math.random() * 3));
-      const photo = getRandom(photos);
+      const photoPool = gender === "Male" ? malePhotos : gender === "Female" ? femalePhotos : neutralPhotos;
+      const photo = getRandom(photoPool);
 
       // Create user
       const [user] = await db

@@ -7,6 +7,7 @@ import {
   swipeSchema, sendMessageSchema, reportSchema
 } from "@shared/schema";
 import { randomInt } from "crypto";
+import OpenAI from "openai";
 
 // In-memory OTP store (in production: use Redis)
 const otpStore = new Map<string, { otp: string; expiresAt: number }>();
@@ -365,6 +366,85 @@ export async function registerRoutes(
       return res.status(201).json(report);
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ==================== AI PERSONA ====================
+
+  app.post("/api/ai/suggest", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const { matchId, context } = req.body;
+
+      if (!matchId) {
+        return res.status(400).json({ message: "matchId is required" });
+      }
+
+      const myProfile = await storage.getProfile(userId);
+      if (!myProfile) {
+        return res.status(400).json({ message: "Profile not found" });
+      }
+
+      const match = await storage.getMatchById(matchId);
+      if (!match || !match.isMatched) {
+        return res.status(403).json({ message: "Invalid match" });
+      }
+      if (match.userId !== userId && match.targetUserId !== userId) {
+        return res.status(403).json({ message: "Not part of this match" });
+      }
+
+      const otherUserId = match.userId === userId ? match.targetUserId : match.userId;
+      const otherProfile = await storage.getProfile(otherUserId);
+
+      const recentMessages = await storage.getMessages(matchId, 10);
+      const chatHistory = recentMessages.map(m => 
+        `${m.senderId === userId ? "Me" : otherProfile?.name || "Them"}: ${m.content}`
+      ).join("\n");
+
+      const tone = myProfile.aiTone || "Friendly";
+      const language = myProfile.aiLanguage || "English";
+
+      const systemPrompt = `You are a dating chat assistant for Milaap, an Indian dating app. Generate a single short, natural message suggestion.
+
+Rules:
+- Tone: ${tone}
+- Language: ${language === "Hinglish" ? "Mix of Hindi and English (Hinglish)" : language}
+- Keep it under 100 words
+- Be respectful and culturally appropriate for Indian context
+- Reference shared interests if possible
+- Don't be overly formal or use heavy slang
+- Return ONLY the suggested message text, nothing else
+
+My name: ${myProfile.name}
+My interests: ${(myProfile.interests || []).join(", ")}
+Their name: ${otherProfile?.name || "my match"}
+Their interests: ${(otherProfile?.interests || []).join(", ")}`;
+
+      const userPrompt = chatHistory 
+        ? `Here's our recent conversation:\n${chatHistory}\n\nSuggest a natural follow-up message.`
+        : `We just matched! Suggest a great opening message${context ? ` about: ${context}` : ""}.`;
+
+      const openai = new OpenAI({
+        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+      });
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        max_tokens: 150,
+        temperature: 0.8,
+      });
+
+      const suggestion = completion.choices[0]?.message?.content?.trim() || "";
+
+      return res.json({ suggestion });
+    } catch (err: any) {
+      console.error("AI suggestion error:", err);
+      return res.status(500).json({ message: "Failed to generate suggestion", suggestion: "" });
     }
   });
 
