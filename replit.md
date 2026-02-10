@@ -4,6 +4,7 @@
 Milaap is a mobile-first dating application designed for the Indian market featuring OTP-based authentication, AES-256-GCM data encryption at rest, AI-assisted messaging via OpenAI, photo uploads, respect-based matchmaking, and 7 advanced cultural features.
 
 ## Recent Changes
+- 2026-02-10: Added welcome tagline overlay on login with chime sound, animation, and admin-configurable taglines via Profile > Admin > Welcome Taglines
 - 2026-02-10: Implemented 7 advanced features: AI Proxy Presence Mode, 30-Day Intent Lock, Respect Meter, No Screenshot Mode, Family-Aware Dating Mode, Festival Compatibility Boosts, Green Flag Stories
 - 2026-02-10: Re-seeded 120 profiles with intent, green flag stories, festival preferences, family mode
 - 2026-02-10: Added screenshot alert authorization check for match ownership
