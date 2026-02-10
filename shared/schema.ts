@@ -12,11 +12,16 @@ export const users = pgTable("users", {
   respectScore: integer("respect_score").default(85),
   reportCount: integer("report_count").default(0),
   isBanned: boolean("is_banned").default(false),
+  isDeactivated: boolean("is_deactivated").default(false),
+  deactivationReason: text("deactivation_reason"),
   lastSeenAt: timestamp("last_seen_at").defaultNow(),
   isOnline: boolean("is_online").default(false),
   dailyLikesUsed: integer("daily_likes_used").default(0),
   dailyLikesLimit: integer("daily_likes_limit").default(50),
   dailyLikesResetAt: timestamp("daily_likes_reset_at").defaultNow(),
+  chatSuspendedUntil: timestamp("chat_suspended_until"),
+  chatCooldownCount: integer("chat_cooldown_count").default(0),
+  chatBanned: boolean("chat_banned").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -46,6 +51,9 @@ export const profiles = pgTable("profiles", {
   festivalPrefs: jsonb("festival_prefs").$type<string[]>(),
   hometownForFestivals: text("hometown_for_festivals"),
   greenFlagStories: jsonb("green_flag_stories").$type<{prompt: string; answer: string}[]>(),
+  dateReadiness: text("date_readiness").default("Chat-only"),
+  photoAuthenticityScore: integer("photo_authenticity_score"),
+  photoVerifiedAt: timestamp("photo_verified_at"),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
@@ -66,6 +74,7 @@ export const messages = pgTable("messages", {
   isAiGenerated: boolean("is_ai_generated").default(false),
   isAiProxy: boolean("is_ai_proxy").default(false),
   isRead: boolean("is_read").default(false),
+  isSystemMessage: boolean("is_system_message").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -75,6 +84,9 @@ export const reports = pgTable("reports", {
   reportedUserId: varchar("reported_user_id").notNull().references(() => users.id),
   reason: text("reason").notNull(),
   details: text("details"),
+  matchId: text("match_id"),
+  chatAnalysis: text("chat_analysis"),
+  actionTaken: text("action_taken").default("pending"),
   status: text("status").default("pending"),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -94,6 +106,33 @@ export const appSettings = pgTable("app_settings", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const chatCooldowns = pgTable("chat_cooldowns", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  matchId: varchar("match_id").notNull().references(() => matches.id),
+  reason: text("reason"),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const phoneUnlockRequests = pgTable("phone_unlock_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  requesterId: varchar("requester_id").notNull().references(() => users.id),
+  targetUserId: varchar("target_user_id").notNull().references(() => users.id),
+  matchId: varchar("match_id").notNull().references(() => matches.id),
+  status: text("status").default("pending"),
+  requestedAt: timestamp("requested_at").defaultNow(),
+  coolOffEndsAt: timestamp("cool_off_ends_at"),
+  respondedAt: timestamp("responded_at"),
+});
+
+export const blockedUsers = pgTable("blocked_users", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  blockerId: varchar("blocker_id").notNull().references(() => users.id),
+  blockedUserId: varchar("blocked_user_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertProfileSchema = createInsertSchema(profiles).omit({ id: true, updatedAt: true });
 export const insertMatchSchema = createInsertSchema(matches).omit({ id: true, createdAt: true });
@@ -101,6 +140,9 @@ export const insertMessageSchema = createInsertSchema(messages).omit({ id: true,
 export const insertReportSchema = createInsertSchema(reports).omit({ id: true, createdAt: true });
 export const insertScreenshotAlertSchema = createInsertSchema(screenshotAlerts).omit({ id: true, createdAt: true });
 export const insertAppSettingSchema = createInsertSchema(appSettings).omit({ id: true, updatedAt: true });
+export const insertChatCooldownSchema = createInsertSchema(chatCooldowns).omit({ id: true, createdAt: true });
+export const insertPhoneUnlockRequestSchema = createInsertSchema(phoneUnlockRequests).omit({ id: true });
+export const insertBlockedUserSchema = createInsertSchema(blockedUsers).omit({ id: true, createdAt: true });
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -116,6 +158,12 @@ export type ScreenshotAlert = typeof screenshotAlerts.$inferSelect;
 export type InsertScreenshotAlert = z.infer<typeof insertScreenshotAlertSchema>;
 export type AppSetting = typeof appSettings.$inferSelect;
 export type InsertAppSetting = z.infer<typeof insertAppSettingSchema>;
+export type ChatCooldown = typeof chatCooldowns.$inferSelect;
+export type InsertChatCooldown = z.infer<typeof insertChatCooldownSchema>;
+export type PhoneUnlockRequest = typeof phoneUnlockRequests.$inferSelect;
+export type InsertPhoneUnlockRequest = z.infer<typeof insertPhoneUnlockRequestSchema>;
+export type BlockedUser = typeof blockedUsers.$inferSelect;
+export type InsertBlockedUser = z.infer<typeof insertBlockedUserSchema>;
 
 export const loginSchema = z.object({
   phone: z.string().optional(),
@@ -155,6 +203,7 @@ export const updateProfileSchema = z.object({
   festivalPrefs: z.array(z.string()).optional(),
   hometownForFestivals: z.string().optional(),
   greenFlagStories: z.array(greenFlagStorySchema).max(3).optional(),
+  dateReadiness: z.enum(["Chat-only", "Voice-ready", "Meet-ready"]).optional(),
 });
 
 export const swipeSchema = z.object({
@@ -173,6 +222,7 @@ export const reportSchema = z.object({
   reportedUserId: z.string(),
   reason: z.string(),
   details: z.string().optional(),
+  matchId: z.string().optional(),
 });
 
 export const GREEN_FLAG_PROMPTS = [
@@ -195,3 +245,4 @@ export const FESTIVAL_LIST = [
 ] as const;
 
 export const INTENT_OPTIONS = ["Casual", "Dating", "Serious", "Marriage"] as const;
+export const DATE_READINESS_OPTIONS = ["Chat-only", "Voice-ready", "Meet-ready"] as const;

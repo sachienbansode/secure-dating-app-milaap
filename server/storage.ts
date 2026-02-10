@@ -1,7 +1,8 @@
 import { db } from "./db";
-import { eq, and, ne, notInArray, desc, sql, or } from "drizzle-orm";
+import { eq, and, ne, notInArray, desc, sql, or, gt } from "drizzle-orm";
 import {
   users, profiles, matches, messages, reports, screenshotAlerts, appSettings,
+  chatCooldowns, phoneUnlockRequests, blockedUsers,
   type User, type InsertUser,
   type Profile, type InsertProfile,
   type Match, type InsertMatch,
@@ -9,6 +10,9 @@ import {
   type Report, type InsertReport,
   type ScreenshotAlert, type InsertScreenshotAlert,
   type AppSetting, type InsertAppSetting,
+  type ChatCooldown, type InsertChatCooldown,
+  type PhoneUnlockRequest, type InsertPhoneUnlockRequest,
+  type BlockedUser, type InsertBlockedUser,
 } from "@shared/schema";
 import { encryptProfile, decryptProfile, encryptMessage, decryptMessage } from "./encryption";
 
@@ -44,6 +48,18 @@ export interface IStorage {
 
   getAppSetting(key: string): Promise<string | null>;
   setAppSetting(key: string, value: string): Promise<void>;
+
+  createChatCooldown(cooldown: InsertChatCooldown): Promise<ChatCooldown>;
+  getActiveCooldown(userId: string, matchId: string): Promise<ChatCooldown | undefined>;
+
+  createPhoneUnlockRequest(req: Omit<InsertPhoneUnlockRequest, "id">): Promise<PhoneUnlockRequest>;
+  getPhoneUnlockRequest(requesterId: string, targetUserId: string, matchId: string): Promise<PhoneUnlockRequest | undefined>;
+  updatePhoneUnlockRequest(id: string, data: Partial<PhoneUnlockRequest>): Promise<PhoneUnlockRequest | undefined>;
+  getMutualPhoneUnlock(userId1: string, userId2: string, matchId: string): Promise<boolean>;
+
+  blockUser(blockerId: string, blockedUserId: string): Promise<BlockedUser>;
+  isBlocked(blockerId: string, blockedUserId: string): Promise<boolean>;
+  getBlockedUsers(userId: string): Promise<BlockedUser[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -108,9 +124,18 @@ export class DatabaseStorage implements IStorage {
     const swipedIds = swipedMatches.map(m => m.targetUserId);
     swipedIds.push(userId);
 
+    const blocked = await this.getBlockedUsers(userId);
+    const blockedIds = blocked.map(b => b.blockedUserId);
+    const allExcluded = [...new Set([...swipedIds, ...blockedIds])];
+
+    const deactivatedUsers = await db.select({ id: users.id }).from(users)
+      .where(or(eq(users.isDeactivated, true), eq(users.isBanned, true)));
+    const deactivatedIds = deactivatedUsers.map(u => u.id);
+    const finalExcluded = [...new Set([...allExcluded, ...deactivatedIds])];
+
     const conditions: any[] = [
       eq(profiles.isVisible, true),
-      notInArray(profiles.userId, swipedIds),
+      notInArray(profiles.userId, finalExcluded),
     ];
 
     if (filters?.gender && filters.gender !== "All") {
@@ -175,9 +200,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async sendMessage(message: InsertMessage): Promise<Message> {
-    const encrypted = { ...message, content: encryptMessage(message.content) };
+    const encrypted = { ...message, content: message.isSystemMessage ? message.content : encryptMessage(message.content) };
     const [created] = await db.insert(messages).values(encrypted).returning();
-    return { ...created, content: decryptMessage(created.content) };
+    return { ...created, content: created.isSystemMessage ? created.content : decryptMessage(created.content) };
   }
 
   async getMessages(matchId: string, limit = 50): Promise<Message[]> {
@@ -186,7 +211,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(messages.createdAt))
       .limit(limit);
     
-    return result.map(m => ({ ...m, content: decryptMessage(m.content) })).reverse();
+    return result.map(m => ({ ...m, content: m.isSystemMessage ? m.content : decryptMessage(m.content) })).reverse();
   }
 
   async markMessagesRead(matchId: string, userId: string): Promise<void> {
@@ -264,6 +289,70 @@ export class DatabaseStorage implements IStorage {
     } else {
       await db.insert(appSettings).values({ key, value });
     }
+  }
+
+  async createChatCooldown(cooldown: InsertChatCooldown): Promise<ChatCooldown> {
+    const [created] = await db.insert(chatCooldowns).values(cooldown).returning();
+    return created;
+  }
+
+  async getActiveCooldown(userId: string, matchId: string): Promise<ChatCooldown | undefined> {
+    const [cooldown] = await db.select().from(chatCooldowns)
+      .where(and(
+        eq(chatCooldowns.userId, userId),
+        eq(chatCooldowns.matchId, matchId),
+        gt(chatCooldowns.expiresAt, new Date())
+      ))
+      .orderBy(desc(chatCooldowns.createdAt))
+      .limit(1);
+    return cooldown;
+  }
+
+  async createPhoneUnlockRequest(req: any): Promise<PhoneUnlockRequest> {
+    const [created] = await db.insert(phoneUnlockRequests).values(req).returning();
+    return created;
+  }
+
+  async getPhoneUnlockRequest(requesterId: string, targetUserId: string, matchId: string): Promise<PhoneUnlockRequest | undefined> {
+    const [req] = await db.select().from(phoneUnlockRequests)
+      .where(and(
+        eq(phoneUnlockRequests.requesterId, requesterId),
+        eq(phoneUnlockRequests.targetUserId, targetUserId),
+        eq(phoneUnlockRequests.matchId, matchId),
+      ));
+    return req;
+  }
+
+  async updatePhoneUnlockRequest(id: string, data: Partial<PhoneUnlockRequest>): Promise<PhoneUnlockRequest | undefined> {
+    const [updated] = await db.update(phoneUnlockRequests).set(data).where(eq(phoneUnlockRequests.id, id)).returning();
+    return updated;
+  }
+
+  async getMutualPhoneUnlock(userId1: string, userId2: string, matchId: string): Promise<boolean> {
+    const req1 = await this.getPhoneUnlockRequest(userId1, userId2, matchId);
+    const req2 = await this.getPhoneUnlockRequest(userId2, userId1, matchId);
+    if (!req1 || !req2) return false;
+    if (req1.status !== "approved" || req2.status !== "approved") return false;
+    const now = new Date();
+    if (req1.coolOffEndsAt && now < req1.coolOffEndsAt) return false;
+    if (req2.coolOffEndsAt && now < req2.coolOffEndsAt) return false;
+    return true;
+  }
+
+  async blockUser(blockerId: string, blockedUserId: string): Promise<BlockedUser> {
+    const [created] = await db.insert(blockedUsers).values({ blockerId, blockedUserId }).returning();
+    return created;
+  }
+
+  async isBlocked(blockerId: string, blockedUserId: string): Promise<boolean> {
+    const [block] = await db.select().from(blockedUsers)
+      .where(and(eq(blockedUsers.blockerId, blockerId), eq(blockedUsers.blockedUserId, blockedUserId)));
+    return !!block;
+  }
+
+  async getBlockedUsers(userId: string): Promise<BlockedUser[]> {
+    return db.select().from(blockedUsers)
+      .where(eq(blockedUsers.blockerId, userId));
   }
 }
 
