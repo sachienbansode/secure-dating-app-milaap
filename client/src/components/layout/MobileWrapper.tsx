@@ -15,7 +15,6 @@ export function MobileWrapper({ children }: MobileWrapperProps) {
         <main className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide relative">
           {children}
         </main>
-        <Toaster />
       </div>
     </div>
   );
