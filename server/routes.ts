@@ -1,4 +1,4 @@
-import type { Express, Request, Response } from "express";
+import express, { type Express, type Request, type Response } from "express";
 import { createServer, type Server } from "http";
 import session from "express-session";
 import { storage } from "./storage";
@@ -13,7 +13,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 
-const uploadDir = path.join(process.cwd(), "client", "public", "uploads");
+const uploadDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
@@ -102,6 +102,8 @@ export async function registerRoutes(
       },
     })
   );
+
+  app.use("/uploads", express.static(uploadDir));
 
   app.use(async (req: Request, _res: Response, next: Function) => {
     if (req.session.userId) {
