@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import logo from "@/assets/logo.png";
 import { requestOtp, verifyOtp, getMe } from "@/lib/auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import WelcomeOverlay from "@/components/WelcomeOverlay";
 
 export default function AuthPage() {
   const [, setLocation] = useLocation();
@@ -18,6 +19,9 @@ export default function AuthPage() {
   const [contactValue, setContactValue] = useState("");
   const [otpValue, setOtpValue] = useState("");
   const [otpHint, setOtpHint] = useState("");
+  const [showWelcome, setShowWelcome] = useState(false);
+  const [loginDestination, setLoginDestination] = useState<string | null>(null);
+  const [taglines, setTaglines] = useState<string[]>([]);
 
   const { data: session, isLoading: checkingSession } = useQuery({
     queryKey: ["/api/auth/me"],
@@ -26,20 +30,42 @@ export default function AuthPage() {
   });
 
   useEffect(() => {
-    if (session?.user) {
+    fetch("/api/app-settings")
+      .then(r => r.json())
+      .then(data => {
+        if (data.welcome_taglines?.length) setTaglines(data.welcome_taglines);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (session?.user && !showWelcome && !loginDestination) {
       if (!session.profile) {
         setLocation("/profile");
       } else {
         setLocation("/home");
       }
     }
-  }, [session, setLocation]);
+  }, [session, setLocation, showWelcome, loginDestination]);
 
   if (checkingSession) {
     return (
       <div className="h-full flex items-center justify-center bg-brand-gradient">
         <div className="animate-pulse text-white text-xl font-heading">Milaap</div>
       </div>
+    );
+  }
+
+  if (showWelcome) {
+    return (
+      <WelcomeOverlay
+        show={true}
+        taglines={taglines}
+        onDone={() => {
+          setShowWelcome(false);
+          setLocation(loginDestination || "/home");
+        }}
+      />
     );
   }
 
@@ -75,10 +101,12 @@ export default function AuthPage() {
         : { email: contactValue, otp: otpValue };
       const result = await verifyOtp(payload);
       await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      const dest = result.hasProfile ? "/home" : "/profile";
       if (result.hasProfile) {
-        setLocation("/home");
+        setLoginDestination(dest);
+        setShowWelcome(true);
       } else {
-        setLocation("/profile");
+        setLocation(dest);
       }
     } catch (err: any) {
       setError(err.message || "Invalid OTP");

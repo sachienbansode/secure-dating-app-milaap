@@ -4,7 +4,7 @@ import { BottomNav } from "@/components/layout/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Settings, Edit, Shield, ChevronRight, Bell, Sparkles, LogOut, Save, ArrowLeft, Camera, X, Plus, Loader2, Lock, Heart, Leaf, PartyPopper, Flag as FlagIcon, Bot, ShieldAlert, Home as HomeIcon, Eye, EyeOff } from "lucide-react";
+import { Settings, Edit, Shield, ChevronRight, Bell, Sparkles, LogOut, Save, ArrowLeft, Camera, X, Plus, Loader2, Lock, Heart, Leaf, PartyPopper, Flag as FlagIcon, Bot, ShieldAlert, Home as HomeIcon, Eye, EyeOff, MessageSquareQuote, Trash2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -436,16 +436,22 @@ export default function Profile() {
               </div>
             </>
           )}
-        </div>
 
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 max-w-lg mx-auto">
-          <Button data-testid="button-save-profile" className="w-full h-14 rounded-2xl font-bold text-lg bg-brand-gradient shadow-lg" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || !form.name.trim()}>
-            {saveMutation.isPending ? "Saving..." : <>{isNewUser ? "Create Profile" : "Save Changes"} <Save className="ml-2" size={18} /></>}
-          </Button>
-          {saveMutation.isError && !intentWarning && (
-            <p className="text-red-500 text-sm text-center mt-2">{(saveMutation.error as any)?.message || "Failed to save"}</p>
+          {activeSection === "Welcome Taglines" && (
+            <TaglineEditor />
           )}
         </div>
+
+        {activeSection !== "Welcome Taglines" && (
+          <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 max-w-lg mx-auto">
+            <Button data-testid="button-save-profile" className="w-full h-14 rounded-2xl font-bold text-lg bg-brand-gradient shadow-lg" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || !form.name.trim()}>
+              {saveMutation.isPending ? "Saving..." : <>{isNewUser ? "Create Profile" : "Save Changes"} <Save className="ml-2" size={18} /></>}
+            </Button>
+            {saveMutation.isError && !intentWarning && (
+              <p className="text-red-500 text-sm text-center mt-2">{(saveMutation.error as any)?.message || "Failed to save"}</p>
+            )}
+          </div>
+        )}
 
         {intentWarning && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-6">
@@ -616,6 +622,22 @@ export default function Profile() {
           </section>
 
           <section>
+            <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3 px-1">Admin</h3>
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50" onClick={() => { setIsEditing(true); setActiveSection("Welcome Taglines"); }}>
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-600"><MessageSquareQuote size={16} /></div>
+                  <div>
+                    <h4 className="font-semibold text-sm">Welcome Taglines</h4>
+                    <p className="text-xs text-muted-foreground">Manage login welcome messages</p>
+                  </div>
+                </div>
+                <ChevronRight size={18} className="text-gray-300" />
+              </div>
+            </div>
+          </section>
+
+          <section>
             <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3 px-1">Account</h3>
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 border-b border-gray-50">
@@ -639,6 +661,112 @@ export default function Profile() {
         </div>
       </div>
       <BottomNav />
+    </div>
+  );
+}
+
+function TaglineEditor() {
+  const [taglines, setTaglines] = useState<string[]>([]);
+  const [newTagline, setNewTagline] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState("");
+
+  useEffect(() => {
+    fetch("/api/app-settings")
+      .then(r => r.json())
+      .then(data => {
+        if (data.welcome_taglines?.length) setTaglines(data.welcome_taglines);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setSaved(false);
+    setSaveError("");
+    try {
+      const res = await fetch("/api/app-settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: "welcome_taglines", value: taglines }),
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to save");
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err: any) {
+      setSaveError(err.message || "Failed to save taglines");
+    }
+    setSaving(false);
+  };
+
+  const addTagline = () => {
+    const trimmed = newTagline.trim();
+    if (trimmed && !taglines.includes(trimmed)) {
+      setTaglines([...taglines, trimmed]);
+      setNewTagline("");
+    }
+  };
+
+  const removeTagline = (index: number) => {
+    setTaglines(taglines.filter((_, i) => i !== index));
+  };
+
+  if (loading) return <div className="text-center py-8 text-muted-foreground">Loading...</div>;
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-amber-50 rounded-2xl p-4 border border-amber-200">
+        <div className="flex items-center gap-2 mb-3">
+          <MessageSquareQuote size={16} className="text-amber-600" />
+          <h4 className="font-bold text-sm text-amber-800">Welcome Taglines</h4>
+        </div>
+        <p className="text-xs text-amber-700 mb-4">These taglines show randomly when users log in. Edit, add, or remove them below.</p>
+
+        <div className="space-y-2 mb-4">
+          {taglines.map((t, i) => (
+            <div key={i} className="flex items-center gap-2 bg-white rounded-xl px-4 py-3 border border-amber-100 group" data-testid={`tagline-item-${i}`}>
+              <span className="text-sm flex-1 italic text-gray-700">"{t}"</span>
+              <button onClick={() => removeTagline(i)} className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity p-1" data-testid={`button-remove-tagline-${i}`}>
+                <Trash2 size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex gap-2">
+          <Input
+            value={newTagline}
+            onChange={(e) => setNewTagline(e.target.value)}
+            placeholder="Add a new tagline..."
+            className="flex-1 h-10 rounded-xl text-sm"
+            onKeyDown={(e) => e.key === "Enter" && addTagline()}
+            data-testid="input-new-tagline"
+          />
+          <Button variant="outline" size="sm" className="h-10 px-4 rounded-xl border-amber-300 text-amber-700 hover:bg-amber-100" onClick={addTagline} data-testid="button-add-tagline">
+            <Plus size={14} className="mr-1" /> Add
+          </Button>
+        </div>
+      </div>
+
+      <Button
+        className="w-full h-12 rounded-2xl font-bold bg-amber-500 hover:bg-amber-600 text-white"
+        onClick={handleSave}
+        disabled={saving || taglines.length === 0}
+        data-testid="button-save-taglines"
+      >
+        {saving ? "Saving..." : saved ? "Saved!" : "Save Taglines"}
+      </Button>
+
+      {taglines.length === 0 && (
+        <p className="text-xs text-red-500 text-center">Add at least one tagline to save.</p>
+      )}
+      {saveError && (
+        <p className="text-xs text-red-500 text-center">{saveError}</p>
+      )}
     </div>
   );
 }

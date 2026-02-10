@@ -924,5 +924,45 @@ ${myProfile.name}'s bio: ${myProfile.bio || "Not set"}`;
     }
   });
 
+  // ==================== APP SETTINGS ====================
+
+  app.get("/api/app-settings", async (_req: Request, res: Response) => {
+    try {
+      const defaultTaglines = [
+        "Respect first. Connection next.",
+        "Safe. Honest. Meaningful.",
+        "Dating, done right.",
+        "Built on trust, not swipes.",
+        "Clarity before chemistry.",
+      ];
+      const taglines = await storage.getAppSetting("welcome_taglines");
+      let parsedTaglines = defaultTaglines;
+      if (taglines) {
+        try { parsedTaglines = JSON.parse(taglines); } catch { parsedTaglines = defaultTaglines; }
+      }
+      const screenshotProtection = await storage.getAppSetting("global_screenshot_protection");
+      return res.json({
+        welcome_taglines: parsedTaglines,
+        global_screenshot_protection: screenshotProtection === "true",
+      });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/app-settings", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { key, value } = req.body;
+      if (!key || value === undefined) {
+        return res.status(400).json({ message: "key and value required" });
+      }
+      const strValue = typeof value === "string" ? value : JSON.stringify(value);
+      await storage.setAppSetting(key, strValue);
+      return res.json({ message: "Setting updated" });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
   return httpServer;
 }
