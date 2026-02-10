@@ -4,11 +4,11 @@ import { BottomNav } from "@/components/layout/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Settings, Edit, Shield, ChevronRight, Bell, Sparkles, LogOut, Save, ArrowLeft, Camera, X, Plus, Loader2, Lock, Heart, Leaf, PartyPopper, Flag as FlagIcon, Bot, ShieldAlert, Home as HomeIcon, Eye, EyeOff, MessageSquareQuote, Trash2 } from "lucide-react";
+import { Settings, Edit, Shield, ChevronRight, Bell, Sparkles, LogOut, Save, ArrowLeft, Camera, X, Plus, Loader2, Lock, Heart, Leaf, PartyPopper, Flag as FlagIcon, Bot, ShieldAlert, Home as HomeIcon, Eye, EyeOff, MessageSquareQuote, Trash2, MessageCircle, Mic, Users, CheckCircle, Phone, Ban, Clock, ShieldCheck } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { getMe, logout } from "@/lib/auth";
+import { getMe, logout, type AuthResponse } from "@/lib/auth";
 
 const CITIES = ["Mumbai", "Pune", "Delhi", "Bangalore", "Hyderabad", "Chennai", "Kolkata", "Ahmedabad", "Jaipur", "Lucknow", "Chandigarh", "Kochi", "Goa"];
 const INTERESTS = ["Bollywood", "Cricket", "Chai", "Street Food", "Yoga", "Tech", "Art", "Music", "Travel", "Reading", "Cooking", "Dancing", "Photography", "Fitness", "Meditation", "Gaming", "Fashion", "Startups", "Biriyani", "Hiking"];
@@ -20,6 +20,9 @@ const GREEN_FLAG_PROMPTS = [
   "One thing I'm healing from",
 ] as const;
 const AI_BOUNDARIES = ["Personal finances", "Family details", "Ex relationships", "Religious beliefs", "Political views", "Health issues"];
+const DATE_READINESS_OPTIONS = ["Chat-only", "Voice-ready", "Meet-ready"] as const;
+const DATE_READINESS_ICONS: Record<string, any> = { "Chat-only": MessageCircle, "Voice-ready": Mic, "Meet-ready": Users };
+const DATE_READINESS_COLORS: Record<string, string> = { "Chat-only": "bg-blue-50 border-blue-200 text-blue-700", "Voice-ready": "bg-green-50 border-green-200 text-green-700", "Meet-ready": "bg-purple-50 border-purple-200 text-purple-700" };
 
 const INTENT_ICONS: Record<string, string> = { Casual: "☕", Dating: "💕", Serious: "💎", Marriage: "💍" };
 const INTENT_COLORS: Record<string, string> = { Casual: "bg-blue-50 border-blue-200 text-blue-700", Dating: "bg-pink-50 border-pink-200 text-pink-700", Serious: "bg-purple-50 border-purple-200 text-purple-700", Marriage: "bg-amber-50 border-amber-200 text-amber-700" };
@@ -62,6 +65,7 @@ export default function Profile() {
     festivalPrefs: [] as string[],
     hometownForFestivals: "",
     greenFlagStories: [] as {prompt: string; answer: string}[],
+    dateReadiness: "Chat-only" as string,
   });
 
   useEffect(() => {
@@ -89,9 +93,15 @@ export default function Profile() {
         festivalPrefs: (p.festivalPrefs as string[]) || [],
         hometownForFestivals: p.hometownForFestivals || "",
         greenFlagStories: (p.greenFlagStories as {prompt: string; answer: string}[]) || [],
+        dateReadiness: p.dateReadiness || "Chat-only",
       });
     }
   }, [session?.profile]);
+
+  const { data: appSettings } = useQuery<any>({
+    queryKey: ["/api/app-settings"],
+    enabled: !!session?.user,
+  });
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -416,6 +426,27 @@ export default function Profile() {
                 </div>
               </div>
 
+              {appSettings?.feature_date_readiness && (
+                <div className="bg-teal-50 rounded-2xl p-4 space-y-3 border border-teal-200">
+                  <div className="flex items-center gap-2">
+                    <Users size={16} className="text-teal-600" />
+                    <h4 className="font-bold text-sm text-teal-800">Date Readiness</h4>
+                  </div>
+                  <p className="text-xs text-teal-700">Let your matches know your comfort level. This shows on your profile and in chat.</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {DATE_READINESS_OPTIONS.map((opt) => {
+                      const Icon = DATE_READINESS_ICONS[opt];
+                      return (
+                        <button key={opt} data-testid={`button-readiness-${opt.toLowerCase().replace(/\s/g, "-")}`} onClick={() => setForm((f) => ({ ...f, dateReadiness: opt }))} className={`px-3 py-3 rounded-xl text-xs font-medium transition-all border flex flex-col items-center gap-1.5 ${form.dateReadiness === opt ? DATE_READINESS_COLORS[opt] + " shadow-sm" : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"}`}>
+                          <Icon size={18} />
+                          {opt}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               <div className="bg-gray-50 rounded-2xl p-4 space-y-3 border border-gray-200">
                 <div className="flex items-center justify-between">
                   <div>
@@ -440,9 +471,13 @@ export default function Profile() {
           {activeSection === "Welcome Taglines" && (
             <TaglineEditor />
           )}
+
+          {activeSection === "Feature Toggles" && (
+            <FeatureToggles />
+          )}
         </div>
 
-        {activeSection !== "Welcome Taglines" && (
+        {activeSection !== "Welcome Taglines" && activeSection !== "Feature Toggles" && (
           <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 max-w-lg mx-auto">
             <Button data-testid="button-save-profile" className="w-full h-14 rounded-2xl font-bold text-lg bg-brand-gradient shadow-lg" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || !form.name.trim()}>
               {saveMutation.isPending ? "Saving..." : <>{isNewUser ? "Create Profile" : "Save Changes"} <Save className="ml-2" size={18} /></>}
@@ -516,6 +551,13 @@ export default function Profile() {
               </div>
             )}
 
+            {profile.dateReadiness && appSettings?.feature_date_readiness && (
+              <div className={`mt-1 px-3 py-1 rounded-full text-xs font-bold border flex items-center gap-1 ${DATE_READINESS_COLORS[profile.dateReadiness] || "bg-gray-50 border-gray-200 text-gray-600"}`} data-testid="text-readiness-badge">
+                {(() => { const Icon = DATE_READINESS_ICONS[profile.dateReadiness] || MessageCircle; return <Icon size={12} />; })()}
+                {profile.dateReadiness}
+              </div>
+            )}
+
             {profile.photos && profile.photos.length > 1 && (
               <div className="flex gap-2 mt-3 mb-3">
                 {profile.photos.slice(0, 4).map((photo, i) => (
@@ -529,7 +571,7 @@ export default function Profile() {
               </div>
             )}
 
-            <div className="flex gap-3 w-full justify-center mt-2">
+            <div className="flex gap-3 w-full justify-center mt-2 flex-wrap">
               <div className={`flex flex-col items-center px-4 py-2 rounded-xl border ${getScoreColor(respectScore)}`}>
                 <span className="font-bold text-xl" data-testid="text-respect-score">{respectScore}</span>
                 <span className="text-[10px] uppercase font-bold tracking-wider opacity-60">Respect • {getScoreLabel(respectScore)}</span>
@@ -542,6 +584,12 @@ export default function Profile() {
                 <div className="flex flex-col items-center bg-pink-50 px-4 py-2 rounded-xl border border-pink-100">
                   <HomeIcon size={20} className="text-pink-600" />
                   <span className="text-pink-700/60 text-[10px] uppercase font-bold tracking-wider">Family</span>
+                </div>
+              )}
+              {profile.photoVerifiedAt && (
+                <div className="flex flex-col items-center bg-blue-50 px-4 py-2 rounded-xl border border-blue-100" data-testid="badge-photo-verified">
+                  <ShieldCheck size={20} className="text-blue-600" />
+                  <span className="text-blue-700/60 text-[10px] uppercase font-bold tracking-wider">Verified</span>
                 </div>
               )}
             </div>
@@ -621,15 +669,32 @@ export default function Profile() {
             </div>
           </section>
 
+          {appSettings?.feature_photo_authenticity && (
+            <section>
+              <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3 px-1">Photo Verification</h3>
+              <PhotoVerifyCard />
+            </section>
+          )}
+
           <section>
             <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3 px-1">Admin</h3>
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50" onClick={() => { setIsEditing(true); setActiveSection("Welcome Taglines"); }}>
+              <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 border-b border-gray-50" onClick={() => { setIsEditing(true); setActiveSection("Welcome Taglines"); }}>
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-600"><MessageSquareQuote size={16} /></div>
                   <div>
                     <h4 className="font-semibold text-sm">Welcome Taglines</h4>
                     <p className="text-xs text-muted-foreground">Manage login welcome messages</p>
+                  </div>
+                </div>
+                <ChevronRight size={18} className="text-gray-300" />
+              </div>
+              <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50" onClick={() => { setIsEditing(true); setActiveSection("Feature Toggles"); }}>
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600"><Settings size={16} /></div>
+                  <div>
+                    <h4 className="font-semibold text-sm">Feature Toggles</h4>
+                    <p className="text-xs text-muted-foreground">Enable/disable app features</p>
                   </div>
                 </div>
                 <ChevronRight size={18} className="text-gray-300" />
@@ -767,6 +832,148 @@ function TaglineEditor() {
       {saveError && (
         <p className="text-xs text-red-500 text-center">{saveError}</p>
       )}
+    </div>
+  );
+}
+
+function PhotoVerifyCard() {
+  const { data: auth } = useQuery<AuthResponse>({ queryKey: ["/api/auth/me"] });
+  const [verifying, setVerifying] = useState(false);
+  const [result, setResult] = useState<{ score: number; verified: boolean } | null>(null);
+  const queryClient = useQueryClient();
+
+  const profile = auth?.profile;
+  if (!profile) return null;
+
+  const handleVerify = async () => {
+    setVerifying(true);
+    try {
+      const res = await fetch("/api/photo-verify", { method: "POST", credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        setResult(data);
+        queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      }
+    } catch {}
+    setVerifying(false);
+  };
+
+  const alreadyVerified = !!profile.photoVerifiedAt;
+  const score = result?.score ?? profile.photoAuthenticityScore;
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4" data-testid="card-photo-verify">
+      <div className="flex items-center gap-3 mb-3">
+        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center"><ShieldCheck size={20} className="text-blue-600" /></div>
+        <div>
+          <h4 className="font-bold text-sm">Photo Authenticity</h4>
+          <p className="text-xs text-muted-foreground">{alreadyVerified ? "Your photos are verified" : "Verify your photos with AI"}</p>
+        </div>
+      </div>
+
+      {score !== null && score !== undefined && (
+        <div className="mb-3">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs font-medium text-gray-600">Authenticity Score</span>
+            <span className={`text-sm font-bold ${(score ?? 0) >= 70 ? "text-green-600" : (score ?? 0) >= 40 ? "text-amber-600" : "text-red-600"}`}>{score}/100</span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div className={`h-2 rounded-full transition-all ${(score ?? 0) >= 70 ? "bg-green-500" : (score ?? 0) >= 40 ? "bg-amber-500" : "bg-red-500"}`} style={{ width: `${score}%` }} />
+          </div>
+        </div>
+      )}
+
+      {!alreadyVerified && (
+        <Button data-testid="button-verify-photos" className="w-full h-10 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium" onClick={handleVerify} disabled={verifying || !profile.photos?.length}>
+          {verifying ? "Analyzing..." : "Verify My Photos"}
+        </Button>
+      )}
+
+      {alreadyVerified && (
+        <div className="flex items-center gap-2 bg-green-50 rounded-xl px-3 py-2 border border-green-200">
+          <CheckCircle size={16} className="text-green-600" />
+          <span className="text-xs font-medium text-green-700">Verified on {new Date(profile.photoVerifiedAt!).toLocaleDateString()}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FeatureToggles() {
+  const [settings, setSettings] = useState<Record<string, any>>({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    fetch("/api/app-settings", { credentials: "include" }).then(r => r.json()).then(d => { setSettings(d); setLoading(false); }).catch(() => setLoading(false));
+  }, []);
+
+  const FEATURE_TOGGLES = [
+    { key: "feature_chat_cooldown", label: "Chat Cool-Down", desc: "5-min pauses on tone escalation, repeat offender bans", icon: Clock },
+    { key: "feature_enhanced_report", label: "Enhanced Report & Block", desc: "AI chat analysis, auto-deactivation at 5 reports", icon: ShieldAlert },
+    { key: "feature_date_readiness", label: "Date Readiness Indicator", desc: "Chat-only / Voice-ready / Meet-ready levels", icon: Users },
+    { key: "feature_no_phone_number", label: "No-Phone-Number Culture", desc: "AI blocks contact sharing, mutual consent unlock", icon: Lock },
+    { key: "feature_photo_authenticity", label: "Photo Authenticity Score", desc: "AI photo verification with scored badges", icon: ShieldCheck },
+    { key: "global_screenshot_protection", label: "Screenshot Protection", desc: "Global screenshot detection and alerts", icon: EyeOff },
+  ];
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const featureKeys = FEATURE_TOGGLES.map(t => t.key);
+      for (const key of featureKeys) {
+        await fetch("/api/app-settings", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ key, value: String(settings[key] !== false) }),
+        });
+      }
+      setSaved(true);
+      queryClient.invalidateQueries({ queryKey: ["/api/app-settings"] });
+      setTimeout(() => setSaved(false), 2000);
+    } catch {}
+    setSaving(false);
+  };
+
+  if (loading) return <div className="text-center py-8 text-muted-foreground">Loading...</div>;
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-indigo-50 rounded-2xl p-4 border border-indigo-200">
+        <div className="flex items-center gap-2 mb-3">
+          <Settings size={16} className="text-indigo-600" />
+          <h4 className="font-bold text-sm text-indigo-800">Feature Toggles</h4>
+        </div>
+        <p className="text-xs text-indigo-700 mb-4">Enable or disable app-wide features. Changes apply to all users immediately.</p>
+
+        <div className="space-y-2">
+          {FEATURE_TOGGLES.map(({ key, label, desc, icon: Icon }) => (
+            <div key={key} className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 border border-indigo-100" data-testid={`toggle-${key}`}>
+              <Icon size={16} className="text-indigo-500 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <h5 className="font-semibold text-sm">{label}</h5>
+                <p className="text-[10px] text-muted-foreground truncate">{desc}</p>
+              </div>
+              <Switch
+                checked={settings[key] !== false}
+                onCheckedChange={(checked) => setSettings(s => ({ ...s, [key]: checked }))}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <Button
+        className="w-full h-12 rounded-2xl font-bold bg-indigo-500 hover:bg-indigo-600 text-white"
+        onClick={handleSave}
+        disabled={saving}
+        data-testid="button-save-feature-toggles"
+      >
+        {saving ? "Saving..." : saved ? "Saved!" : "Save Feature Settings"}
+      </Button>
     </div>
   );
 }

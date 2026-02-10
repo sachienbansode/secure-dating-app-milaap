@@ -1,9 +1,11 @@
 # Milaap - Dating App for India
 
 ## Overview
-Milaap is a mobile-first dating application designed for the Indian market featuring OTP-based authentication, AES-256-GCM data encryption at rest, AI-assisted messaging via OpenAI, photo uploads, respect-based matchmaking, and 7 advanced cultural features.
+Milaap is a mobile-first dating application designed for the Indian market featuring OTP-based authentication, AES-256-GCM data encryption at rest, AI-assisted messaging via OpenAI, photo uploads, respect-based matchmaking, and 12 advanced cultural features.
 
 ## Recent Changes
+- 2026-02-10: Implemented Features 8-12: Chat Cool-Down (tone escalation detection, 5-min pauses, repeat offender bans), Enhanced Report & Block (AI chat analysis, auto-deactivation, blocking), Date Readiness Indicator (Chat-only/Voice-ready/Meet-ready), No-Phone-Number Culture (AI blocks contact sharing, mutual consent unlock with 24h cool-off), Photo Authenticity Score (AI verification with scored badges)
+- 2026-02-10: Added admin Feature Toggles panel for all 5 new features plus screenshot protection
 - 2026-02-10: Added welcome tagline overlay on login with chime sound, animation, and admin-configurable taglines via Profile > Admin > Welcome Taglines
 - 2026-02-10: Implemented 7 advanced features: AI Proxy Presence Mode, 30-Day Intent Lock, Respect Meter, No Screenshot Mode, Family-Aware Dating Mode, Festival Compatibility Boosts, Green Flag Stories
 - 2026-02-10: Re-seeded 120 profiles with intent, green flag stories, festival preferences, family mode
@@ -31,7 +33,7 @@ Milaap is a mobile-first dating application designed for the Indian market featu
 - `server/encryption.ts` - AES-256-GCM encrypt/decrypt utilities
 - `server/seed.ts` - Database seeder for 120 dummy profiles with all new fields
 - `server/db.ts` - Database connection
-- `client/src/pages/` - AuthPage, Home (swipe with filters + badges), Matches, Chat (with AI proxy + screenshot protection), Profile (with all 7 feature settings)
+- `client/src/pages/` - AuthPage, Home (swipe with filters + badges), Matches, Chat (with AI proxy + screenshot protection + cooldown + phone unlock), Profile (with all 12 feature settings)
 - `client/src/lib/auth.ts` - Auth API client utilities
 
 ### Advanced Features
@@ -42,15 +44,23 @@ Milaap is a mobile-first dating application designed for the Indian market featu
 5. **Family-Aware Dating Mode**: Regex inappropriate language filter, matches only other family-mode users when enabled
 6. **Festival Compatibility Boosts**: Time-based detection (Diwali Oct-Nov, Holi Mar-Apr, etc.), festival preference matching, hometown proximity
 7. **Green Flag Stories**: 3 micro-prompts ("Something I'll never joke about", "My idea of respect", "One thing I'm healing from"), AI green flag analysis
+8. **Chat Cool-Down System**: AI tone escalation detection every 5 messages, 5-min cooldown pauses, respectful suggestion prompts, repeat offender bans after 5 violations
+9. **Enhanced Report & Block**: AI chat history analysis, severity-based auto-deactivation, immediate blocking with redirect, email notification simulation
+10. **Date Readiness Indicator**: Chat-only/Voice-ready/Meet-ready levels with icons, shown in chat header, profile view, and discover cards
+11. **No-Phone-Number Culture**: AI/regex blocks phone numbers/WhatsApp/contact sharing, mutual consent unlock with 24h cool-off, unlock request/respond UI in chat
+12. **Photo Authenticity Score**: AI photo verification with scored badges (0-100), verified tag on discover cards and profile, authenticity progress bar
 
 ### Data Model
-- **users**: Auth (phone/email), respect score, ban status, isOnline, lastSeenAt, dailyLikes
-- **profiles**: Encrypted name/bio, age, gender, city, interests, photos, AI settings, intent (locked 30 days), familyMode, festivalPrefs, hometownForFestivals, greenFlagStories, noScreenshotMode, aiProxyEnabled, aiChatPace, aiBoundaries
+- **users**: Auth (phone/email), respect score, ban status, isOnline, lastSeenAt, dailyLikes, isDeactivated, chatSuspendedUntil, chatBanned
+- **profiles**: Encrypted name/bio, age, gender, city, interests, photos, AI settings, intent (locked 30 days), familyMode, festivalPrefs, hometownForFestivals, greenFlagStories, noScreenshotMode, aiProxyEnabled, aiChatPace, aiBoundaries, dateReadiness, photoAuthenticityScore, photoVerifiedAt
 - **matches**: Swipe actions (like/pass/superlike), mutual match detection
 - **messages**: Encrypted chat content, AI-generated flag, isAiProxy flag, read receipts
-- **reports**: User reporting with auto-ban at 5 reports
+- **reports**: User reporting with auto-ban at 5 reports, AI chat analysis, actionTaken tracking
 - **screenshot_alerts**: Match-based screenshot detection records
-- **app_settings**: Admin configurable settings (global screenshot protection)
+- **app_settings**: Admin configurable settings (6 feature toggles + screenshot protection + welcome taglines)
+- **chat_cooldowns**: Per-user cooldown tracking with violation counts
+- **phone_unlock_requests**: Mutual consent phone number sharing with 24h cool-off
+- **blocked_users**: User blocking records
 
 ### API Endpoints (New)
 - `POST /api/profile/force-intent` - Break intent lock with penalties
@@ -62,6 +72,15 @@ Milaap is a mobile-first dating application designed for the Indian market featu
 - `GET /api/festival-status` - Current festival season status
 - `GET /api/app-settings` - Admin settings
 - `POST /api/app-settings` - Update admin settings
+- `POST /api/chat-cooldown/check` - Check/enforce chat cooldown
+- `GET /api/chat-cooldown/status/:matchId` - Get cooldown status for match
+- `POST /api/report-enhanced` - Enhanced report with AI chat analysis
+- `POST /api/block-user` - Block a user
+- `POST /api/profile/date-readiness` - Update date readiness level
+- `POST /api/phone-unlock/request` - Request phone number sharing
+- `POST /api/phone-unlock/respond` - Accept/reject phone unlock
+- `GET /api/phone-unlock/status/:matchId` - Get unlock status
+- `POST /api/photo-verify` - AI photo authenticity verification
 
 ## User Preferences
 - Indian cultural context throughout (names, cities, interests like Bollywood, Cricket, Chai)

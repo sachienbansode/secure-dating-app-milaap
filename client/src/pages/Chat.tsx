@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRoute, Link, useLocation } from "wouter";
-import { ArrowLeft, Send, Sparkles, MoreVertical, ShieldCheck, Phone, Video, Paperclip, CheckCheck, Flag, Loader2, Bot, ShieldAlert, Camera } from "lucide-react";
+import { ArrowLeft, Send, Sparkles, MoreVertical, ShieldCheck, Phone, Video, Paperclip, CheckCheck, Flag, Loader2, Bot, ShieldAlert, Camera, Ban, Unlock, Clock, MessageCircle, Mic, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -17,8 +17,15 @@ interface ChatMessage {
   isAiGenerated: boolean;
   isAiProxy: boolean;
   isRead: boolean;
+  isSystemMessage?: boolean;
   createdAt: string;
 }
+
+const DATE_READINESS_CONFIG: Record<string, { icon: any; label: string; color: string }> = {
+  "Chat-only": { icon: MessageCircle, label: "Chat-only", color: "text-blue-600 bg-blue-50" },
+  "Voice-ready": { icon: Mic, label: "Voice-ready", color: "text-green-600 bg-green-50" },
+  "Meet-ready": { icon: Users, label: "Meet-ready", color: "text-purple-600 bg-purple-50" },
+};
 
 export default function Chat() {
   const [, params] = useRoute("/chat/:id");
@@ -31,6 +38,9 @@ export default function Chat() {
   const [reportReason, setReportReason] = useState("");
   const [showMenu, setShowMenu] = useState(false);
   const [screenshotAlert, setScreenshotAlert] = useState<string | null>(null);
+  const [cooldownAlert, setCooldownAlert] = useState<string | null>(null);
+  const [phoneBlockedAlert, setPhoneBlockedAlert] = useState(false);
+  const [showPhoneUnlock, setShowPhoneUnlock] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { data: session, isLoading: checkingSession } = useQuery({
@@ -40,6 +50,11 @@ export default function Chat() {
 
   const { data: matchesAll = [] } = useQuery<any[]>({
     queryKey: ["/api/matches"],
+    enabled: !!session?.user,
+  });
+
+  const { data: appSettings } = useQuery<any>({
+    queryKey: ["/api/app-settings"],
     enabled: !!session?.user,
   });
 
@@ -57,15 +72,43 @@ export default function Chat() {
     enabled: !!session?.user,
   });
 
+  const { data: phoneUnlockStatus } = useQuery<any>({
+    queryKey: [`/api/phone-unlock/status/${matchId}`],
+    enabled: !!matchId && !!session?.user && appSettings?.feature_no_phone_number,
+    refetchInterval: 10000,
+  });
+
+  const { data: cooldownStatus } = useQuery<any>({
+    queryKey: [`/api/chat/cooldown-status/${matchId}`],
+    enabled: !!matchId && !!session?.user && appSettings?.feature_chat_cooldown,
+    refetchInterval: 5000,
+  });
+
   const noScreenshotActive = (screenshotSetting as any)?.enabled || profile?.noScreenshotMode || session?.profile?.noScreenshotMode;
 
   const sendMutation = useMutation({
     mutationFn: async (data: { matchId: string; content: string; isAiGenerated?: boolean }) => {
       const res = await apiRequest("POST", "/api/messages", data);
+      if (!res.ok) {
+        const err = await res.json();
+        throw err;
+      }
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/messages/${matchId}`] });
+      if (appSettings?.feature_chat_cooldown && messages.filter(m => m.senderId === session?.user?.id && !m.isSystemMessage).length > 0 && messages.filter(m => m.senderId === session?.user?.id && !m.isSystemMessage).length % 5 === 4) {
+        escalationMutation.mutate();
+      }
+    },
+    onError: (err: any) => {
+      if (err.cooldown) {
+        setCooldownAlert(`Chat paused for ${err.minutesLeft} minute(s). Take a moment to reflect.`);
+        setTimeout(() => setCooldownAlert(null), 5000);
+      } else if (err.phoneBlocked) {
+        setPhoneBlockedAlert(true);
+        setTimeout(() => setPhoneBlockedAlert(false), 5000);
+      }
     },
   });
 
@@ -82,17 +125,65 @@ export default function Chat() {
   });
 
   const reportMutation = useMutation({
-    mutationFn: async (data: { reportedUserId: string; reason: string }) => {
-      const res = await apiRequest("POST", "/api/report", data);
+    mutationFn: async (data: { reportedUserId: string; reason: string; matchId?: string }) => {
+      const res = await apiRequest("POST", "/api/report-enhanced", data);
       return res.json();
     },
     onSuccess: () => { setShowReport(false); setReportReason(""); },
+  });
+
+  const blockMutation = useMutation({
+    mutationFn: async (blockedUserId: string) => {
+      const res = await apiRequest("POST", "/api/block", { blockedUserId });
+      return res.json();
+    },
+    onSuccess: () => {
+      setShowMenu(false);
+      setLocation("/matches");
+    },
   });
 
   const screenshotAlertMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/screenshot-alert", { matchId });
       return res.json();
+    },
+  });
+
+  const escalationMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/chat/analyze-escalation", { matchId });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      if (data.escalated) {
+        setCooldownAlert(`Cool-down activated: ${data.reason}. Please wait ${data.cooldownMinutes} minutes.`);
+        queryClient.invalidateQueries({ queryKey: [`/api/chat/cooldown-status/${matchId}`] });
+        queryClient.invalidateQueries({ queryKey: [`/api/messages/${matchId}`] });
+      }
+    },
+  });
+
+  const phoneUnlockRequestMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/phone-unlock/request", { matchId });
+      return res.json();
+    },
+    onSuccess: () => {
+      setShowPhoneUnlock(false);
+      queryClient.invalidateQueries({ queryKey: [`/api/phone-unlock/status/${matchId}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/messages/${matchId}`] });
+    },
+  });
+
+  const phoneUnlockRespondMutation = useMutation({
+    mutationFn: async (approve: boolean) => {
+      const res = await apiRequest("POST", "/api/phone-unlock/respond", { matchId, approve });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/phone-unlock/status/${matchId}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/messages/${matchId}`] });
     },
   });
 
@@ -141,9 +232,15 @@ export default function Chat() {
   const hasAiProxyMessages = messages.some(m => m.isAiProxy);
   const otherIsOnline = profile?.isOnline;
   const otherRespectScore = profile?.respectScore ?? 85;
+  const otherDateReadiness = profile?.dateReadiness || "Chat-only";
+  const readinessConfig = DATE_READINESS_CONFIG[otherDateReadiness] || DATE_READINESS_CONFIG["Chat-only"];
+  const ReadinessIcon = readinessConfig.icon;
+
+  const isChatCooledDown = cooldownStatus?.cooldown || cooldownStatus?.banned;
+  const isChatBanned = cooldownStatus?.banned;
 
   const handleSend = () => {
-    if (!input.trim() || !matchId) return;
+    if (!input.trim() || !matchId || isChatCooledDown) return;
     sendMutation.mutate({ matchId, content: input, isAiGenerated: false });
     setInput("");
   };
@@ -152,7 +249,7 @@ export default function Chat() {
 
   const handleReport = () => {
     if (!otherUserId || !reportReason) return;
-    reportMutation.mutate({ reportedUserId: otherUserId, reason: reportReason });
+    reportMutation.mutate({ reportedUserId: otherUserId, reason: reportReason, matchId });
   };
 
   if (!matchId) return <div>Invalid chat</div>;
@@ -181,7 +278,9 @@ export default function Chat() {
             <div>
               <div className="flex items-center gap-1.5">
                 <h3 className="font-heading font-bold text-sm" data-testid="text-chat-name">{profile?.name || "Match"}</h3>
-                <ShieldCheck size={12} className="text-blue-500" />
+                {profile?.photoVerifiedAt && (
+                  <ShieldCheck size={12} className="text-blue-500" />
+                )}
                 <div className={`w-2 h-2 rounded-full ${getRespectColor(otherRespectScore)}`} title={`Respect: ${otherRespectScore}`} />
               </div>
               <div className="flex items-center gap-1.5">
@@ -190,6 +289,11 @@ export default function Chat() {
                 </p>
                 {profile?.intent && (
                   <span className="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded-full text-gray-500 font-medium">{profile.intent}</span>
+                )}
+                {appSettings?.feature_date_readiness && (
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium flex items-center gap-0.5 ${readinessConfig.color}`} data-testid="badge-date-readiness">
+                    <ReadinessIcon size={10} /> {readinessConfig.label}
+                  </span>
                 )}
               </div>
             </div>
@@ -207,10 +311,18 @@ export default function Chat() {
             <MoreVertical size={18} />
           </Button>
           {showMenu && (
-            <div className="absolute top-full right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden z-30 w-48">
+            <div className="absolute top-full right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden z-30 w-52">
               <button className="w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2" onClick={() => { setShowReport(true); setShowMenu(false); }} data-testid="button-report-user">
                 <Flag size={14} /> Report User
               </button>
+              <button className="w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 border-t border-gray-100" onClick={() => { if (otherUserId) blockMutation.mutate(otherUserId); }} data-testid="button-block-user">
+                <Ban size={14} /> Block User
+              </button>
+              {appSettings?.feature_no_phone_number && !phoneUnlockStatus?.unlocked && (
+                <button className="w-full text-left px-4 py-3 text-sm text-blue-600 hover:bg-blue-50 flex items-center gap-2 border-t border-gray-100" onClick={() => { setShowPhoneUnlock(true); setShowMenu(false); }} data-testid="button-phone-unlock">
+                  <Unlock size={14} /> Request Contact Sharing
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -220,6 +332,36 @@ export default function Chat() {
         <div className="bg-purple-50 px-4 py-2 flex items-center gap-2 text-xs text-purple-700 border-b border-purple-100">
           <Bot size={14} />
           <span className="font-medium">Some replies may be AI-assisted (sent while user was offline)</span>
+        </div>
+      )}
+
+      {isChatBanned && (
+        <div className="bg-red-50 px-4 py-3 flex items-center gap-2 text-xs text-red-700 border-b border-red-100">
+          <Ban size={14} />
+          <span className="font-medium">Your chat privileges have been revoked due to repeated violations.</span>
+        </div>
+      )}
+
+      {isChatCooledDown && !isChatBanned && (
+        <div className="bg-amber-50 px-4 py-3 flex items-center gap-2 text-xs text-amber-700 border-b border-amber-100">
+          <Clock size={14} />
+          <span className="font-medium">Cool-down active. {cooldownStatus?.minutesLeft} minute(s) remaining. Take a moment to reflect.</span>
+        </div>
+      )}
+
+      {phoneUnlockStatus?.theirRequest?.status === "pending" && !phoneUnlockStatus?.myRequest && (
+        <div className="bg-blue-50 px-4 py-3 flex items-center gap-2 text-xs text-blue-700 border-b border-blue-100">
+          <Unlock size={14} />
+          <span className="font-medium flex-1">{profile?.name} wants to share contact details.</span>
+          <button className="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold" onClick={() => phoneUnlockRespondMutation.mutate(true)} data-testid="button-approve-unlock">Approve</button>
+          <button className="bg-gray-200 text-gray-600 px-3 py-1 rounded-full text-xs font-bold ml-1" onClick={() => phoneUnlockRespondMutation.mutate(false)} data-testid="button-decline-unlock">Decline</button>
+        </div>
+      )}
+
+      {phoneUnlockStatus?.unlocked && (
+        <div className="bg-green-50 px-4 py-2 flex items-center gap-2 text-xs text-green-700 border-b border-green-100">
+          <Unlock size={14} />
+          <span className="font-medium">Contact sharing unlocked! You can now share phone numbers.</span>
         </div>
       )}
 
@@ -238,6 +380,15 @@ export default function Chat() {
           messages.map((msg, index) => {
             const isMe = msg.senderId === currentUserId;
             const isNextSame = messages[index + 1]?.senderId === msg.senderId;
+            const isSystem = msg.isSystemMessage;
+
+            if (isSystem) {
+              return (
+                <div key={msg.id} className="flex justify-center my-3" data-testid={`message-system-${msg.id}`}>
+                  <span className="text-[11px] font-medium text-gray-500 bg-gray-100 px-4 py-2 rounded-full max-w-[80%] text-center">{msg.content}</span>
+                </div>
+              );
+            }
 
             return (
               <motion.div
@@ -305,12 +456,12 @@ export default function Chat() {
       <div className="bg-white p-3 border-t border-gray-100 flex items-end gap-2 pb-6 md:pb-3">
         <Button variant="ghost" size="icon" className="text-muted-foreground hover:bg-gray-100 rounded-full h-10 w-10 shrink-0"><Paperclip size={20} /></Button>
         <div className="flex-1 bg-gray-50 border border-gray-200 rounded-[1.5rem] flex items-end min-h-[44px] focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-all">
-          <Input data-testid="input-message" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Type a message..." className="border-0 bg-transparent focus-visible:ring-0 px-4 py-3 min-h-[44px] max-h-32 resize-none" onKeyDown={(e) => e.key === "Enter" && handleSend()} />
-          <Button variant="ghost" size="icon" className={`mr-1 mb-1 h-8 w-8 rounded-full transition-colors ${aiMode ? "bg-purple-100 text-purple-600" : "text-gray-400 hover:text-purple-600"}`} onClick={() => setAiMode(!aiMode)} data-testid="button-ai-toggle">
+          <Input data-testid="input-message" value={input} onChange={(e) => setInput(e.target.value)} placeholder={isChatCooledDown ? "Chat paused..." : "Type a message..."} className="border-0 bg-transparent focus-visible:ring-0 px-4 py-3 min-h-[44px] max-h-32 resize-none" onKeyDown={(e) => e.key === "Enter" && handleSend()} disabled={isChatCooledDown} />
+          <Button variant="ghost" size="icon" className={`mr-1 mb-1 h-8 w-8 rounded-full transition-colors ${aiMode ? "bg-purple-100 text-purple-600" : "text-gray-400 hover:text-purple-600"}`} onClick={() => setAiMode(!aiMode)} data-testid="button-ai-toggle" disabled={isChatCooledDown}>
             <Sparkles size={18} />
           </Button>
         </div>
-        <Button data-testid="button-send" size="icon" className={`h-11 w-11 rounded-full shadow-md shrink-0 transition-transform active:scale-95 ${input.trim() ? "bg-brand-gradient" : "bg-gray-200 text-gray-400"}`} onClick={handleSend} disabled={!input.trim() || sendMutation.isPending}>
+        <Button data-testid="button-send" size="icon" className={`h-11 w-11 rounded-full shadow-md shrink-0 transition-transform active:scale-95 ${input.trim() && !isChatCooledDown ? "bg-brand-gradient" : "bg-gray-200 text-gray-400"}`} onClick={handleSend} disabled={!input.trim() || sendMutation.isPending || isChatCooledDown}>
           <Send size={20} className={input.trim() ? "ml-0.5" : ""} />
         </Button>
       </div>
@@ -327,13 +478,68 @@ export default function Chat() {
       </AnimatePresence>
 
       <AnimatePresence>
+        {cooldownAlert && (
+          <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="fixed top-4 left-4 right-4 z-50">
+            <div className="bg-amber-500 text-white px-4 py-3 rounded-2xl shadow-lg flex items-center gap-3 max-w-lg mx-auto">
+              <Clock size={20} />
+              <span className="text-sm font-medium">{cooldownAlert}</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {phoneBlockedAlert && (
+          <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="fixed top-4 left-4 right-4 z-50">
+            <div className="bg-blue-600 text-white px-4 py-3 rounded-2xl shadow-lg flex items-center gap-3 max-w-lg mx-auto">
+              <Phone size={20} />
+              <span className="text-sm font-medium">Phone numbers and contact info are blocked. Use the menu to request contact sharing.</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showPhoneUnlock && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center" onClick={(e) => { if (e.target === e.currentTarget) setShowPhoneUnlock(false); }}>
+            <motion.div initial={{ y: 300 }} animate={{ y: 0 }} exit={{ y: 300 }} className="bg-white w-full max-w-lg rounded-t-3xl p-6 space-y-4">
+              <h3 className="text-lg font-heading font-bold text-center">Request Contact Sharing</h3>
+              <div className="bg-blue-50 rounded-xl p-4 text-sm text-blue-800 space-y-2">
+                <p className="font-medium">How it works:</p>
+                <ul className="list-disc pl-5 text-xs space-y-1 text-blue-700">
+                  <li>Both users must agree to share contact info</li>
+                  <li>A 24-hour cool-off period applies after mutual consent</li>
+                  <li>Only then can you share phone numbers in chat</li>
+                </ul>
+              </div>
+              {phoneUnlockStatus?.myRequest?.status === "pending" && (
+                <p className="text-amber-600 text-sm text-center font-medium">Your request is pending approval.</p>
+              )}
+              {phoneUnlockStatus?.myRequest?.status === "approved" && !phoneUnlockStatus?.unlocked && (
+                <p className="text-green-600 text-sm text-center font-medium">Approved! Waiting for 24-hour cool-off to complete.</p>
+              )}
+              <div className="flex gap-3 pt-2">
+                <Button variant="ghost" className="flex-1 rounded-xl" onClick={() => setShowPhoneUnlock(false)}>Cancel</Button>
+                <Button className="flex-1 rounded-xl bg-blue-600 hover:bg-blue-700 text-white" onClick={() => phoneUnlockRequestMutation.mutate()} disabled={phoneUnlockRequestMutation.isPending || !!phoneUnlockStatus?.myRequest} data-testid="button-send-unlock-request">
+                  {phoneUnlockRequestMutation.isPending ? "Sending..." : phoneUnlockStatus?.myRequest ? "Already Requested" : "Send Request"}
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {showReport && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center" onClick={(e) => { if (e.target === e.currentTarget) setShowReport(false); }}>
             <motion.div initial={{ y: 300 }} animate={{ y: 0 }} exit={{ y: 300 }} className="bg-white w-full max-w-lg rounded-t-3xl p-6 space-y-4">
-              <h3 className="text-lg font-heading font-bold text-center">Report User</h3>
+              <h3 className="text-lg font-heading font-bold text-center">Report & Block User</h3>
               <p className="text-sm text-muted-foreground text-center">Why are you reporting {profile?.name || "this user"}?</p>
+              {appSettings?.feature_enhanced_report && (
+                <p className="text-xs text-blue-600 text-center bg-blue-50 px-3 py-2 rounded-lg">AI will analyze the chat history for evidence-based review.</p>
+              )}
               <div className="space-y-2">
-                {["Inappropriate behavior", "Fake profile", "Harassment", "Spam", "Other"].map((reason) => (
+                {["Inappropriate behavior", "Fake profile", "Harassment", "Spam", "Threatening messages", "Other"].map((reason) => (
                   <button key={reason} onClick={() => setReportReason(reason)} className={`w-full text-left px-4 py-3 rounded-xl text-sm font-medium transition-all ${reportReason === reason ? "bg-red-50 border-red-200 border text-red-700" : "bg-gray-50 border border-gray-100 text-gray-700 hover:bg-gray-100"}`} data-testid={`button-report-reason-${reason.toLowerCase().replace(/\s/g, "-")}`}>
                     {reason}
                   </button>
@@ -342,10 +548,10 @@ export default function Chat() {
               <div className="flex gap-3 pt-2">
                 <Button variant="ghost" className="flex-1 rounded-xl" onClick={() => setShowReport(false)}>Cancel</Button>
                 <Button className="flex-1 rounded-xl bg-red-600 hover:bg-red-700 text-white" onClick={handleReport} disabled={!reportReason || reportMutation.isPending} data-testid="button-submit-report">
-                  {reportMutation.isPending ? "Reporting..." : "Submit Report"}
+                  {reportMutation.isPending ? "Reporting..." : "Report & Block"}
                 </Button>
               </div>
-              {reportMutation.isSuccess && <p className="text-green-600 text-sm text-center">Report submitted. Thank you for keeping Milaap safe.</p>}
+              {reportMutation.isSuccess && <p className="text-green-600 text-sm text-center">Report submitted. The user has been blocked and action will be taken.</p>}
             </motion.div>
           </motion.div>
         )}

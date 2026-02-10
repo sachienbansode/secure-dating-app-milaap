@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
-import { MapPin, Info, Heart, X, Star, SlidersHorizontal, ChevronDown, Shield, Lock, Leaf, PartyPopper, FlagIcon } from "lucide-react";
+import { MapPin, Info, Heart, X, Star, SlidersHorizontal, ChevronDown, Shield, Lock, Leaf, PartyPopper, FlagIcon, ShieldCheck, MessageCircle, Mic, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -25,6 +25,9 @@ interface DiscoverProfile {
   familyMode?: boolean;
   festivalPrefs?: string[];
   greenFlagStories?: {prompt: string; answer: string}[];
+  dateReadiness?: string | null;
+  photoVerifiedAt?: string | null;
+  photoAuthenticityScore?: number | null;
 }
 
 const CITIES = ["All", "Mumbai", "Pune", "Delhi", "Bangalore", "Hyderabad", "Chennai", "Kolkata", "Ahmedabad", "Jaipur", "Lucknow", "Chandigarh", "Kochi", "Goa"];
@@ -53,6 +56,11 @@ export default function Home() {
 
   const { data: festivalStatus } = useQuery<{active: boolean; festival: string | null}>({
     queryKey: ["/api/festival-status"],
+    enabled: !!session?.user,
+  });
+
+  const { data: appSettings } = useQuery<any>({
+    queryKey: ["/api/app-settings"],
     enabled: !!session?.user,
   });
 
@@ -259,6 +267,17 @@ function SwipeCard({ profile, isFront, expanded, onSwipe, onToggleExpand }: {
           )}
           {profile.familyMode && (
             <span className="px-2 py-1 rounded-full text-[10px] font-bold text-white bg-pink-500/80 backdrop-blur-sm">Family</span>
+          )}
+          {profile.photoVerifiedAt && appSettings?.feature_photo_authenticity && (
+            <span className="px-2 py-1 rounded-full text-[10px] font-bold text-white bg-blue-500/80 backdrop-blur-sm flex items-center gap-0.5" data-testid={`badge-verified-${profile.userId}`}>
+              <ShieldCheck size={10} /> Verified
+            </span>
+          )}
+          {profile.dateReadiness && appSettings?.feature_date_readiness && (
+            <span className="px-2 py-1 rounded-full text-[10px] font-bold text-white bg-teal-500/80 backdrop-blur-sm flex items-center gap-0.5" data-testid={`badge-readiness-${profile.userId}`}>
+              {profile.dateReadiness === "Chat-only" ? <MessageCircle size={10} /> : profile.dateReadiness === "Voice-ready" ? <Mic size={10} /> : <Users size={10} />}
+              {profile.dateReadiness}
+            </span>
           )}
         </div>
 

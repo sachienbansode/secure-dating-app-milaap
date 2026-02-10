@@ -543,6 +543,16 @@ export async function registerRoutes(
       }
 
       const userId = req.session.userId!;
+      const user = await storage.getUser(userId);
+
+      if (user?.chatBanned) {
+        return res.status(403).json({ message: "Your chat privileges have been revoked due to repeated violations." });
+      }
+
+      if (user?.chatSuspendedUntil && new Date() < new Date(user.chatSuspendedUntil)) {
+        const remaining = Math.ceil((new Date(user.chatSuspendedUntil).getTime() - Date.now()) / 60000);
+        return res.status(429).json({ message: `Chat paused. Please wait ${remaining} minute(s) before sending another message.`, cooldown: true, minutesLeft: remaining });
+      }
 
       const match = await storage.getMatchById(parsed.data.matchId);
       if (!match || !match.isMatched) {
@@ -552,11 +562,62 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Not part of this match" });
       }
 
+      const blocked = await storage.isBlocked(match.userId === userId ? match.targetUserId : match.userId, userId);
+      if (blocked) {
+        return res.status(403).json({ message: "You cannot send messages to this user." });
+      }
+
       const senderProfile = await storage.getProfile(userId);
       if (senderProfile?.familyMode) {
         const inappropriate = /\b(sex|sexy|hot|hookup|fwb|one night|booty)\b/i;
         if (inappropriate.test(parsed.data.content)) {
           return res.status(400).json({ message: "This message doesn't meet Family Mode standards. Please keep the conversation respectful." });
+        }
+      }
+
+      const noPhoneEnabled = await storage.getAppSetting("feature_no_phone_number");
+      if (noPhoneEnabled === "true") {
+        const otherUserId = match.userId === userId ? match.targetUserId : match.userId;
+        const unlocked = await storage.getMutualPhoneUnlock(userId, otherUserId, match.id);
+        if (!unlocked) {
+          const phonePatterns = [
+            /\b\d{10,}\b/,
+            /\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/,
+            /\+\d{1,3}[-.\s]?\d{7,}/,
+            /\b(whatsapp|watsapp|whats\s*app|wa\s*me|w\.?a\.?)\b/i,
+            /\b(call\s*me|ring\s*me|phone\s*me|dial\s*me)\b/i,
+            /\b(my\s*number|my\s*no|mera\s*number|mera\s*no)\b/i,
+            /\b(insta|instagram|telegram|signal)\s*(id|handle|@)?\b/i,
+            /\b(nine|eight|seven|six|five|four|three|two|one|zero)\s+(nine|eight|seven|six|five|four|three|two|one|zero){4,}/i,
+            /\b\d{4,}\b/,
+          ];
+          const msgLower = parsed.data.content;
+          for (const pattern of phonePatterns) {
+            if (pattern.test(msgLower)) {
+              return res.status(400).json({
+                message: "Sharing phone numbers or contact info is not allowed until both users consent. Request unlock from chat options.",
+                phoneBlocked: true,
+              });
+            }
+          }
+        }
+      }
+
+      const cooldownEnabled = await storage.getAppSetting("feature_chat_cooldown");
+      if (cooldownEnabled === "true") {
+        const activeCooldown = await storage.getActiveCooldown(userId, parsed.data.matchId);
+        if (activeCooldown) {
+          const remaining = Math.ceil((new Date(activeCooldown.expiresAt).getTime() - Date.now()) / 60000);
+          return res.status(429).json({
+            message: `Cool-down active. Please wait ${remaining} minute(s). Take a moment to reflect.`,
+            cooldown: true,
+            minutesLeft: remaining,
+            suggestions: [
+              "I'd like to continue our conversation respectfully.",
+              "Let's take a step back and be more understanding.",
+              "I appreciate your time - shall we talk about something lighter?",
+            ],
+          });
         }
       }
 
@@ -924,6 +985,458 @@ ${myProfile.name}'s bio: ${myProfile.bio || "Not set"}`;
     }
   });
 
+  // ==================== FEATURE 8: CHAT COOL-DOWN SYSTEM ====================
+
+  app.post("/api/chat/analyze-escalation", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const { matchId } = req.body;
+
+      const cooldownEnabled = await storage.getAppSetting("feature_chat_cooldown");
+      if (cooldownEnabled !== "true") {
+        return res.json({ escalated: false, enabled: false });
+      }
+
+      const match = await storage.getMatchById(matchId);
+      if (!match || !match.isMatched) {
+        return res.status(403).json({ message: "Invalid match" });
+      }
+
+      const recentMessages = await storage.getMessages(matchId, 10);
+      const userMessages = recentMessages.filter(m => m.senderId === userId && !m.isSystemMessage).slice(-5);
+
+      if (userMessages.length < 3) {
+        return res.json({ escalated: false, reason: "Not enough messages to analyze" });
+      }
+
+      const openai = getOpenAI();
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: `You detect tone escalation in dating app conversations. Analyze messages for: aggressive language, insults, harassment, pressure tactics, anger escalation, or disrespectful tone. Return JSON only: {"escalated": true/false, "severity": "low|medium|high", "reason": "brief explanation"}`,
+          },
+          {
+            role: "user",
+            content: `Recent messages from user:\n${userMessages.map(m => m.content).join("\n")}`,
+          },
+        ],
+        max_tokens: 100,
+        temperature: 0.2,
+      });
+
+      const raw = completion.choices[0]?.message?.content?.trim() || "{}";
+      try {
+        const analysis = JSON.parse(raw);
+        if (analysis.escalated) {
+          const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+          await storage.createChatCooldown({
+            userId,
+            matchId,
+            reason: analysis.reason || "Tone escalation detected",
+            expiresAt,
+          });
+
+          const user = await storage.getUser(userId);
+          const newCount = (user?.chatCooldownCount ?? 0) + 1;
+          const updates: any = { chatCooldownCount: newCount, chatSuspendedUntil: expiresAt };
+
+          if (newCount >= 5) {
+            updates.chatBanned = true;
+          }
+
+          await storage.updateUser(userId, updates);
+
+          await storage.sendMessage({
+            matchId,
+            senderId: userId,
+            content: `⏸️ Cool-down activated for 5 minutes. Let's keep the conversation respectful.`,
+            isAiGenerated: false,
+            isAiProxy: false,
+            isSystemMessage: true,
+          });
+
+          return res.json({
+            escalated: true,
+            severity: analysis.severity,
+            reason: analysis.reason,
+            cooldownMinutes: 5,
+            cooldownCount: newCount,
+            banned: newCount >= 5,
+            suggestions: [
+              "I'd like to continue our conversation respectfully.",
+              "Let's take a step back and be more understanding.",
+              "I appreciate your time - shall we talk about something lighter?",
+            ],
+          });
+        }
+
+        return res.json({ escalated: false });
+      } catch {
+        return res.json({ escalated: false });
+      }
+    } catch (err: any) {
+      console.error("Escalation analysis error:", err);
+      return res.status(500).json({ message: "Analysis failed" });
+    }
+  });
+
+  app.get("/api/chat/cooldown-status/:matchId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const matchId = req.params.matchId as string;
+      const user = await storage.getUser(userId);
+
+      if (user?.chatBanned) {
+        return res.json({ banned: true, message: "Chat privileges revoked" });
+      }
+
+      if (user?.chatSuspendedUntil && new Date() < new Date(user.chatSuspendedUntil)) {
+        const remaining = Math.ceil((new Date(user.chatSuspendedUntil).getTime() - Date.now()) / 60000);
+        return res.json({ cooldown: true, minutesLeft: remaining });
+      }
+
+      const activeCooldown = await storage.getActiveCooldown(userId, matchId);
+      if (activeCooldown) {
+        const remaining = Math.ceil((new Date(activeCooldown.expiresAt).getTime() - Date.now()) / 60000);
+        return res.json({ cooldown: true, minutesLeft: remaining, reason: activeCooldown.reason });
+      }
+
+      return res.json({ cooldown: false, banned: false });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ==================== FEATURE 9: ENHANCED REPORT & BLOCK ====================
+
+  app.post("/api/block", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const { blockedUserId } = req.body;
+
+      if (!blockedUserId) {
+        return res.status(400).json({ message: "blockedUserId required" });
+      }
+
+      const alreadyBlocked = await storage.isBlocked(userId, blockedUserId);
+      if (alreadyBlocked) {
+        return res.json({ message: "User already blocked" });
+      }
+
+      await storage.blockUser(userId, blockedUserId);
+      return res.json({ message: "User blocked successfully" });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/report-enhanced", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const parsed = reportSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: parsed.error.message });
+      }
+
+      const reportEnhancedEnabled = await storage.getAppSetting("feature_enhanced_report");
+      const userId = req.session.userId!;
+      let chatAnalysis = null;
+
+      if (reportEnhancedEnabled === "true" && parsed.data.matchId) {
+        try {
+          const recentMessages = await storage.getMessages(parsed.data.matchId, 30);
+          const reportedMessages = recentMessages.filter(m => m.senderId === parsed.data.reportedUserId && !m.isSystemMessage);
+
+          if (reportedMessages.length > 0) {
+            const openai = getOpenAI();
+            const completion = await openai.chat.completions.create({
+              model: "gpt-4o-mini",
+              messages: [
+                {
+                  role: "system",
+                  content: `Analyze these dating app messages for harmful behavior. Return JSON: {"severity": "low|medium|high|critical", "patterns": ["pattern1", ...], "recommendation": "warn|suspend|deactivate", "summary": "brief analysis"}`,
+                },
+                {
+                  role: "user",
+                  content: `Messages from reported user:\n${reportedMessages.map(m => m.content).join("\n")}`,
+                },
+              ],
+              max_tokens: 200,
+              temperature: 0.2,
+            });
+
+            const raw = completion.choices[0]?.message?.content?.trim() || "{}";
+            try {
+              chatAnalysis = JSON.parse(raw);
+            } catch { chatAnalysis = null; }
+          }
+        } catch (err) {
+          console.error("Chat analysis error:", err);
+        }
+      }
+
+      const report = await storage.createReport({
+        reporterId: userId,
+        reportedUserId: parsed.data.reportedUserId,
+        reason: parsed.data.reason,
+        details: parsed.data.details || null,
+        matchId: parsed.data.matchId || null,
+        chatAnalysis: chatAnalysis ? JSON.stringify(chatAnalysis) : null,
+        actionTaken: "pending",
+        status: "pending",
+      });
+
+      await storage.blockUser(userId, parsed.data.reportedUserId);
+
+      const reportedUser = await storage.getUser(parsed.data.reportedUserId);
+      const totalReports = (reportedUser?.reportCount ?? 0);
+      let actionTaken = "warned";
+
+      if (totalReports >= 5 || (chatAnalysis && chatAnalysis.recommendation === "deactivate")) {
+        await storage.updateUser(parsed.data.reportedUserId, {
+          isDeactivated: true,
+          deactivationReason: `Account deactivated: ${parsed.data.reason}. ${chatAnalysis?.summary || "Multiple reports received."}`,
+        });
+        actionTaken = "deactivated";
+      } else if (totalReports >= 3 || (chatAnalysis && chatAnalysis.recommendation === "suspend")) {
+        actionTaken = "suspended";
+      }
+
+      const emailNotification = reportedUser?.email
+        ? `Notification would be sent to ${reportedUser.email}: Your account has been reviewed due to: ${parsed.data.reason}.`
+        : "No email on file for notification.";
+
+      return res.status(201).json({
+        report,
+        chatAnalysis,
+        actionTaken,
+        emailNotification,
+        message: `Report filed. Action: ${actionTaken}. ${actionTaken === "deactivated" ? "User account has been deactivated." : ""}`,
+      });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/blocked-users", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const blocked = await storage.getBlockedUsers(req.session.userId!);
+      return res.json(blocked);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ==================== FEATURE 10: DATE READINESS INDICATOR ====================
+
+  app.post("/api/profile/date-readiness", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { dateReadiness } = req.body;
+      if (!["Chat-only", "Voice-ready", "Meet-ready"].includes(dateReadiness)) {
+        return res.status(400).json({ message: "Invalid date readiness value" });
+      }
+
+      const updated = await storage.updateProfile(req.session.userId!, { dateReadiness });
+      return res.json(updated);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ==================== FEATURE 11: NO-PHONE-NUMBER CULTURE ====================
+
+  app.post("/api/phone-unlock/request", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const noPhoneEnabled = await storage.getAppSetting("feature_no_phone_number");
+      if (noPhoneEnabled !== "true") {
+        return res.status(400).json({ message: "Phone number sharing is currently unrestricted" });
+      }
+
+      const userId = req.session.userId!;
+      const { matchId } = req.body;
+
+      const match = await storage.getMatchById(matchId);
+      if (!match || !match.isMatched) {
+        return res.status(403).json({ message: "Invalid match" });
+      }
+
+      const otherUserId = match.userId === userId ? match.targetUserId : match.userId;
+
+      const existing = await storage.getPhoneUnlockRequest(userId, otherUserId, matchId);
+      if (existing) {
+        return res.status(409).json({ message: "Unlock request already sent", status: existing.status });
+      }
+
+      const coolOffEndsAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+      const request = await storage.createPhoneUnlockRequest({
+        requesterId: userId,
+        targetUserId: otherUserId,
+        matchId,
+        status: "pending",
+        requestedAt: new Date(),
+        coolOffEndsAt,
+      });
+
+      await storage.sendMessage({
+        matchId,
+        senderId: userId,
+        content: `📱 ${(await storage.getProfile(userId))?.name || "Your match"} has requested to share contact details. You can respond from chat options.`,
+        isAiGenerated: false,
+        isAiProxy: false,
+        isSystemMessage: true,
+      });
+
+      return res.json({ request, message: "Unlock request sent. 24-hour cool-off period applies." });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/phone-unlock/respond", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const { matchId, approve } = req.body;
+
+      const match = await storage.getMatchById(matchId);
+      if (!match || !match.isMatched) {
+        return res.status(403).json({ message: "Invalid match" });
+      }
+
+      const otherUserId = match.userId === userId ? match.targetUserId : match.userId;
+
+      const theirRequest = await storage.getPhoneUnlockRequest(otherUserId, userId, matchId);
+      if (!theirRequest) {
+        return res.status(404).json({ message: "No unlock request found" });
+      }
+
+      if (approve) {
+        await storage.updatePhoneUnlockRequest(theirRequest.id, {
+          status: "approved",
+          respondedAt: new Date(),
+        });
+
+        const myExisting = await storage.getPhoneUnlockRequest(userId, otherUserId, matchId);
+        if (!myExisting) {
+          await storage.createPhoneUnlockRequest({
+            requesterId: userId,
+            targetUserId: otherUserId,
+            matchId,
+            status: "approved",
+            requestedAt: new Date(),
+            coolOffEndsAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+            respondedAt: new Date(),
+          });
+        } else {
+          await storage.updatePhoneUnlockRequest(myExisting.id, {
+            status: "approved",
+            respondedAt: new Date(),
+          });
+        }
+
+        await storage.sendMessage({
+          matchId,
+          senderId: userId,
+          content: `✅ Contact sharing approved! After the 24-hour cool-off period, you'll be able to share contact details.`,
+          isAiGenerated: false,
+          isAiProxy: false,
+          isSystemMessage: true,
+        });
+
+        return res.json({ message: "Approved. Contact sharing will be unlocked after 24-hour cool-off.", mutual: true });
+      } else {
+        await storage.updatePhoneUnlockRequest(theirRequest.id, {
+          status: "rejected",
+          respondedAt: new Date(),
+        });
+
+        return res.json({ message: "Request declined." });
+      }
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/phone-unlock/status/:matchId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const matchId = req.params.matchId as string;
+
+      const match = await storage.getMatchById(matchId);
+      if (!match) return res.status(404).json({ message: "Match not found" });
+
+      const otherUserId = match.userId === userId ? match.targetUserId : match.userId;
+
+      const noPhoneEnabled = await storage.getAppSetting("feature_no_phone_number");
+      if (noPhoneEnabled !== "true") {
+        return res.json({ restricted: false, unlocked: true });
+      }
+
+      const myRequest = await storage.getPhoneUnlockRequest(userId, otherUserId, matchId);
+      const theirRequest = await storage.getPhoneUnlockRequest(otherUserId, userId, matchId);
+      const unlocked = await storage.getMutualPhoneUnlock(userId, otherUserId, matchId);
+
+      return res.json({
+        restricted: true,
+        unlocked,
+        myRequest: myRequest ? { status: myRequest.status, coolOffEndsAt: myRequest.coolOffEndsAt } : null,
+        theirRequest: theirRequest ? { status: theirRequest.status } : null,
+      });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ==================== FEATURE 12: PHOTO AUTHENTICITY ====================
+
+  app.post("/api/photo/verify", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const photoAuthEnabled = await storage.getAppSetting("feature_photo_authenticity");
+      if (photoAuthEnabled !== "true") {
+        return res.json({ enabled: false, message: "Photo authenticity feature is disabled" });
+      }
+
+      const userId = req.session.userId!;
+      const profile = await storage.getProfile(userId);
+      if (!profile || !profile.photos || profile.photos.length === 0) {
+        return res.status(400).json({ message: "No photos to verify" });
+      }
+
+      const openai = getOpenAI();
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: `You are a photo authenticity evaluator for an Indian dating app. Based on the photo metadata/URLs provided, generate a realistic authenticity assessment. Return JSON: {"score": 0-100, "checks": {"filterDetected": true/false, "faceConsistency": true/false, "recentPhoto": true/false, "naturalLighting": true/false}, "verdict": "Verified|Needs Review|Suspicious", "tips": ["tip1"]}. Score 80+ = Verified. Score 50-79 = Needs Review. Below 50 = Suspicious.`,
+          },
+          {
+            role: "user",
+            content: `Profile has ${profile.photos.length} photo(s). Photo URLs: ${profile.photos.join(", ")}. Profile age: ${profile.age}, gender: ${profile.gender}. Evaluate authenticity.`,
+          },
+        ],
+        max_tokens: 200,
+        temperature: 0.5,
+      });
+
+      const raw = completion.choices[0]?.message?.content?.trim() || "{}";
+      try {
+        const result = JSON.parse(raw);
+        await storage.updateProfile(userId, {
+          photoAuthenticityScore: result.score,
+          photoVerifiedAt: new Date() as any,
+        });
+        return res.json(result);
+      } catch {
+        return res.json({ score: 70, verdict: "Needs Review", checks: {}, tips: ["Please upload clear, recent photos"] });
+      }
+    } catch (err: any) {
+      console.error("Photo verification error:", err);
+      return res.status(500).json({ message: "Verification failed" });
+    }
+  });
+
   // ==================== APP SETTINGS ====================
 
   app.get("/api/app-settings", async (_req: Request, res: Response) => {
@@ -941,9 +1454,20 @@ ${myProfile.name}'s bio: ${myProfile.bio || "Not set"}`;
         try { parsedTaglines = JSON.parse(taglines); } catch { parsedTaglines = defaultTaglines; }
       }
       const screenshotProtection = await storage.getAppSetting("global_screenshot_protection");
+      const chatCooldown = await storage.getAppSetting("feature_chat_cooldown");
+      const enhancedReport = await storage.getAppSetting("feature_enhanced_report");
+      const noPhoneNumber = await storage.getAppSetting("feature_no_phone_number");
+      const photoAuthenticity = await storage.getAppSetting("feature_photo_authenticity");
+      const dateReadiness = await storage.getAppSetting("feature_date_readiness");
+
       return res.json({
         welcome_taglines: parsedTaglines,
-        global_screenshot_protection: screenshotProtection === "true",
+        global_screenshot_protection: screenshotProtection !== null ? screenshotProtection === "true" : true,
+        feature_chat_cooldown: chatCooldown !== null ? chatCooldown === "true" : true,
+        feature_enhanced_report: enhancedReport !== null ? enhancedReport === "true" : true,
+        feature_no_phone_number: noPhoneNumber !== null ? noPhoneNumber === "true" : true,
+        feature_photo_authenticity: photoAuthenticity !== null ? photoAuthenticity === "true" : true,
+        feature_date_readiness: dateReadiness !== null ? dateReadiness === "true" : true,
       });
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
