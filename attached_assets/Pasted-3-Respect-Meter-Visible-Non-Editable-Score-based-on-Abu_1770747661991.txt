@@ -1,0 +1,183 @@
+3. Respect Meter (Visible, Non-Editable) ⭐
+
+Score based on:
+
+Abuse reports
+
+Message tone (AI-analyzed)
+
+Conversation drop behavior
+
+Affects:
+
+Match quality
+
+Daily likes
+
+Profile reach
+
+💡 Makes basic decency a feature
+
+4. “No Screenshot Mode” for Chats (India-Specific)
+
+Prevents screenshots of chats & photos
+
+Detects screen recording
+
+Notifies other user if attempted
+
+💡 Huge trust boost, especially for women
+
+5. Family-Aware Dating Mode
+
+(Extremely unique in India)
+
+Optional toggle:
+
+Clean language only
+
+No sexual innuendos
+
+Conservative matching pool
+
+Ideal for:
+
+Tier 2 & 3 cities
+
+Arranged-dating-hybrid users
+
+6. Festival Compatibility Boosts 🇮🇳
+
+(Time-based cultural matching)
+
+During:
+
+Diwali
+
+Eid
+
+Navratri
+
+Christmas
+
+Matches users with:
+
+Similar celebration preferences
+
+Home-town proximity during festivals
+
+💡 Emotional + cultural relevance
+
+7. “Green Flag Stories” Instead of Bios
+
+Users answer 3 micro-prompts, e.g.:
+
+“Something I’ll never joke about”
+
+“My idea of respect”
+
+“One thing I’m healing from”
+
+AI highlights green flags, not looks
+
+💡 Shifts focus from body → values
+
+8. Chat Cool-Down System (Anti-Harassment)
+
+If conversation tone escalates:
+
+App forces a 5-minute pause
+
+Suggests respectful responses
+
+Repeat offenders lose chat privileges
+
+💡 Prevents impulsive abuse
+
+9. “Offline Date Readiness” Indicator
+
+Instead of pushing meetings:
+
+User selects:
+
+Chat-only
+
+Voice-ready
+
+Meet-ready
+
+Prevents pressure & awkward asks
+
+💡 Very relevant in India’s safety culture
+
+10. No-Phone-Number Culture (Hard Enforced) ⭐
+
+(Stronger than competitors)
+
+AI blocks:
+
+Numbers in words
+
+WhatsApp hints
+
+“Call me” patterns
+
+Unlock requires:
+
+Mutual consent
+
+24-hour cool-off
+
+💡 Protects privacy by default
+
+11. Ghosting Transparency Badge
+
+AI detects repeated ghosting
+
+Adds subtle label:
+
+“Often inactive in chats”
+
+No shaming—just awareness
+
+💡 Encourages accountability
+
+12. Language Comfort Matching
+
+Match users by:
+
+English-only
+
+Hinglish
+
+Hindi / Regional comfort
+
+AI adjusts tone accordingly
+
+💡 Massively underrated in India
+
+13. “AI Wingman” for First Messages
+
+AI suggests:
+
+Non-cringe openers
+
+Contextual replies
+
+User approves before sending
+
+💡 Helps introverts & first-timers
+
+14. Photo Authenticity Score
+
+AI checks:
+
+Filters
+
+Old photos
+
+Face mismatch
+
+Displays “Recently verified” tag
+
+💡 Trust > glam

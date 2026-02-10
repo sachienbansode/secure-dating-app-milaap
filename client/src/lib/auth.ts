@@ -4,6 +4,10 @@ export interface AuthUser {
   id: string;
   respectScore: number;
   isVerified?: boolean;
+  dailyLikesLimit?: number;
+  dailyLikesUsed?: number;
+  isOnline?: boolean;
+  lastSeenAt?: string;
 }
 
 export interface AuthProfile {
@@ -21,6 +25,17 @@ export interface AuthProfile {
   aiPersonaEnabled: boolean;
   aiTone: string;
   aiLanguage: string;
+  aiProxyEnabled: boolean;
+  aiChatPace: string;
+  aiBoundaries: string[];
+  intent: string | null;
+  intentLockedAt: string | null;
+  intentLockBroken: boolean;
+  familyMode: boolean;
+  noScreenshotMode: boolean;
+  festivalPrefs: string[] | null;
+  hometownForFestivals: string | null;
+  greenFlagStories: {prompt: string; answer: string}[] | null;
 }
 
 export interface AuthResponse {

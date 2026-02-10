@@ -58,62 +58,75 @@ const otherLocations = [
 const interestsList = ["Bollywood", "Cricket", "Chai", "Street Food", "Yoga", "Tech", "Art", "Music", "Travel", "Reading", "Cooking", "Dancing", "Photography", "Fitness", "Meditation", "Gaming", "Fashion", "Startups", "Biriyani", "Hiking"];
 
 const bios = [
-  "Lover of chai and good conversations. ☕️",
-  "Adventure seeker and travel enthusiast. ✈️",
-  "Artist by heart, designer by profession. 🎨",
-  "Tech geek who loves cricket. 🏏",
-  "Foodie exploring the best street food spots. 🥘",
-  "Yoga practitioner and mindfulness advocate. 🧘",
-  "Bollywood buff looking for a movie partner. 🎬",
-  "Startup founder dreaming big. 🚀",
-  "Nature lover and weekend hiker. 🏔️",
-  "Music is my therapy. Let's jam! 🎸",
-  "Dog parent and animal lover. 🐕",
-  "Bookworm who loves coffee shops. 📚",
-  "Fitness freak and gym addict. 💪",
-  "Photographer chasing sunsets. 📸",
-  "Simple living, high thinking. ✨",
-  "Looking for someone to share chai with. ☕",
-  "Desi at heart, global in spirit. 🌍",
-  "Life's too short for boring conversations. 💬",
-  "Biryani lover, cricket fanatic. 🍗🏏",
-  "Poetry writer and sunset chaser. 🌅",
+  "Lover of chai and good conversations.",
+  "Adventure seeker and travel enthusiast.",
+  "Artist by heart, designer by profession.",
+  "Tech geek who loves cricket.",
+  "Foodie exploring the best street food spots.",
+  "Yoga practitioner and mindfulness advocate.",
+  "Bollywood buff looking for a movie partner.",
+  "Startup founder dreaming big.",
+  "Nature lover and weekend hiker.",
+  "Music is my therapy. Let's jam!",
+  "Dog parent and animal lover.",
+  "Bookworm who loves coffee shops.",
+  "Fitness freak and gym addict.",
+  "Photographer chasing sunsets.",
+  "Simple living, high thinking.",
+  "Looking for someone to share chai with.",
+  "Desi at heart, global in spirit.",
+  "Life's too short for boring conversations.",
+  "Biryani lover, cricket fanatic.",
+  "Poetry writer and sunset chaser.",
 ];
 
+const greenFlagAnswers = {
+  "Something I'll never joke about": [
+    "Someone's family or their insecurities",
+    "Mental health struggles - been there myself",
+    "Anyone's appearance or body",
+    "Religious beliefs, even if different from mine",
+    "Someone's past relationships or heartbreaks",
+  ],
+  "My idea of respect": [
+    "Listening without judging, even when you disagree",
+    "Showing up when you say you will",
+    "Never raising your voice, even in arguments",
+    "Respecting boundaries without being told twice",
+    "Treating everyone equally - from CEO to chai-wallah",
+  ],
+  "One thing I'm healing from": [
+    "Learning to not seek validation from others",
+    "The pressure of being the 'perfect child'",
+    "Overworking to prove my worth",
+    "Trusting people after being let down",
+    "Accepting that it's okay to not have everything figured out",
+  ],
+};
+
+const festivals = ["Diwali", "Eid", "Navratri", "Christmas", "Holi", "Ganesh Chaturthi", "Onam", "Pongal", "Baisakhi", "Durga Puja"];
+const intents = ["Casual", "Dating", "Serious", "Marriage"];
+
 const malePhotos = [
-  "/profiles/indian_male_1_1.jpg",
-  "/profiles/indian_male_1_2.jpg",
-  "/profiles/indian_male_1_3.jpg",
-  "/profiles/indian_male_1_4.jpg",
-  "/profiles/indian_male_1_5.jpg",
-  "/profiles/indian_male_2_1.jpg",
-  "/profiles/indian_male_2_2.jpg",
-  "/profiles/indian_male_2_3.jpg",
-  "/profiles/indian_male_2_4.jpg",
+  "/profiles/indian_male_1_1.jpg", "/profiles/indian_male_1_2.jpg", "/profiles/indian_male_1_3.jpg",
+  "/profiles/indian_male_1_4.jpg", "/profiles/indian_male_1_5.jpg", "/profiles/indian_male_2_1.jpg",
+  "/profiles/indian_male_2_2.jpg", "/profiles/indian_male_2_3.jpg", "/profiles/indian_male_2_4.jpg",
   "/profiles/indian_male_2_5.jpg",
 ];
 
 const femalePhotos = [
-  "/profiles/indian_female_1_1.jpg",
-  "/profiles/indian_female_1_2.jpg",
-  "/profiles/indian_female_1_3.jpg",
-  "/profiles/indian_female_1_4.jpg",
-  "/profiles/indian_female_1_5.jpg",
-  "/profiles/indian_female_2_1.jpg",
-  "/profiles/indian_female_2_2.jpg",
-  "/profiles/indian_female_2_3.jpg",
-  "/profiles/indian_female_2_4.jpg",
+  "/profiles/indian_female_1_1.jpg", "/profiles/indian_female_1_2.jpg", "/profiles/indian_female_1_3.jpg",
+  "/profiles/indian_female_1_4.jpg", "/profiles/indian_female_1_5.jpg", "/profiles/indian_female_2_1.jpg",
+  "/profiles/indian_female_2_2.jpg", "/profiles/indian_female_2_3.jpg", "/profiles/indian_female_2_4.jpg",
   "/profiles/indian_female_2_5.jpg",
 ];
 
 const neutralPhotos = [
-  "/profiles/indian_neutral_1_1.jpg",
-  "/profiles/indian_neutral_1_2.jpg",
-  "/profiles/indian_neutral_1_3.jpg",
+  "/profiles/indian_neutral_1_1.jpg", "/profiles/indian_neutral_1_2.jpg", "/profiles/indian_neutral_1_3.jpg",
 ];
 
-const getRandom = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
-const getRandomSubset = <T>(arr: T[], count: number): T[] => {
+const getRandom = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+const getRandomSubset = <T,>(arr: T[], count: number): T[] => {
   const shuffled = [...arr].sort(() => 0.5 - Math.random());
   return shuffled.slice(0, count);
 };
@@ -121,7 +134,6 @@ const getRandomSubset = <T>(arr: T[], count: number): T[] => {
 async function seed() {
   console.log("Seeding database with 120 profiles...");
 
-  // Check if profiles already exist
   const existing = await db.select({ count: sql<number>`count(*)` }).from(profiles);
   if (Number(existing[0].count) > 0) {
     console.log(`Database already has ${existing[0].count} profiles. Skipping seed.`);
@@ -136,18 +148,24 @@ async function seed() {
     for (let i = 0; i < count; i++) {
       const name = names[i % names.length];
       const isMumbaiPune = Math.random() < 0.5;
-      const locationData = isMumbaiPune
-        ? getRandom(mumbaiPuneLocations)
-        : getRandom(otherLocations);
+      const locationData = isMumbaiPune ? getRandom(mumbaiPuneLocations) : getRandom(otherLocations);
 
       const age = Math.floor(Math.random() * (35 - 21) + 21);
-      const respectScore = Math.floor(Math.random() * (100 - 80) + 80);
+      const respectScore = Math.floor(Math.random() * (100 - 70) + 70);
       const bio = getRandom(bios);
       const interests = getRandomSubset(interestsList, 3 + Math.floor(Math.random() * 3));
       const photoPool = gender === "Male" ? malePhotos : gender === "Female" ? femalePhotos : neutralPhotos;
       const photo = getRandom(photoPool);
 
-      // Create user
+      const intent = getRandom(intents);
+      const familyMode = Math.random() < 0.25;
+      const festivalPrefs = getRandomSubset(festivals, 2 + Math.floor(Math.random() * 3));
+
+      const greenFlagStories = Object.entries(greenFlagAnswers).map(([prompt, answers]) => ({
+        prompt,
+        answer: Math.random() > 0.3 ? getRandom(answers) : "",
+      })).filter(s => s.answer);
+
       const [user] = await db
         .insert(users)
         .values({
@@ -157,7 +175,6 @@ async function seed() {
         })
         .returning();
 
-      // Create encrypted profile
       await db.insert(profiles).values({
         userId: user.id,
         name: encrypt(name),
@@ -172,6 +189,14 @@ async function seed() {
         aiPersonaEnabled: Math.random() > 0.5,
         aiTone: getRandom(["Friendly", "Witty", "Polite", "Flirty"]),
         aiLanguage: getRandom(["English", "Hindi", "Hinglish"]),
+        aiProxyEnabled: Math.random() > 0.7,
+        aiChatPace: getRandom(["Slow", "Normal", "Fast"]),
+        intent,
+        intentLockedAt: new Date(),
+        familyMode,
+        festivalPrefs,
+        hometownForFestivals: locationData.city,
+        greenFlagStories,
       });
     }
   };

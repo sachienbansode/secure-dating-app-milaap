@@ -1,9 +1,12 @@
 # Milaap - Dating App for India
 
 ## Overview
-Milaap is a mobile-first dating application designed for the Indian market featuring OTP-based authentication, AES-256-GCM data encryption at rest, AI-assisted messaging via OpenAI, photo uploads, and a respect-based matchmaking system.
+Milaap is a mobile-first dating application designed for the Indian market featuring OTP-based authentication, AES-256-GCM data encryption at rest, AI-assisted messaging via OpenAI, photo uploads, respect-based matchmaking, and 7 advanced cultural features.
 
 ## Recent Changes
+- 2026-02-10: Implemented 7 advanced features: AI Proxy Presence Mode, 30-Day Intent Lock, Respect Meter, No Screenshot Mode, Family-Aware Dating Mode, Festival Compatibility Boosts, Green Flag Stories
+- 2026-02-10: Re-seeded 120 profiles with intent, green flag stories, festival preferences, family mode
+- 2026-02-10: Added screenshot alert authorization check for match ownership
 - 2026-02-10: Added authentic Indian stock images - 10 male, 10 female, 3 neutral portraits
 - 2026-02-10: Added photo upload feature (multer) for profile creation/editing (up to 6 photos)
 - 2026-02-10: Fixed overlapping UI in matches page, improved layout and spacing
@@ -12,31 +15,52 @@ Milaap is a mobile-first dating application designed for the Indian market featu
 - 2026-02-10: Integrated OpenAI for AI persona message suggestions in chat
 - 2026-02-10: Added report user UI with reason selection in chat
 - 2026-02-10: Full backend implementation with PostgreSQL, encrypted storage, OTP auth, matchmaking, chat, and reporting APIs
-- 2026-02-10: Seeded 120 diverse dummy profiles (50M/50F/20T) with gender-appropriate Indian photos
 
 ## Project Architecture
 - **Frontend**: React + Tailwind v4 + TanStack Query + wouter + Framer Motion
 - **Backend**: Express.js with session-based auth + multer for file uploads
 - **Database**: PostgreSQL with Drizzle ORM
 - **Encryption**: AES-256-GCM for names, bios, and message content
-- **AI**: OpenAI via Replit AI Integrations (gpt-4o-mini for chat suggestions)
+- **AI**: OpenAI via Replit AI Integrations (gpt-4o-mini for chat suggestions, proxy replies, tone analysis, green flag analysis)
 
 ### Key Files
-- `shared/schema.ts` - Database schema & Zod validation
-- `server/routes.ts` - All API endpoints (/api/auth/*, /api/profile, /api/upload-photo, /api/discover, /api/swipe, /api/matches, /api/messages/*, /api/report, /api/ai/suggest)
+- `shared/schema.ts` - Database schema & Zod validation (users, profiles, matches, messages, reports, screenshot_alerts, app_settings)
+- `server/routes.ts` - All API endpoints including 7 new feature endpoints
 - `server/storage.ts` - Database CRUD operations with encryption
 - `server/encryption.ts` - AES-256-GCM encrypt/decrypt utilities
-- `server/seed.ts` - Database seeder for 120 dummy profiles with gender-specific photos
+- `server/seed.ts` - Database seeder for 120 dummy profiles with all new fields
 - `server/db.ts` - Database connection
-- `client/src/pages/` - AuthPage, Home (swipe with filters), Matches, Chat (with AI & report), Profile (with photo upload)
+- `client/src/pages/` - AuthPage, Home (swipe with filters + badges), Matches, Chat (with AI proxy + screenshot protection), Profile (with all 7 feature settings)
 - `client/src/lib/auth.ts` - Auth API client utilities
 
+### Advanced Features
+1. **AI Proxy Presence Mode**: Auto-replies when offline using AI, pace/language/boundary learning, "AI-assisted" tag
+2. **30-Day Intent Lock**: Casual/Dating/Serious/Marriage selection, 30-day lock, -10 respect and -15 likes penalty for breaking
+3. **Visible Respect Meter**: Score from reports (-5), tone analysis (-3 disrespectful), drop behavior; affects daily likes (base 50, min 10)
+4. **No Screenshot Mode**: CSS user-select protection, PrintScreen/Cmd+Shift detection, visibility change detection, alert notifications
+5. **Family-Aware Dating Mode**: Regex inappropriate language filter, matches only other family-mode users when enabled
+6. **Festival Compatibility Boosts**: Time-based detection (Diwali Oct-Nov, Holi Mar-Apr, etc.), festival preference matching, hometown proximity
+7. **Green Flag Stories**: 3 micro-prompts ("Something I'll never joke about", "My idea of respect", "One thing I'm healing from"), AI green flag analysis
+
 ### Data Model
-- **users**: Auth (phone/email), respect score, ban status
-- **profiles**: Encrypted name/bio, age, gender, city, interests, photos (array), AI settings
+- **users**: Auth (phone/email), respect score, ban status, isOnline, lastSeenAt, dailyLikes
+- **profiles**: Encrypted name/bio, age, gender, city, interests, photos, AI settings, intent (locked 30 days), familyMode, festivalPrefs, hometownForFestivals, greenFlagStories, noScreenshotMode, aiProxyEnabled, aiChatPace, aiBoundaries
 - **matches**: Swipe actions (like/pass/superlike), mutual match detection
-- **messages**: Encrypted chat content, AI-generated flag, read receipts
+- **messages**: Encrypted chat content, AI-generated flag, isAiProxy flag, read receipts
 - **reports**: User reporting with auto-ban at 5 reports
+- **screenshot_alerts**: Match-based screenshot detection records
+- **app_settings**: Admin configurable settings (global screenshot protection)
+
+### API Endpoints (New)
+- `POST /api/profile/force-intent` - Break intent lock with penalties
+- `POST /api/ai/proxy-reply` - AI auto-reply for offline users
+- `POST /api/ai/analyze-tone` - Respect meter tone analysis
+- `POST /api/ai/analyze-green-flags` - Green flag story analysis
+- `POST /api/screenshot-alert` - Report screenshot detection
+- `GET /api/screenshot-alerts/:matchId` - Get alerts for a match
+- `GET /api/festival-status` - Current festival season status
+- `GET /api/app-settings` - Admin settings
+- `POST /api/app-settings` - Update admin settings
 
 ## User Preferences
 - Indian cultural context throughout (names, cities, interests like Bollywood, Cricket, Chai)
