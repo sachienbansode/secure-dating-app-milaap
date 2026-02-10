@@ -182,7 +182,7 @@ export default function Home() {
               filteredProfiles.slice(0, 5).reverse().map((profile, index) => {
                 const isFront = index === Math.min(filteredProfiles.length, 5) - 1;
                 return (
-                  <SwipeCard key={profile.userId} profile={profile} isFront={isFront} expanded={isFront && expandedCard} onSwipe={(action) => handleSwipe(profile.userId, action)} onToggleExpand={() => setExpandedCard(!expandedCard)} />
+                  <SwipeCard key={profile.userId} profile={profile} isFront={isFront} expanded={isFront && expandedCard} onSwipe={(action) => handleSwipe(profile.userId, action)} onToggleExpand={() => setExpandedCard(!expandedCard)} appSettings={appSettings} />
                 );
               })
             ) : (
@@ -219,9 +219,9 @@ export default function Home() {
   );
 }
 
-function SwipeCard({ profile, isFront, expanded, onSwipe, onToggleExpand }: { 
+function SwipeCard({ profile, isFront, expanded, onSwipe, onToggleExpand, appSettings }: { 
   profile: DiscoverProfile; isFront: boolean; expanded: boolean;
-  onSwipe: (action: "like" | "pass" | "superlike") => void; onToggleExpand: () => void;
+  onSwipe: (action: "like" | "pass" | "superlike") => void; onToggleExpand: () => void; appSettings?: any;
 }) {
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-200, 200], [-15, 15]);
