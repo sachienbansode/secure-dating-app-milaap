@@ -577,9 +577,13 @@ export default function Profile() {
           {activeSection === "Activity Logs" && (
             <ActivityLogsViewer />
           )}
+
+          {activeSection === "All Profiles" && (
+            <AllProfilesViewer />
+          )}
         </div>
 
-        {activeSection !== "Welcome Taglines" && activeSection !== "Feature Toggles" && activeSection !== "Terms & Conditions" && activeSection !== "Activity Logs" && (
+        {activeSection !== "Welcome Taglines" && activeSection !== "Feature Toggles" && activeSection !== "Terms & Conditions" && activeSection !== "Activity Logs" && activeSection !== "All Profiles" && (
           <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 max-w-lg mx-auto">
             <Button data-testid="button-save-profile" className="w-full h-14 rounded-2xl font-bold text-lg bg-brand-gradient shadow-lg" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || !form.name.trim()}>
               {saveMutation.isPending ? "Saving..." : <>{isNewUser ? "Create Profile" : "Save Changes"} <Save className="ml-2" size={18} /></>}
@@ -837,6 +841,16 @@ export default function Profile() {
           <section>
             <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3 px-1">Admin</h3>
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50" onClick={() => { setIsEditing(true); setActiveSection("All Profiles"); }}>
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600"><Users size={16} /></div>
+                  <div>
+                    <h4 className="font-semibold text-sm">All Profiles</h4>
+                    <p className="text-xs text-muted-foreground">View all registered profiles</p>
+                  </div>
+                </div>
+                <ChevronRight size={18} className="text-gray-300" />
+              </div>
               <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 border-b border-gray-50" onClick={() => { setIsEditing(true); setActiveSection("Welcome Taglines"); }}>
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-600"><MessageSquareQuote size={16} /></div>
@@ -1325,6 +1339,206 @@ function ActivityLogsViewer() {
               disabled={page >= totalPages - 1}
               className="px-3 py-1.5 rounded-lg text-xs font-medium bg-white border border-slate-200 disabled:opacity-40"
               data-testid="button-logs-next"
+            >
+              Next
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AllProfilesViewer() {
+  const [profilesData, setProfilesData] = useState<any[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
+  const [genderFilter, setGenderFilter] = useState("all");
+  const [selectedProfile, setSelectedProfile] = useState<any | null>(null);
+  const limit = 20;
+
+  const genders = ["all", "Male", "Female", "Trans", "Couple"];
+
+  const fetchProfiles = async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({ limit: String(limit), offset: String(page * limit) });
+      if (genderFilter !== "all") params.set("gender", genderFilter);
+      const res = await fetch(`/api/admin/profiles?${params}`, { credentials: "include" });
+      const data = await res.json();
+      setProfilesData(data.profiles || []);
+      setTotal(data.total || 0);
+    } catch { }
+    setLoading(false);
+  };
+
+  useEffect(() => { fetchProfiles(); }, [page, genderFilter]);
+
+  const totalPages = Math.ceil(total / limit);
+
+  const formatDate = (date: string | null) => {
+    if (!date) return "—";
+    return new Date(date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  };
+
+  const getGenderColor = (gender: string) => {
+    const colors: Record<string, string> = {
+      Male: "bg-blue-100 text-blue-700",
+      Female: "bg-pink-100 text-pink-700",
+      Trans: "bg-purple-100 text-purple-700",
+      Couple: "bg-amber-100 text-amber-700",
+    };
+    return colors[gender] || "bg-gray-100 text-gray-700";
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-indigo-50 rounded-2xl p-4 border border-indigo-200">
+        <h4 className="font-bold text-sm text-indigo-800 mb-3">All Profiles ({total})</h4>
+        <div className="flex flex-wrap gap-1.5 mb-4">
+          {genders.map((g) => (
+            <button
+              key={g}
+              onClick={() => { setGenderFilter(g); setPage(0); }}
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                genderFilter === g ? "bg-indigo-700 text-white" : "bg-white text-indigo-600 border border-indigo-200 hover:bg-indigo-100"
+              }`}
+              data-testid={`filter-profile-${g.toLowerCase()}`}
+            >
+              {g === "all" ? "All" : g}
+            </button>
+          ))}
+        </div>
+
+        {loading ? (
+          <div className="text-center py-8 text-indigo-400 text-sm">Loading profiles...</div>
+        ) : profilesData.length === 0 ? (
+          <div className="text-center py-8 text-indigo-400 text-sm">No profiles found</div>
+        ) : (
+          <div className="space-y-2">
+            {profilesData.map((profile: any) => (
+              <div
+                key={profile.id}
+                className="bg-white rounded-xl p-3 border border-indigo-100 cursor-pointer hover:bg-indigo-50/50 transition-colors"
+                onClick={() => setSelectedProfile(selectedProfile?.id === profile.id ? null : profile)}
+                data-testid={`profile-card-${profile.id}`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-100 flex-shrink-0">
+                    {profile.photos && profile.photos[0] ? (
+                      <img src={profile.photos[0]} alt={profile.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">No pic</div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-sm text-slate-800 truncate">{profile.name}</span>
+                      <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase ${getGenderColor(profile.gender)}`}>
+                        {profile.gender}
+                      </span>
+                      {profile.age && <span className="text-[10px] text-slate-400">{profile.age}y</span>}
+                    </div>
+                    <div className="text-[10px] text-slate-500 mt-0.5">{profile.city} · {profile.location}</div>
+                    <div className="flex gap-3 mt-1">
+                      <span className="text-[9px] text-slate-400">Created: {formatDate(profile.user?.createdAt)}</span>
+                      <span className="text-[9px] text-slate-400">Modified: {formatDate(profile.updatedAt)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {selectedProfile?.id === profile.id && (
+                  <div className="mt-3 pt-3 border-t border-indigo-100 space-y-3">
+                    {profile.photos && profile.photos.length > 0 && (
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-600 mb-1.5 uppercase">Photos ({profile.photos.length})</p>
+                        <div className="flex gap-2 overflow-x-auto pb-1">
+                          {profile.photos.map((photo: string, idx: number) => (
+                            <img
+                              key={idx}
+                              src={photo}
+                              alt={`${profile.name} photo ${idx + 1}`}
+                              className="w-20 h-20 rounded-lg object-cover flex-shrink-0 border border-indigo-100"
+                              data-testid={`profile-photo-${profile.id}-${idx}`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {profile.bio && (
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-600 mb-0.5 uppercase">Bio</p>
+                        <p className="text-xs text-slate-700">{profile.bio}</p>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-2 text-[10px]">
+                      <div>
+                        <span className="font-bold text-slate-600">Intent:</span>
+                        <span className="ml-1 text-slate-700">{profile.intent || "—"}</span>
+                      </div>
+                      <div>
+                        <span className="font-bold text-slate-600">Readiness:</span>
+                        <span className="ml-1 text-slate-700">{profile.dateReadiness || "—"}</span>
+                      </div>
+                      <div>
+                        <span className="font-bold text-slate-600">Interested In:</span>
+                        <span className="ml-1 text-slate-700">{profile.interestedIn?.join(", ") || "—"}</span>
+                      </div>
+                      <div>
+                        <span className="font-bold text-slate-600">Respect:</span>
+                        <span className="ml-1 text-slate-700">{profile.user?.respectScore ?? "—"}</span>
+                      </div>
+                      <div>
+                        <span className="font-bold text-slate-600">Verified:</span>
+                        <span className="ml-1 text-slate-700">{profile.user?.isVerified ? "Yes" : "No"}</span>
+                      </div>
+                      <div>
+                        <span className="font-bold text-slate-600">Photo Score:</span>
+                        <span className="ml-1 text-slate-700">{profile.photoAuthenticityScore ?? "—"}</span>
+                      </div>
+                      <div>
+                        <span className="font-bold text-slate-600">Family Mode:</span>
+                        <span className="ml-1 text-slate-700">{profile.familyMode ? "On" : "Off"}</span>
+                      </div>
+                      <div>
+                        <span className="font-bold text-slate-600">Visible:</span>
+                        <span className="ml-1 text-slate-700">{profile.isVisible ? "Yes" : "No"}</span>
+                      </div>
+                    </div>
+                    {profile.interests && profile.interests.length > 0 && (
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-600 mb-1 uppercase">Interests</p>
+                        <div className="flex flex-wrap gap-1">
+                          {profile.interests.map((interest: string, idx: number) => (
+                            <span key={idx} className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-full text-[10px]">{interest}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between mt-4 pt-3 border-t border-indigo-100">
+            <button
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={page === 0}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-white border border-indigo-200 disabled:opacity-40"
+              data-testid="button-profiles-prev"
+            >
+              Previous
+            </button>
+            <span className="text-xs text-indigo-500">Page {page + 1} of {totalPages}</span>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+              disabled={page >= totalPages - 1}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-white border border-indigo-200 disabled:opacity-40"
+              data-testid="button-profiles-next"
             >
               Next
             </button>

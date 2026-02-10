@@ -66,7 +66,7 @@ export interface IStorage {
   getActivityLogs(limit?: number, offset?: number, category?: string, userId?: string): Promise<ActivityLog[]>;
   getActivityLogCount(category?: string, userId?: string): Promise<number>;
 
-  getAllProfilesAdmin(limit?: number, offset?: number, genderFilter?: string, search?: string): Promise<{ profiles: (Profile & { user?: User })[], total: number }>;
+  getAllProfilesAdmin(limit?: number, offset?: number, genderFilter?: string): Promise<{ profiles: (Profile & { user?: User })[], total: number }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -394,7 +394,7 @@ export class DatabaseStorage implements IStorage {
     return result?.count || 0;
   }
 
-  async getAllProfilesAdmin(limit = 50, offset = 0, genderFilter?: string, search?: string): Promise<{ profiles: (Profile & { user?: User })[], total: number }> {
+  async getAllProfilesAdmin(limit = 50, offset = 0, genderFilter?: string): Promise<{ profiles: (Profile & { user?: User })[], total: number }> {
     const conditions: any[] = [];
     if (genderFilter && genderFilter !== "all") {
       conditions.push(eq(profiles.gender, genderFilter));

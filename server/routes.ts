@@ -1553,8 +1553,7 @@ ${myProfile.name}'s bio: ${myProfile.bio || "Not set"}`;
       const limit = parseInt(req.query.limit as string) || 20;
       const offset = parseInt(req.query.offset as string) || 0;
       const gender = req.query.gender as string | undefined;
-      const search = req.query.search as string | undefined;
-      const result = await storage.getAllProfilesAdmin(limit, offset, gender, search);
+      const result = await storage.getAllProfilesAdmin(limit, offset, gender);
       return res.json(result);
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
