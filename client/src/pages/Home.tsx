@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
@@ -24,23 +24,18 @@ interface DiscoverProfile {
 export default function Home() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+  const [dismissed, setDismissed] = useState<string[]>([]);
+  const [matchPopup, setMatchPopup] = useState<string | null>(null);
 
-  const { data: session } = useQuery({
+  const { data: session, isLoading: checkingSession } = useQuery({
     queryKey: ["/api/auth/me"],
     queryFn: getMe,
   });
 
-  if (!session?.user) {
-    setLocation("/");
-    return null;
-  }
-
   const { data: profiles = [], isLoading } = useQuery<DiscoverProfile[]>({
     queryKey: ["/api/discover"],
+    enabled: !!session?.user,
   });
-
-  const [dismissed, setDismissed] = useState<string[]>([]);
-  const [matchPopup, setMatchPopup] = useState<string | null>(null);
 
   const swipeMutation = useMutation({
     mutationFn: async ({ targetUserId, action }: { targetUserId: string; action: string }) => {
@@ -54,6 +49,20 @@ export default function Home() {
       queryClient.invalidateQueries({ queryKey: ["/api/matches"] });
     },
   });
+
+  useEffect(() => {
+    if (!checkingSession && !session?.user) {
+      setLocation("/");
+    }
+  }, [checkingSession, session, setLocation]);
+
+  if (checkingSession || !session?.user) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
 
   const activeProfiles = profiles.filter((p) => !dismissed.includes(p.userId));
 

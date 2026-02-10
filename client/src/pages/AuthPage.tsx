@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,10 +6,11 @@ import { Mail, Phone, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 import logo from "@/assets/logo.png";
 import { requestOtp, verifyOtp, getMe } from "@/lib/auth";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 export default function AuthPage() {
   const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
   const [method, setMethod] = useState<"splash" | "phone" | "email">("splash");
   const [step, setStep] = useState<"input" | "otp">("input");
   const [isLoading, setIsLoading] = useState(false);
@@ -24,6 +25,16 @@ export default function AuthPage() {
     retry: false,
   });
 
+  useEffect(() => {
+    if (session?.user) {
+      if (!session.profile) {
+        setLocation("/profile");
+      } else {
+        setLocation("/home");
+      }
+    }
+  }, [session, setLocation]);
+
   if (checkingSession) {
     return (
       <div className="h-full flex items-center justify-center bg-brand-gradient">
@@ -33,11 +44,6 @@ export default function AuthPage() {
   }
 
   if (session?.user) {
-    if (!session.profile) {
-      setLocation("/profile");
-    } else {
-      setLocation("/home");
-    }
     return null;
   }
 
@@ -68,6 +74,7 @@ export default function AuthPage() {
         ? { phone: `+91${contactValue.replace(/\s/g, "")}`, otp: otpValue }
         : { email: contactValue, otp: otpValue };
       const result = await verifyOtp(payload);
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
       if (result.hasProfile) {
         setLocation("/home");
       } else {

@@ -86,13 +86,14 @@ export default function Profile() {
     }));
   };
 
-  if (loadingSession) {
-    return <div className="h-full flex items-center justify-center text-muted-foreground animate-pulse">Loading...</div>;
-  }
+  useEffect(() => {
+    if (!loadingSession && !session?.user) {
+      setLocation("/");
+    }
+  }, [loadingSession, session, setLocation]);
 
-  if (!session?.user) {
-    setLocation("/");
-    return null;
+  if (loadingSession || !session?.user) {
+    return <div className="h-full flex items-center justify-center text-muted-foreground animate-pulse">Loading...</div>;
   }
 
   // Profile creation/edit form

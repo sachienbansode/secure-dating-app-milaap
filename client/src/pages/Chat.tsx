@@ -24,43 +24,28 @@ export default function Chat() {
   const [, setLocation] = useLocation();
   const matchId = params?.id;
   const queryClient = useQueryClient();
-
-  const { data: session } = useQuery({
-    queryKey: ["/api/auth/me"],
-    queryFn: getMe,
-  });
-
-  if (!session?.user) {
-    setLocation("/");
-    return null;
-  }
-
-  const currentUserId = session.user.id;
-
-  const { data: matchData } = useQuery<any>({
-    queryKey: ["/api/matches"],
-    select: (data: any[]) => data?.find((m: any) => m.id === matchId),
-  });
-
-  const profile = matchData?.profile;
-
-  const { data: messages = [], isLoading: loadingMessages } = useQuery<ChatMessage[]>({
-    queryKey: [`/api/messages/${matchId}`],
-    enabled: !!matchId,
-    refetchInterval: 3000,
-  });
-
   const [input, setInput] = useState("");
   const [aiMode, setAiMode] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  const { data: session, isLoading: checkingSession } = useQuery({
+    queryKey: ["/api/auth/me"],
+    queryFn: getMe,
+  });
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, aiMode]);
+  const { data: matchesAll = [] } = useQuery<any[]>({
+    queryKey: ["/api/matches"],
+    enabled: !!session?.user,
+  });
+
+  const matchData = matchesAll?.find((m: any) => m.id === matchId);
+  const profile = matchData?.profile;
+
+  const { data: messages = [], isLoading: loadingMessages } = useQuery<ChatMessage[]>({
+    queryKey: [`/api/messages/${matchId}`],
+    enabled: !!matchId && !!session?.user,
+    refetchInterval: 3000,
+  });
 
   const sendMutation = useMutation({
     mutationFn: async (data: { matchId: string; content: string; isAiGenerated?: boolean }) => {
@@ -71,6 +56,30 @@ export default function Chat() {
       queryClient.invalidateQueries({ queryKey: [`/api/messages/${matchId}`] });
     },
   });
+
+  useEffect(() => {
+    if (!checkingSession && !session?.user) {
+      setLocation("/");
+    }
+  }, [checkingSession, session, setLocation]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, aiMode]);
+
+  if (checkingSession || !session?.user) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+
+  const currentUserId = session.user.id;
 
   const handleSend = () => {
     if (!input.trim() || !matchId) return;

@@ -4,7 +4,7 @@ import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useQuery } from "@tanstack/react-query";
 import { getMe } from "@/lib/auth";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface MatchWithProfile {
   id: string;
@@ -25,19 +25,29 @@ export default function Matches() {
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
 
-  const { data: session } = useQuery({
+  const { data: session, isLoading: checkingSession } = useQuery({
     queryKey: ["/api/auth/me"],
     queryFn: getMe,
   });
 
-  if (!session?.user) {
-    setLocation("/");
-    return null;
-  }
-
   const { data: matchesData = [], isLoading } = useQuery<MatchWithProfile[]>({
     queryKey: ["/api/matches"],
+    enabled: !!session?.user,
   });
+
+  useEffect(() => {
+    if (!checkingSession && !session?.user) {
+      setLocation("/");
+    }
+  }, [checkingSession, session, setLocation]);
+
+  if (checkingSession || !session?.user) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
 
   const filteredMatches = matchesData.filter((m) =>
     m.profile?.name?.toLowerCase().includes(searchQuery.toLowerCase())
