@@ -228,7 +228,7 @@ export default function Profile() {
         <div className="flex-1 overflow-y-auto p-6 space-y-6 pb-32">
           {(!activeSection || activeSection === "Edit Profile") && (
             <>
-              <div>
+              <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
                 <label className="text-sm font-medium text-gray-700 mb-3 block">Photos ({form.photos.length}/6)</label>
                 <div className="grid grid-cols-3 gap-3">
                   {form.photos.map((photo, index) => (
@@ -249,29 +249,43 @@ export default function Profile() {
                 <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handlePhotoUpload} />
               </div>
 
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">Name</label>
-                <Input data-testid="input-name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Your name" className="h-12 rounded-xl" />
-              </div>
-
-              <div className="flex gap-4">
-                <div className="flex-1">
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">Age</label>
-                  <Input data-testid="input-age" type="number" value={form.age} onChange={(e) => setForm((f) => ({ ...f, age: parseInt(e.target.value) || 18 }))} min={18} max={100} className="h-12 rounded-xl" />
+              <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-2 block">Name</label>
+                  <Input data-testid="input-name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Your name" className="h-12 rounded-xl" />
                 </div>
-                <div className="flex-1">
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">Gender</label>
-                  <select data-testid="select-gender" value={form.gender} onChange={(e) => setForm((f) => ({ ...f, gender: e.target.value as "Male" | "Female" | "Trans" | "Couple" }))} className="w-full h-12 rounded-xl border border-gray-200 px-3 bg-white">
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Trans">Trans</option>
-                    <option value="Couple">Couple</option>
+
+                <div className="flex gap-4">
+                  <div className="flex-1">
+                    <label className="text-sm font-medium text-gray-700 mb-2 block">Age</label>
+                    <Input data-testid="input-age" type="number" value={form.age} onChange={(e) => setForm((f) => ({ ...f, age: parseInt(e.target.value) || 18 }))} min={18} max={100} className="h-12 rounded-xl" />
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-sm font-medium text-gray-700 mb-2 block">Gender</label>
+                    <select data-testid="select-gender" value={form.gender} onChange={(e) => setForm((f) => ({ ...f, gender: e.target.value as "Male" | "Female" | "Trans" | "Couple" }))} className="w-full h-12 rounded-xl border border-gray-200 px-3 bg-white">
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Trans">Trans</option>
+                      <option value="Couple">Couple</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-2 block">Bio</label>
+                  <textarea data-testid="input-bio" value={form.bio} onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value }))} placeholder="Tell us about yourself..." className="w-full h-24 rounded-xl border border-gray-200 px-4 py-3 resize-none text-sm" maxLength={500} />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-2 block">City</label>
+                  <select data-testid="select-city" value={form.city} onChange={(e) => setForm((f) => ({ ...f, city: e.target.value, location: e.target.value }))} className="w-full h-12 rounded-xl border border-gray-200 px-3 bg-white">
+                    {CITIES.map((city) => <option key={city} value={city}>{city}</option>)}
                   </select>
                 </div>
               </div>
 
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">Interested In</label>
+              <div className="bg-rose-50 rounded-2xl p-4 border border-rose-200">
+                <label className="text-sm font-medium text-rose-800 mb-3 block">Interested In</label>
                 <div className="flex flex-wrap gap-2">
                   {(["Male", "Female", "Trans", "Couple"] as const).map((option) => (
                     <button
@@ -287,42 +301,30 @@ export default function Profile() {
                       className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all ${
                         form.interestedIn.includes(option)
                           ? "bg-brand-gradient text-white shadow-sm"
-                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                          : "bg-white text-gray-600 hover:bg-gray-50 border border-rose-200"
                       }`}
                     >
                       {option}
                     </button>
                   ))}
                 </div>
-                <p className="text-xs text-gray-400 mt-1">Select one or more to see matching profiles</p>
+                <p className="text-xs text-rose-400 mt-2">Select one or more to see matching profiles</p>
               </div>
 
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">Bio</label>
-                <textarea data-testid="input-bio" value={form.bio} onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value }))} placeholder="Tell us about yourself..." className="w-full h-24 rounded-xl border border-gray-200 px-4 py-3 resize-none text-sm" maxLength={500} />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">City</label>
-                <select data-testid="select-city" value={form.city} onChange={(e) => setForm((f) => ({ ...f, city: e.target.value, location: e.target.value }))} className="w-full h-12 rounded-xl border border-gray-200 px-3 bg-white">
-                  {CITIES.map((city) => <option key={city} value={city}>{city}</option>)}
-                </select>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">Interests ({form.interests.length}/10)</label>
+              <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+                <label className="text-sm font-medium text-gray-700 mb-3 block">Interests ({form.interests.length}/10)</label>
 
                 <p className="text-xs text-muted-foreground mb-1.5 font-medium uppercase tracking-wider">General</p>
-                <div className="flex flex-wrap gap-2 mb-3">
+                <div className="flex flex-wrap gap-2 mb-4">
                   {INTERESTS.map((interest) => (
-                    <button key={interest} data-testid={`button-interest-${interest}`} onClick={() => toggleInterest(interest)} className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${form.interests.includes(interest) ? "bg-brand-gradient text-white shadow-sm" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
+                    <button key={interest} data-testid={`button-interest-${interest}`} onClick={() => toggleInterest(interest)} className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${form.interests.includes(interest) ? "bg-brand-gradient text-white shadow-sm" : "bg-white text-gray-600 hover:bg-gray-200 border border-gray-200"}`}>
                       {interest}
                     </button>
                   ))}
                 </div>
 
                 <p className="text-xs text-muted-foreground mb-1.5 font-medium uppercase tracking-wider">Romantic & Spicy</p>
-                <div className="flex flex-wrap gap-2 mb-3">
+                <div className="flex flex-wrap gap-2 mb-4">
                   {ROMANTIC_INTERESTS.map((interest) => (
                     <button key={interest} data-testid={`button-interest-${interest.toLowerCase().replace(/\s/g, "-")}`} onClick={() => toggleInterest(interest)} className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${form.interests.includes(interest) ? "bg-gradient-to-r from-pink-500 to-red-500 text-white shadow-sm" : "bg-pink-50 text-pink-700 hover:bg-pink-100 border border-pink-200"}`}>
                       {interest}
@@ -333,7 +335,7 @@ export default function Profile() {
                 {form.interests.filter((i) => !INTERESTS.includes(i) && !ROMANTIC_INTERESTS.includes(i)).length > 0 && (
                   <>
                     <p className="text-xs text-muted-foreground mb-1.5 font-medium uppercase tracking-wider">Custom</p>
-                    <div className="flex flex-wrap gap-2 mb-3">
+                    <div className="flex flex-wrap gap-2 mb-4">
                       {form.interests.filter((i) => !INTERESTS.includes(i) && !ROMANTIC_INTERESTS.includes(i)).map((interest) => (
                         <button key={interest} data-testid={`button-interest-custom-${interest.toLowerCase().replace(/\s/g, "-")}`} onClick={() => toggleInterest(interest)} className="px-4 py-2 rounded-full text-sm font-medium bg-purple-500 text-white shadow-sm flex items-center gap-1">
                           {interest} <X size={12} />
@@ -343,7 +345,7 @@ export default function Profile() {
                   </>
                 )}
 
-                <div className="flex gap-2 mt-1">
+                <div className="flex gap-2 mt-2">
                   <Input
                     data-testid="input-custom-interest"
                     placeholder="Add your own interest..."
