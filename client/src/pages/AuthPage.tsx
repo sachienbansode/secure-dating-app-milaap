@@ -6,6 +6,7 @@ import { Sparkles, Mail, Phone, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 
 export default function AuthPage() {
+  console.log("Rendering AuthPage");
   const [, setLocation] = useLocation();
   const [method, setMethod] = useState<"splash" | "phone" | "email">("splash");
   const [isLoading, setIsLoading] = useState(false);
