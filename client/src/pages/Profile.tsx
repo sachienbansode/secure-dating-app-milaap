@@ -47,7 +47,7 @@ export default function Profile() {
   const [form, setForm] = useState({
     name: "",
     age: 25,
-    gender: "Male" as "Male" | "Female" | "Trans",
+    gender: "Male" as "Male" | "Female" | "Trans" | "Couple",
     bio: "",
     city: "Mumbai",
     location: "Mumbai",
@@ -67,6 +67,7 @@ export default function Profile() {
     hometownForFestivals: "",
     greenFlagStories: [] as {prompt: string; answer: string}[],
     dateReadiness: "Chat-only" as string,
+    interestedIn: [] as string[],
   });
 
   useEffect(() => {
@@ -75,7 +76,7 @@ export default function Profile() {
       setForm({
         name: p.name || "",
         age: p.age || 25,
-        gender: (p.gender as "Male" | "Female" | "Trans") || "Male",
+        gender: (p.gender as "Male" | "Female" | "Trans" | "Couple") || "Male",
         bio: p.bio || "",
         city: p.city || "Mumbai",
         location: p.location || "Mumbai",
@@ -95,6 +96,7 @@ export default function Profile() {
         hometownForFestivals: p.hometownForFestivals || "",
         greenFlagStories: (p.greenFlagStories as {prompt: string; answer: string}[]) || [],
         dateReadiness: p.dateReadiness || "Chat-only",
+        interestedIn: p.interestedIn || [],
       });
     }
   }, [session?.profile]);
@@ -259,12 +261,40 @@ export default function Profile() {
                 </div>
                 <div className="flex-1">
                   <label className="text-sm font-medium text-gray-700 mb-2 block">Gender</label>
-                  <select data-testid="select-gender" value={form.gender} onChange={(e) => setForm((f) => ({ ...f, gender: e.target.value as "Male" | "Female" | "Trans" }))} className="w-full h-12 rounded-xl border border-gray-200 px-3 bg-white">
+                  <select data-testid="select-gender" value={form.gender} onChange={(e) => setForm((f) => ({ ...f, gender: e.target.value as "Male" | "Female" | "Trans" | "Couple" }))} className="w-full h-12 rounded-xl border border-gray-200 px-3 bg-white">
                     <option value="Male">Male</option>
                     <option value="Female">Female</option>
                     <option value="Trans">Trans</option>
+                    <option value="Couple">Couple</option>
                   </select>
                 </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">Interested In</label>
+                <div className="flex flex-wrap gap-2">
+                  {(["Male", "Female", "Trans", "Couple"] as const).map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      data-testid={`button-interested-${option}`}
+                      onClick={() => setForm((f) => ({
+                        ...f,
+                        interestedIn: f.interestedIn.includes(option)
+                          ? f.interestedIn.filter((g) => g !== option)
+                          : [...f.interestedIn, option],
+                      }))}
+                      className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all ${
+                        form.interestedIn.includes(option)
+                          ? "bg-brand-gradient text-white shadow-sm"
+                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                      }`}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-400 mt-1">Select one or more to see matching profiles</p>
               </div>
 
               <div>

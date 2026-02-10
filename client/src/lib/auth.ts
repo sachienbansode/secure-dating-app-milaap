@@ -36,6 +36,7 @@ export interface AuthProfile {
   festivalPrefs: string[] | null;
   hometownForFestivals: string | null;
   greenFlagStories: {prompt: string; answer: string}[] | null;
+  interestedIn: string[] | null;
   dateReadiness: string | null;
   photoAuthenticityScore: number | null;
   photoVerifiedAt: string | null;

@@ -43,7 +43,7 @@ export default function Home() {
   const [expandedCard, setExpandedCard] = useState(false);
 
   const [filters, setFilters] = useState({
-    gender: "All" as "All" | "Male" | "Female" | "Trans",
+    gender: "All" as "All" | "Male" | "Female" | "Trans" | "Couple",
     ageMin: 18,
     ageMax: 45,
     city: "All",
@@ -142,7 +142,7 @@ export default function Home() {
               <div>
                 <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Gender</label>
                 <div className="flex gap-2">
-                  {(["All", "Male", "Female", "Trans"] as const).map((g) => (
+                  {(["All", "Male", "Female", "Trans", "Couple"] as const).map((g) => (
                     <button key={g} onClick={() => setFilters((f) => ({ ...f, gender: g }))} className={`px-4 py-2 rounded-full text-xs font-medium transition-all ${filters.gender === g ? "bg-brand-gradient text-white shadow-sm" : "bg-gray-100 text-gray-600"}`} data-testid={`filter-gender-${g.toLowerCase()}`}>
                       {g}
                     </button>

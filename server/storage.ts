@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, and, ne, notInArray, desc, sql, or, gt } from "drizzle-orm";
+import { eq, and, ne, notInArray, inArray, desc, sql, or, gt } from "drizzle-orm";
 import {
   users, profiles, matches, messages, reports, screenshotAlerts, appSettings,
   chatCooldowns, phoneUnlockRequests, blockedUsers,
@@ -140,6 +140,11 @@ export class DatabaseStorage implements IStorage {
 
     if (filters?.gender && filters.gender !== "All") {
       conditions.push(eq(profiles.gender, filters.gender));
+    } else {
+      const myProfile = await this.getProfile(userId);
+      if (myProfile?.interestedIn && myProfile.interestedIn.length > 0) {
+        conditions.push(inArray(profiles.gender, myProfile.interestedIn));
+      }
     }
     if (filters?.ageMin) {
       conditions.push(sql`${profiles.age} >= ${filters.ageMin}`);
