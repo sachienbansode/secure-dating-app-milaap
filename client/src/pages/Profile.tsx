@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Settings, Edit, Shield, ChevronRight, Bell, Sparkles, LogOut, Save, ArrowLeft } from "lucide-react";
+import { Settings, Edit, Shield, ChevronRight, Bell, Sparkles, LogOut, Save, ArrowLeft, Camera, X, Plus, Loader2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -17,6 +17,8 @@ export default function Profile() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   const { data: session, isLoading: loadingSession } = useQuery({
     queryKey: ["/api/auth/me"],
@@ -33,6 +35,7 @@ export default function Profile() {
     city: "Mumbai",
     location: "Mumbai",
     interests: [] as string[],
+    photos: [] as string[],
     aiPersonaEnabled: false,
     aiTone: "Friendly",
     aiLanguage: "English",
@@ -49,6 +52,7 @@ export default function Profile() {
         city: session.profile.city || "Mumbai",
         location: session.profile.location || "Mumbai",
         interests: session.profile.interests || [],
+        photos: session.profile.photos || [],
         aiPersonaEnabled: session.profile.aiPersonaEnabled || false,
         aiTone: session.profile.aiTone || "Friendly",
         aiLanguage: session.profile.aiLanguage || "English",
@@ -86,6 +90,43 @@ export default function Profile() {
     }));
   };
 
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingPhoto(true);
+    try {
+      const formData = new FormData();
+      formData.append("photo", file);
+
+      const res = await fetch("/api/upload-photo", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+
+      if (!res.ok) throw new Error("Upload failed");
+
+      const data = await res.json();
+      setForm((prev) => ({
+        ...prev,
+        photos: [...prev.photos, data.url].slice(0, 6),
+      }));
+    } catch (err) {
+      console.error("Photo upload error:", err);
+    } finally {
+      setUploadingPhoto(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const removePhoto = (index: number) => {
+    setForm((prev) => ({
+      ...prev,
+      photos: prev.photos.filter((_, i) => i !== index),
+    }));
+  };
+
   useEffect(() => {
     if (!loadingSession && !session?.user) {
       setLocation("/");
@@ -96,7 +137,6 @@ export default function Profile() {
     return <div className="h-full flex items-center justify-center text-muted-foreground animate-pulse">Loading...</div>;
   }
 
-  // Profile creation/edit form
   if (isNewUser || isEditing) {
     return (
       <div className="h-full flex flex-col bg-white">
@@ -112,6 +152,53 @@ export default function Profile() {
         </header>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-6 pb-32">
+          <div>
+            <label className="text-sm font-medium text-gray-700 mb-3 block">
+              Photos ({form.photos.length}/6)
+            </label>
+            <div className="grid grid-cols-3 gap-3">
+              {form.photos.map((photo, index) => (
+                <div key={index} className="relative aspect-[3/4] rounded-xl overflow-hidden bg-gray-100 border border-gray-200">
+                  <img src={photo} alt={`Photo ${index + 1}`} className="w-full h-full object-cover" />
+                  <button
+                    onClick={() => removePhoto(index)}
+                    className="absolute top-1 right-1 bg-black/50 text-white rounded-full w-6 h-6 flex items-center justify-center"
+                    data-testid={`button-remove-photo-${index}`}
+                  >
+                    <X size={14} />
+                  </button>
+                  {index === 0 && (
+                    <span className="absolute bottom-1 left-1 bg-black/50 text-white text-[10px] px-2 py-0.5 rounded-full">Main</span>
+                  )}
+                </div>
+              ))}
+              {form.photos.length < 6 && (
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingPhoto}
+                  className="aspect-[3/4] rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-2 text-gray-400 hover:border-primary hover:text-primary transition-colors"
+                  data-testid="button-add-photo"
+                >
+                  {uploadingPhoto ? (
+                    <Loader2 size={24} className="animate-spin" />
+                  ) : (
+                    <>
+                      <Plus size={24} />
+                      <span className="text-xs font-medium">Add Photo</span>
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={handlePhotoUpload}
+            />
+          </div>
+
           <div>
             <label className="text-sm font-medium text-gray-700 mb-2 block">Name</label>
             <Input
@@ -212,6 +299,38 @@ export default function Profile() {
               />
             </div>
 
+            {form.aiPersonaEnabled && (
+              <div className="space-y-3 pl-1">
+                <div>
+                  <label className="text-xs font-medium text-gray-600 mb-1 block">Tone</label>
+                  <select
+                    value={form.aiTone}
+                    onChange={(e) => setForm((f) => ({ ...f, aiTone: e.target.value }))}
+                    className="w-full h-10 rounded-lg border border-gray-200 px-3 bg-white text-sm"
+                    data-testid="select-ai-tone"
+                  >
+                    <option value="Friendly">Friendly</option>
+                    <option value="Witty">Witty</option>
+                    <option value="Polite">Polite</option>
+                    <option value="Flirty">Flirty</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-600 mb-1 block">Language</label>
+                  <select
+                    value={form.aiLanguage}
+                    onChange={(e) => setForm((f) => ({ ...f, aiLanguage: e.target.value }))}
+                    className="w-full h-10 rounded-lg border border-gray-200 px-3 bg-white text-sm"
+                    data-testid="select-ai-language"
+                  >
+                    <option value="English">English</option>
+                    <option value="Hindi">Hindi</option>
+                    <option value="Hinglish">Hinglish</option>
+                  </select>
+                </div>
+              </div>
+            )}
+
             <div className="flex items-center justify-between">
               <div>
                 <h4 className="font-semibold text-sm">Profile Visible</h4>
@@ -245,7 +364,6 @@ export default function Profile() {
     );
   }
 
-  // Profile view
   const profile = session.profile!;
 
   return (
@@ -268,6 +386,22 @@ export default function Profile() {
             </div>
             <h2 className="text-2xl font-heading font-bold text-gray-900" data-testid="text-profile-name">{profile.name}, {profile.age}</h2>
             <p className="text-muted-foreground text-sm mb-4">{profile.gender} • {profile.city}</p>
+
+            {profile.photos && profile.photos.length > 1 && (
+              <div className="flex gap-2 mb-4">
+                {profile.photos.slice(0, 4).map((photo, i) => (
+                  <div key={i} className="w-14 h-14 rounded-xl overflow-hidden border border-gray-100">
+                    <img src={photo} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
+                  </div>
+                ))}
+                {profile.photos.length > 4 && (
+                  <div className="w-14 h-14 rounded-xl bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500">
+                    +{profile.photos.length - 4}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="flex gap-4 w-full justify-center">
               <div className="flex flex-col items-center bg-green-50 px-4 py-2 rounded-xl border border-green-100">
                 <span className="text-green-600 font-bold text-xl" data-testid="text-respect-score">{session.user.respectScore}</span>
@@ -311,7 +445,7 @@ export default function Profile() {
                   </div>
                   <div>
                     <h4 className="font-semibold text-sm">AI Persona</h4>
-                    <p className="text-xs text-muted-foreground">{profile.aiPersonaEnabled ? "Enabled" : "Disabled"}</p>
+                    <p className="text-xs text-muted-foreground">{profile.aiPersonaEnabled ? `Enabled - ${profile.aiTone} tone` : "Disabled"}</p>
                   </div>
                 </div>
                 <ChevronRight size={18} className="text-gray-300" />
@@ -322,8 +456,8 @@ export default function Profile() {
                     <Settings size={16} />
                   </div>
                   <div>
-                    <h4 className="font-semibold text-sm">Tone & Style</h4>
-                    <p className="text-xs text-muted-foreground">{profile.aiTone}</p>
+                    <h4 className="font-semibold text-sm">Edit Profile & Settings</h4>
+                    <p className="text-xs text-muted-foreground">Photos, bio, interests & more</p>
                   </div>
                 </div>
                 <ChevronRight size={18} className="text-gray-300" />

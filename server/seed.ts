@@ -81,31 +81,35 @@ const bios = [
 ];
 
 const malePhotos = [
-  "/profiles/indian_guy_1.jpg",
-  "/profiles/indian_guy_2.jpg",
-  "/profiles/indian_man_1_1.jpg",
-  "/profiles/indian_man_1_2.jpg",
-  "/profiles/indian_man_1_3.jpg",
-  "/profiles/indian_man_1_4.jpg",
-  "/profiles/indian_man_1_5.jpg",
+  "/profiles/indian_male_1_1.jpg",
+  "/profiles/indian_male_1_2.jpg",
+  "/profiles/indian_male_1_3.jpg",
+  "/profiles/indian_male_1_4.jpg",
+  "/profiles/indian_male_1_5.jpg",
+  "/profiles/indian_male_2_1.jpg",
+  "/profiles/indian_male_2_2.jpg",
+  "/profiles/indian_male_2_3.jpg",
+  "/profiles/indian_male_2_4.jpg",
+  "/profiles/indian_male_2_5.jpg",
 ];
 
 const femalePhotos = [
-  "/profiles/indian_girl_1.jpg",
-  "/profiles/indian_girl_2.jpg",
-  "/profiles/indian_woman_1_1.jpg",
-  "/profiles/indian_woman_1_2.jpg",
-  "/profiles/indian_woman_1_3.jpg",
-  "/profiles/indian_woman_1_5.jpg",
+  "/profiles/indian_female_1_1.jpg",
+  "/profiles/indian_female_1_2.jpg",
+  "/profiles/indian_female_1_3.jpg",
+  "/profiles/indian_female_1_4.jpg",
+  "/profiles/indian_female_1_5.jpg",
+  "/profiles/indian_female_2_1.jpg",
+  "/profiles/indian_female_2_2.jpg",
+  "/profiles/indian_female_2_3.jpg",
+  "/profiles/indian_female_2_4.jpg",
+  "/profiles/indian_female_2_5.jpg",
 ];
 
 const neutralPhotos = [
-  "/profiles/indian_person_1_1.jpg",
-  "/profiles/indian_person_1_2.jpg",
-  "/profiles/indian_person_1_3.jpg",
-  "/profiles/generic_indian_1.jpg",
-  "/profiles/generic_indian_2.jpg",
-  "/profiles/generic_indian_3.jpg",
+  "/profiles/indian_neutral_1_1.jpg",
+  "/profiles/indian_neutral_1_2.jpg",
+  "/profiles/indian_neutral_1_3.jpg",
 ];
 
 const getRandom = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
-import { MapPin, Info, Heart, X, Star } from "lucide-react";
+import { MapPin, Info, Heart, X, Star, SlidersHorizontal, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -19,21 +19,40 @@ interface DiscoverProfile {
   location: string;
   interests: string[];
   photos: string[];
+  respectScore?: number;
 }
+
+const CITIES = ["All", "Mumbai", "Pune", "Delhi", "Bangalore", "Hyderabad", "Chennai", "Kolkata", "Ahmedabad", "Jaipur", "Lucknow", "Chandigarh", "Kochi", "Goa"];
 
 export default function Home() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const [dismissed, setDismissed] = useState<string[]>([]);
   const [matchPopup, setMatchPopup] = useState<string | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [expandedCard, setExpandedCard] = useState(false);
+
+  const [filters, setFilters] = useState({
+    gender: "All" as "All" | "Male" | "Female" | "Trans",
+    ageMin: 18,
+    ageMax: 45,
+    city: "All",
+  });
 
   const { data: session, isLoading: checkingSession } = useQuery({
     queryKey: ["/api/auth/me"],
     queryFn: getMe,
   });
 
+  const discoverUrl = `/api/discover?${new URLSearchParams({
+    ...(filters.gender !== "All" && { gender: filters.gender }),
+    ...(filters.ageMin !== 18 && { ageMin: String(filters.ageMin) }),
+    ...(filters.ageMax !== 45 && { ageMax: String(filters.ageMax) }),
+    ...(filters.city !== "All" && { city: filters.city }),
+  }).toString()}`;
+
   const { data: profiles = [], isLoading } = useQuery<DiscoverProfile[]>({
-    queryKey: ["/api/discover"],
+    queryKey: [discoverUrl],
     enabled: !!session?.user,
   });
 
@@ -64,44 +83,147 @@ export default function Home() {
     );
   }
 
-  const activeProfiles = profiles.filter((p) => !dismissed.includes(p.userId));
+  const filteredProfiles = profiles.filter((p) => !dismissed.includes(p.userId));
 
   const handleSwipe = (userId: string, action: "like" | "pass" | "superlike") => {
     setDismissed((prev) => [...prev, userId]);
+    setExpandedCard(false);
     swipeMutation.mutate({ targetUserId: userId, action });
   };
 
   const handleRefresh = () => {
     setDismissed([]);
-    queryClient.invalidateQueries({ queryKey: ["/api/discover"] });
+    queryClient.invalidateQueries({ queryKey: [discoverUrl] });
   };
+
+  const activeFilterCount = [
+    filters.gender !== "All",
+    filters.ageMin !== 18 || filters.ageMax !== 45,
+    filters.city !== "All",
+  ].filter(Boolean).length;
 
   return (
     <div className="h-full flex flex-col bg-neutral-50">
-      <header className="px-6 pt-6 pb-2 flex justify-between items-center z-10">
+      <header className="px-6 pt-6 pb-2 flex justify-between items-center z-10 shrink-0">
         <div>
           <h1 className="text-2xl font-heading font-bold text-brand-gradient" data-testid="text-discover-title">Discover</h1>
           <p className="text-xs text-muted-foreground">{session.profile?.city || "India"}</p>
         </div>
-        <div className="bg-white p-2 rounded-full shadow-sm border border-gray-100">
-          <div className="bg-green-500 w-2 h-2 rounded-full animate-pulse" />
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className={`rounded-full h-9 px-3 gap-1.5 border-gray-200 ${activeFilterCount > 0 ? "bg-primary/5 border-primary text-primary" : ""}`}
+            onClick={() => setShowFilters(!showFilters)}
+            data-testid="button-filters"
+          >
+            <SlidersHorizontal size={14} />
+            <span className="text-xs font-medium">Filters</span>
+            {activeFilterCount > 0 && (
+              <span className="bg-primary text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">{activeFilterCount}</span>
+            )}
+          </Button>
         </div>
       </header>
+
+      <AnimatePresence>
+        {showFilters && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden shrink-0 z-10"
+          >
+            <div className="px-6 pb-4 space-y-4 bg-white border-b border-gray-100 shadow-sm">
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Gender</label>
+                <div className="flex gap-2">
+                  {(["All", "Male", "Female", "Trans"] as const).map((g) => (
+                    <button
+                      key={g}
+                      onClick={() => setFilters((f) => ({ ...f, gender: g }))}
+                      className={`px-4 py-2 rounded-full text-xs font-medium transition-all ${
+                        filters.gender === g ? "bg-brand-gradient text-white shadow-sm" : "bg-gray-100 text-gray-600"
+                      }`}
+                      data-testid={`filter-gender-${g.toLowerCase()}`}
+                    >
+                      {g}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Age Range: {filters.ageMin} - {filters.ageMax}</label>
+                <div className="flex gap-3 items-center">
+                  <input
+                    type="range"
+                    min="18"
+                    max="45"
+                    value={filters.ageMin}
+                    onChange={(e) => setFilters((f) => ({ ...f, ageMin: Math.min(parseInt(e.target.value), f.ageMax - 1) }))}
+                    className="flex-1 accent-primary"
+                    data-testid="filter-age-min"
+                  />
+                  <span className="text-xs text-gray-400">to</span>
+                  <input
+                    type="range"
+                    min="18"
+                    max="45"
+                    value={filters.ageMax}
+                    onChange={(e) => setFilters((f) => ({ ...f, ageMax: Math.max(parseInt(e.target.value), f.ageMin + 1) }))}
+                    className="flex-1 accent-primary"
+                    data-testid="filter-age-max"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">City</label>
+                <select
+                  value={filters.city}
+                  onChange={(e) => setFilters((f) => ({ ...f, city: e.target.value }))}
+                  className="w-full h-10 rounded-xl border border-gray-200 px-3 bg-white text-sm"
+                  data-testid="filter-city"
+                >
+                  {CITIES.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+
+              {activeFilterCount > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs text-muted-foreground"
+                  onClick={() => setFilters({ gender: "All", ageMin: 18, ageMax: 45, city: "All" })}
+                  data-testid="button-clear-filters"
+                >
+                  Clear all filters
+                </Button>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="flex-1 relative flex items-center justify-center p-4 overflow-hidden">
         {isLoading ? (
           <div className="text-muted-foreground animate-pulse">Loading profiles...</div>
         ) : (
           <AnimatePresence>
-            {activeProfiles.length > 0 ? (
-              activeProfiles.slice(0, 5).reverse().map((profile, index) => {
-                const isFront = index === Math.min(activeProfiles.length, 5) - 1;
+            {filteredProfiles.length > 0 ? (
+              filteredProfiles.slice(0, 5).reverse().map((profile, index) => {
+                const isFront = index === Math.min(filteredProfiles.length, 5) - 1;
                 return (
                   <SwipeCard
                     key={profile.userId}
                     profile={profile}
                     isFront={isFront}
+                    expanded={isFront && expandedCard}
                     onSwipe={(action) => handleSwipe(profile.userId, action)}
+                    onToggleExpand={() => setExpandedCard(!expandedCard)}
                   />
                 );
               })
@@ -111,15 +233,29 @@ export default function Home() {
                   <Info className="text-gray-400" size={32} />
                 </div>
                 <h3 className="text-lg font-bold mb-2" data-testid="text-no-profiles">No more profiles</h3>
-                <p className="text-muted-foreground">Check back later for new matches in your area.</p>
-                <Button
-                  data-testid="button-refresh"
-                  onClick={handleRefresh}
-                  className="mt-6"
-                  variant="outline"
-                >
-                  Refresh Profiles
-                </Button>
+                <p className="text-muted-foreground text-sm mb-2">
+                  {activeFilterCount > 0
+                    ? "Try changing your filters to see more profiles."
+                    : "Check back later for new matches in your area."}
+                </p>
+                <div className="flex gap-3 justify-center mt-4">
+                  {activeFilterCount > 0 && (
+                    <Button
+                      variant="outline"
+                      onClick={() => setFilters({ gender: "All", ageMin: 18, ageMax: 45, city: "All" })}
+                      data-testid="button-clear-filters-empty"
+                    >
+                      Clear Filters
+                    </Button>
+                  )}
+                  <Button
+                    data-testid="button-refresh"
+                    onClick={handleRefresh}
+                    variant="outline"
+                  >
+                    Refresh Profiles
+                  </Button>
+                </div>
               </div>
             )}
           </AnimatePresence>
@@ -161,7 +297,13 @@ export default function Home() {
   );
 }
 
-function SwipeCard({ profile, isFront, onSwipe }: { profile: DiscoverProfile; isFront: boolean; onSwipe: (action: "like" | "pass" | "superlike") => void }) {
+function SwipeCard({ profile, isFront, expanded, onSwipe, onToggleExpand }: { 
+  profile: DiscoverProfile; 
+  isFront: boolean; 
+  expanded: boolean;
+  onSwipe: (action: "like" | "pass" | "superlike") => void;
+  onToggleExpand: () => void;
+}) {
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-200, 200], [-15, 15]);
   const likeOpacity = useTransform(x, [20, 150], [0, 1]);
@@ -213,23 +355,56 @@ function SwipeCard({ profile, isFront, onSwipe }: { profile: DiscoverProfile; is
           </>
         )}
 
-        <div className="absolute bottom-0 left-0 right-0 p-6 text-white pointer-events-none">
-          <div className="flex items-center justify-between mb-2">
+        <div
+          className="absolute bottom-0 left-0 right-0 p-6 text-white cursor-pointer"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (isFront) onToggleExpand();
+          }}
+        >
+          <div className="flex items-center justify-between mb-1">
             <h2 className="text-3xl font-heading font-bold" data-testid={`text-name-${profile.userId}`}>{profile.name}, {profile.age}</h2>
+            {isFront && (
+              <motion.div animate={{ rotate: expanded ? 180 : 0 }}>
+                <ChevronDown size={20} className="text-white/70" />
+              </motion.div>
+            )}
           </div>
-          <div className="flex items-center text-white/80 text-sm mb-4">
+          <div className="flex items-center text-white/80 text-sm mb-3">
             <MapPin size={14} className="mr-1" />
             <span>{profile.location}</span>
           </div>
-          {profile.bio && (
-            <p className="text-white/90 line-clamp-2 mb-4 font-light">{profile.bio}</p>
-          )}
+
+          <AnimatePresence>
+            {expanded && isFront && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="overflow-hidden"
+              >
+                {profile.bio && (
+                  <p className="text-white/90 mb-3 font-light text-sm">{profile.bio}</p>
+                )}
+                <div className="flex items-center gap-2 mb-3 text-xs text-white/70">
+                  <span className="bg-white/15 px-2 py-1 rounded-full">{profile.gender}</span>
+                  <span className="bg-white/15 px-2 py-1 rounded-full">{profile.city}</span>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <div className="flex flex-wrap gap-2">
-            {(profile.interests || []).map((interest: string) => (
+            {(profile.interests || []).slice(0, expanded ? 10 : 4).map((interest: string) => (
               <span key={interest} className="px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-xs font-medium border border-white/20">
                 {interest}
               </span>
             ))}
+            {!expanded && (profile.interests || []).length > 4 && (
+              <span className="px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-xs font-medium border border-white/20">
+                +{(profile.interests || []).length - 4}
+              </span>
+            )}
           </div>
         </div>
 

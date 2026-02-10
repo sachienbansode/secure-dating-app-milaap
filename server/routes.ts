@@ -8,6 +8,36 @@ import {
 } from "@shared/schema";
 import { randomInt } from "crypto";
 import OpenAI from "openai";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+
+const uploadDir = path.join(process.cwd(), "client", "public", "uploads");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const uploadStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, uploadDir),
+  filename: (_req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname) || ".jpg";
+    cb(null, `photo-${uniqueSuffix}${ext}`);
+  },
+});
+
+const upload = multer({
+  storage: uploadStorage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = ["image/jpeg", "image/png", "image/webp"];
+    if (allowed.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only JPG, PNG, and WebP images are allowed"));
+    }
+  },
+});
 
 // In-memory OTP store (in production: use Redis)
 const otpStore = new Map<string, { otp: string; expiresAt: number }>();
@@ -200,6 +230,29 @@ export async function registerRoutes(
     }
   });
 
+  // Photo upload
+  app.post("/api/upload-photo", requireAuth, (req: Request, res: Response, next: Function) => {
+    upload.single("photo")(req, res, (err: any) => {
+      if (err) {
+        if (err.code === "LIMIT_FILE_SIZE") {
+          return res.status(400).json({ message: "File too large. Maximum size is 5MB." });
+        }
+        return res.status(400).json({ message: err.message || "Upload failed" });
+      }
+      next();
+    });
+  }, async (req: Request, res: Response) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No photo uploaded" });
+      }
+      const photoUrl = `/uploads/${req.file.filename}`;
+      return res.json({ url: photoUrl });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
   // ==================== DISCOVER / MATCHMAKING ====================
 
   // Get profiles to swipe on
@@ -207,7 +260,13 @@ export async function registerRoutes(
     try {
       const userId = req.session.userId!;
       const limit = parseInt(req.query.limit as string) || 20;
-      const profilesList = await storage.getDiscoverProfiles(userId, limit);
+      const filters = {
+        gender: req.query.gender as string | undefined,
+        ageMin: req.query.ageMin ? parseInt(req.query.ageMin as string) : undefined,
+        ageMax: req.query.ageMax ? parseInt(req.query.ageMax as string) : undefined,
+        city: req.query.city as string | undefined,
+      };
+      const profilesList = await storage.getDiscoverProfiles(userId, limit, filters);
       return res.json(profilesList);
     } catch (err: any) {
       return res.status(500).json({ message: err.message });

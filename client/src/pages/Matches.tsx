@@ -1,6 +1,6 @@
 import { BottomNav } from "@/components/layout/BottomNav";
 import { Link, useLocation } from "wouter";
-import { Search } from "lucide-react";
+import { Search, Heart } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useQuery } from "@tanstack/react-query";
 import { getMe } from "@/lib/auth";
@@ -55,77 +55,82 @@ export default function Matches() {
 
   return (
     <div className="h-full flex flex-col bg-white">
-      <header className="px-6 pt-6 pb-2">
-        <h1 className="text-2xl font-heading font-bold mb-4" data-testid="text-matches-title">Messages</h1>
+      <header className="px-6 pt-6 pb-3 shrink-0">
+        <h1 className="text-2xl font-heading font-bold mb-3" data-testid="text-matches-title">Messages</h1>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
           <Input
             data-testid="input-search-matches"
             placeholder="Search matches..."
-            className="pl-9 bg-gray-50 border-gray-100 rounded-xl"
+            className="pl-9 bg-gray-50 border-gray-100 rounded-xl h-10"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto min-h-0">
         {isLoading ? (
           <div className="p-8 text-center text-muted-foreground animate-pulse">Loading matches...</div>
         ) : matchesData.length === 0 ? (
           <div className="p-8 text-center">
-            <div className="text-4xl mb-4">💕</div>
+            <div className="w-20 h-20 bg-gradient-to-br from-pink-50 to-orange-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Heart className="text-pink-400" size={32} />
+            </div>
             <h3 className="font-bold text-lg mb-2" data-testid="text-no-matches">No matches yet</h3>
             <p className="text-muted-foreground text-sm">Keep swiping to find your perfect match!</p>
           </div>
         ) : (
-          <>
-            <div className="px-6 py-4">
+          <div className="flex flex-col">
+            <div className="px-6 py-3 shrink-0">
               <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">
-                Matches ({matchesData.length})
+                New Matches ({matchesData.length})
               </h3>
-              <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+              <div className="flex gap-3 overflow-x-auto pb-3 -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
                 {matchesData.map((match) => (
                   <Link key={match.id} href={`/chat/${match.id}`}>
-                    <div className="flex flex-col items-center gap-2 min-w-[70px] cursor-pointer" data-testid={`card-match-${match.id}`}>
-                      <div className="w-[70px] h-[90px] rounded-2xl overflow-hidden relative shadow-md">
+                    <div className="flex flex-col items-center gap-1.5 shrink-0 cursor-pointer" data-testid={`card-match-${match.id}`}>
+                      <div className="w-16 h-20 rounded-2xl overflow-hidden relative shadow-md border-2 border-white ring-2 ring-pink-200">
                         <img
                           src={match.profile?.photos?.[0] || "/profiles/generic_indian_1.jpg"}
                           alt={match.profile?.name}
                           className="w-full h-full object-cover"
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                        <span className="absolute bottom-1 left-0 right-0 text-center text-white text-xs font-medium">
-                          {match.profile?.name}
-                        </span>
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
                       </div>
+                      <span className="text-[11px] font-medium text-gray-700 max-w-[64px] truncate text-center">
+                        {match.profile?.name?.split(" ")[0]}
+                      </span>
                     </div>
                   </Link>
                 ))}
               </div>
             </div>
 
-            <div className="px-2">
-              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 px-4">Conversations</h3>
-              <div className="space-y-1">
+            <div className="border-t border-gray-100 shrink-0" />
+
+            <div className="px-3 pt-2 pb-2">
+              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 px-3">Conversations</h3>
+              <div>
                 {filteredMatches.map((match) => (
                   <Link key={match.id} href={`/chat/${match.id}`}>
-                    <div className="flex items-center gap-4 p-4 hover:bg-gray-50 rounded-2xl transition-colors cursor-pointer" data-testid={`row-chat-${match.id}`}>
-                      <div className="relative">
+                    <div className="flex items-center gap-3 px-3 py-3 hover:bg-gray-50 rounded-xl transition-colors cursor-pointer" data-testid={`row-chat-${match.id}`}>
+                      <div className="relative shrink-0">
                         <img
                           src={match.profile?.photos?.[0] || "/profiles/generic_indian_1.jpg"}
                           alt={match.profile?.name}
-                          className="w-14 h-14 rounded-full object-cover border-2 border-white shadow-sm"
+                          className="w-13 h-13 rounded-full object-cover border-2 border-white shadow-sm"
+                          style={{ width: "52px", height: "52px" }}
                         />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-baseline mb-1">
-                          <h4 className="font-heading font-bold text-base">{match.profile?.name}, {match.profile?.age}</h4>
-                          <span className="text-xs text-muted-foreground">
-                            {new Date(match.createdAt).toLocaleDateString()}
+                        <div className="flex justify-between items-baseline mb-0.5">
+                          <h4 className="font-heading font-bold text-sm truncate pr-2">{match.profile?.name}, {match.profile?.age}</h4>
+                          <span className="text-[10px] text-muted-foreground shrink-0">
+                            {new Date(match.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
                           </span>
                         </div>
-                        <p className="text-sm truncate text-muted-foreground">
+                        <p className="text-xs truncate text-muted-foreground">
                           {match.profile?.city} • Tap to start chatting
                         </p>
                       </div>
@@ -134,7 +139,7 @@ export default function Matches() {
                 ))}
               </div>
             </div>
-          </>
+          </div>
         )}
       </div>
 
