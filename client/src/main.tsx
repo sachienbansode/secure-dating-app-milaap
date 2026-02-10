@@ -1,12 +1,11 @@
 import { createRoot } from "react-dom/client";
-import App from "./App";
-import "./index.css";
 
-console.log("Mounting App...");
+// Minimal entry point to debug loading issues
+const root = createRoot(document.getElementById("root")!);
+root.render(
+  <div style={{ padding: 20, fontFamily: "sans-serif", background: "#f0f0f0", height: "100vh" }}>
+    <h1>System Online</h1>
+    <p>The application container is running.</p>
+  </div>
+);
 
-try {
-  createRoot(document.getElementById("root")!).render(<App />);
-} catch (e: any) {
-  console.error("Mount error:", e);
-  document.body.innerHTML += `<div style="color:red; padding: 20px;"><h1>Startup Error</h1><pre>${e.message}</pre></div>`;
-}
