@@ -12,6 +12,7 @@ import { getMe, logout, type AuthResponse } from "@/lib/auth";
 
 const CITIES = ["Mumbai", "Pune", "Delhi", "Bangalore", "Hyderabad", "Chennai", "Kolkata", "Ahmedabad", "Jaipur", "Lucknow", "Chandigarh", "Kochi", "Goa"];
 const INTERESTS = ["Bollywood", "Cricket", "Chai", "Street Food", "Yoga", "Tech", "Art", "Music", "Travel", "Reading", "Cooking", "Dancing", "Photography", "Fitness", "Meditation", "Gaming", "Fashion", "Startups", "Biriyani", "Hiking"];
+const ROMANTIC_INTERESTS = ["Late Night Talks", "Candlelight Dinners", "Long Drives", "Cuddling", "Rooftop Dates", "Love Letters", "Slow Dancing", "Netflix & Chill", "Midnight Snacks", "Skinny Dipping", "Role Play", "Sensual Massages", "Hookups", "Friends with Benefits", "Weekend Getaways", "Sunset Walks", "Morning Kisses", "Body Positivity", "Flirting", "Dirty Jokes"];
 const INTENT_OPTIONS = ["Casual", "Dating", "Serious", "Marriage"] as const;
 const FESTIVAL_LIST = ["Diwali", "Eid", "Navratri", "Christmas", "Holi", "Ganesh Chaturthi", "Onam", "Pongal", "Baisakhi", "Durga Puja"] as const;
 const GREEN_FLAG_PROMPTS = [
@@ -280,12 +281,73 @@ export default function Profile() {
 
               <div>
                 <label className="text-sm font-medium text-gray-700 mb-2 block">Interests ({form.interests.length}/10)</label>
-                <div className="flex flex-wrap gap-2">
+
+                <p className="text-xs text-muted-foreground mb-1.5 font-medium uppercase tracking-wider">General</p>
+                <div className="flex flex-wrap gap-2 mb-3">
                   {INTERESTS.map((interest) => (
                     <button key={interest} data-testid={`button-interest-${interest}`} onClick={() => toggleInterest(interest)} className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${form.interests.includes(interest) ? "bg-brand-gradient text-white shadow-sm" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
                       {interest}
                     </button>
                   ))}
+                </div>
+
+                <p className="text-xs text-muted-foreground mb-1.5 font-medium uppercase tracking-wider">Romantic & Spicy</p>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {ROMANTIC_INTERESTS.map((interest) => (
+                    <button key={interest} data-testid={`button-interest-${interest.toLowerCase().replace(/\s/g, "-")}`} onClick={() => toggleInterest(interest)} className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${form.interests.includes(interest) ? "bg-gradient-to-r from-pink-500 to-red-500 text-white shadow-sm" : "bg-pink-50 text-pink-700 hover:bg-pink-100 border border-pink-200"}`}>
+                      {interest}
+                    </button>
+                  ))}
+                </div>
+
+                {form.interests.filter((i) => !INTERESTS.includes(i) && !ROMANTIC_INTERESTS.includes(i)).length > 0 && (
+                  <>
+                    <p className="text-xs text-muted-foreground mb-1.5 font-medium uppercase tracking-wider">Custom</p>
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {form.interests.filter((i) => !INTERESTS.includes(i) && !ROMANTIC_INTERESTS.includes(i)).map((interest) => (
+                        <button key={interest} data-testid={`button-interest-custom-${interest.toLowerCase().replace(/\s/g, "-")}`} onClick={() => toggleInterest(interest)} className="px-4 py-2 rounded-full text-sm font-medium bg-purple-500 text-white shadow-sm flex items-center gap-1">
+                          {interest} <X size={12} />
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                <div className="flex gap-2 mt-1">
+                  <Input
+                    data-testid="input-custom-interest"
+                    placeholder="Add your own interest..."
+                    className="flex-1 h-10 rounded-xl text-sm"
+                    maxLength={30}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        const val = (e.target as HTMLInputElement).value.trim();
+                        if (val && !form.interests.includes(val) && form.interests.length < 10) {
+                          toggleInterest(val);
+                          (e.target as HTMLInputElement).value = "";
+                        }
+                      }
+                    }}
+                  />
+                  <Button
+                    data-testid="button-add-custom-interest"
+                    variant="outline"
+                    size="sm"
+                    className="h-10 px-4 rounded-xl border-purple-300 text-purple-700 hover:bg-purple-50"
+                    onClick={() => {
+                      const input = document.querySelector('[data-testid="input-custom-interest"]') as HTMLInputElement;
+                      if (input) {
+                        const val = input.value.trim();
+                        if (val && !form.interests.includes(val) && form.interests.length < 10) {
+                          toggleInterest(val);
+                          input.value = "";
+                        }
+                      }
+                    }}
+                  >
+                    <Plus size={14} className="mr-1" /> Add
+                  </Button>
                 </div>
               </div>
 
