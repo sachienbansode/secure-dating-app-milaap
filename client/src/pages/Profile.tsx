@@ -606,6 +606,12 @@ export default function Profile() {
 
   const profile = session.profile!;
   const respectScore = session.user.respectScore ?? 85;
+  const [localInterestedIn, setLocalInterestedIn] = useState<string[]>(profile.interestedIn || []);
+  const [savingInterest, setSavingInterest] = useState(false);
+
+  useEffect(() => {
+    setLocalInterestedIn(profile.interestedIn || []);
+  }, [profile.interestedIn]);
 
   const getScoreColor = (score: number) => {
     if (score >= 70) return "text-green-600 bg-green-50 border-green-100";
@@ -737,6 +743,56 @@ export default function Profile() {
         )}
 
         <div className="p-6 space-y-6">
+          <section>
+            <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3 px-1">Interested In</h3>
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+              <div className="flex flex-wrap gap-2">
+                {(["Male", "Female", "Trans", "Couple"] as const).map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    disabled={savingInterest}
+                    data-testid={`button-settings-interested-${option}`}
+                    onClick={async () => {
+                      const updated = localInterestedIn.includes(option)
+                        ? localInterestedIn.filter((g) => g !== option)
+                        : [...localInterestedIn, option];
+                      setLocalInterestedIn(updated);
+                      setSavingInterest(true);
+                      try {
+                        const res = await apiRequest("POST", "/api/profile", {
+                          name: profile.name,
+                          age: profile.age,
+                          gender: profile.gender,
+                          city: profile.city,
+                          location: profile.location,
+                          interestedIn: updated,
+                        });
+                        if (res.ok) {
+                          queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+                        } else {
+                          setLocalInterestedIn(profile.interestedIn || []);
+                        }
+                      } catch {
+                        setLocalInterestedIn(profile.interestedIn || []);
+                      } finally {
+                        setSavingInterest(false);
+                      }
+                    }}
+                    className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all ${
+                      localInterestedIn.includes(option)
+                        ? "bg-brand-gradient text-white shadow-sm"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    } ${savingInterest ? "opacity-60" : ""}`}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-gray-400 mt-2">Profiles matching your selection will appear in Discover</p>
+            </div>
+          </section>
+
           <section>
             <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3 px-1">Settings</h3>
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">

@@ -304,8 +304,10 @@ function SwipeCard({ profile, isFront, expanded, onSwipe, onToggleExpand, appSet
             <h2 className="text-3xl font-heading font-bold" data-testid={`text-name-${profile.userId}`}>{profile.name}, {profile.age}</h2>
             {isFront && <motion.div animate={{ rotate: expanded ? 180 : 0 }}><ChevronDown size={20} className="text-white/70" /></motion.div>}
           </div>
-          <div className="flex items-center text-white/80 text-sm mb-3">
+          <div className="flex items-center text-white/80 text-sm mb-3 flex-wrap gap-y-1">
             <MapPin size={14} className="mr-1" /><span>{profile.location}</span>
+            <span className="mx-2 text-white/40">·</span>
+            <span className="bg-white/15 px-2 py-0.5 rounded-full text-xs">{profile.gender}</span>
             {profile.isOnline && <span className="ml-2 text-green-400 text-xs font-medium flex items-center gap-1"><span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />Online</span>}
           </div>
 
@@ -314,7 +316,6 @@ function SwipeCard({ profile, isFront, expanded, onSwipe, onToggleExpand, appSet
               <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
                 {profile.bio && <p className="text-white/90 mb-3 font-light text-sm">{profile.bio}</p>}
                 <div className="flex items-center gap-2 mb-3 text-xs text-white/70">
-                  <span className="bg-white/15 px-2 py-1 rounded-full">{profile.gender}</span>
                   <span className="bg-white/15 px-2 py-1 rounded-full">{profile.city}</span>
                 </div>
                 {greenFlags.length > 0 && (
