@@ -22,6 +22,7 @@ export const users = pgTable("users", {
   chatSuspendedUntil: timestamp("chat_suspended_until"),
   chatCooldownCount: integer("chat_cooldown_count").default(0),
   chatBanned: boolean("chat_banned").default(false),
+  termsAcceptedAt: timestamp("terms_accepted_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -134,6 +135,16 @@ export const blockedUsers = pgTable("blocked_users", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const activityLogs = pgTable("activity_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  action: text("action").notNull(),
+  category: text("category").notNull(),
+  details: jsonb("details").$type<Record<string, any>>(),
+  ipAddress: text("ip_address"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertProfileSchema = createInsertSchema(profiles).omit({ id: true, updatedAt: true });
 export const insertMatchSchema = createInsertSchema(matches).omit({ id: true, createdAt: true });
@@ -144,6 +155,7 @@ export const insertAppSettingSchema = createInsertSchema(appSettings).omit({ id:
 export const insertChatCooldownSchema = createInsertSchema(chatCooldowns).omit({ id: true, createdAt: true });
 export const insertPhoneUnlockRequestSchema = createInsertSchema(phoneUnlockRequests).omit({ id: true });
 export const insertBlockedUserSchema = createInsertSchema(blockedUsers).omit({ id: true, createdAt: true });
+export const insertActivityLogSchema = createInsertSchema(activityLogs).omit({ id: true, createdAt: true });
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -165,6 +177,8 @@ export type PhoneUnlockRequest = typeof phoneUnlockRequests.$inferSelect;
 export type InsertPhoneUnlockRequest = z.infer<typeof insertPhoneUnlockRequestSchema>;
 export type BlockedUser = typeof blockedUsers.$inferSelect;
 export type InsertBlockedUser = z.infer<typeof insertBlockedUserSchema>;
+export type ActivityLog = typeof activityLogs.$inferSelect;
+export type InsertActivityLog = z.infer<typeof insertActivityLogSchema>;
 
 export const loginSchema = z.object({
   phone: z.string().optional(),

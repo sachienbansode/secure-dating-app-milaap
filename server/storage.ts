@@ -2,7 +2,7 @@ import { db } from "./db";
 import { eq, and, ne, notInArray, inArray, desc, sql, or, gt } from "drizzle-orm";
 import {
   users, profiles, matches, messages, reports, screenshotAlerts, appSettings,
-  chatCooldowns, phoneUnlockRequests, blockedUsers,
+  chatCooldowns, phoneUnlockRequests, blockedUsers, activityLogs,
   type User, type InsertUser,
   type Profile, type InsertProfile,
   type Match, type InsertMatch,
@@ -13,6 +13,7 @@ import {
   type ChatCooldown, type InsertChatCooldown,
   type PhoneUnlockRequest, type InsertPhoneUnlockRequest,
   type BlockedUser, type InsertBlockedUser,
+  type ActivityLog, type InsertActivityLog,
 } from "@shared/schema";
 import { encryptProfile, decryptProfile, encryptMessage, decryptMessage } from "./encryption";
 
@@ -60,6 +61,10 @@ export interface IStorage {
   blockUser(blockerId: string, blockedUserId: string): Promise<BlockedUser>;
   isBlocked(blockerId: string, blockedUserId: string): Promise<boolean>;
   getBlockedUsers(userId: string): Promise<BlockedUser[]>;
+
+  logActivity(log: InsertActivityLog): Promise<ActivityLog>;
+  getActivityLogs(limit?: number, offset?: number, category?: string, userId?: string): Promise<ActivityLog[]>;
+  getActivityLogCount(category?: string, userId?: string): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -358,6 +363,33 @@ export class DatabaseStorage implements IStorage {
   async getBlockedUsers(userId: string): Promise<BlockedUser[]> {
     return db.select().from(blockedUsers)
       .where(eq(blockedUsers.blockerId, userId));
+  }
+
+  async logActivity(log: InsertActivityLog): Promise<ActivityLog> {
+    const [created] = await db.insert(activityLogs).values(log).returning();
+    return created;
+  }
+
+  async getActivityLogs(limit = 50, offset = 0, category?: string, userId?: string): Promise<ActivityLog[]> {
+    const conditions: any[] = [];
+    if (category) conditions.push(eq(activityLogs.category, category));
+    if (userId) conditions.push(eq(activityLogs.userId, userId));
+    const query = db.select().from(activityLogs);
+    if (conditions.length > 0) {
+      return query.where(and(...conditions)).orderBy(desc(activityLogs.createdAt)).limit(limit).offset(offset);
+    }
+    return query.orderBy(desc(activityLogs.createdAt)).limit(limit).offset(offset);
+  }
+
+  async getActivityLogCount(category?: string, userId?: string): Promise<number> {
+    const conditions: any[] = [];
+    if (category) conditions.push(eq(activityLogs.category, category));
+    if (userId) conditions.push(eq(activityLogs.userId, userId));
+    const query = conditions.length > 0
+      ? db.select({ count: sql<number>`count(*)::int` }).from(activityLogs).where(and(...conditions))
+      : db.select({ count: sql<number>`count(*)::int` }).from(activityLogs);
+    const [result] = await query;
+    return result?.count || 0;
   }
 }
 

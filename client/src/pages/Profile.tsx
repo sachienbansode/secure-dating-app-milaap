@@ -569,9 +569,17 @@ export default function Profile() {
           {activeSection === "Feature Toggles" && (
             <FeatureToggles />
           )}
+
+          {activeSection === "Terms & Conditions" && (
+            <TermsEditor />
+          )}
+
+          {activeSection === "Activity Logs" && (
+            <ActivityLogsViewer />
+          )}
         </div>
 
-        {activeSection !== "Welcome Taglines" && activeSection !== "Feature Toggles" && (
+        {activeSection !== "Welcome Taglines" && activeSection !== "Feature Toggles" && activeSection !== "Terms & Conditions" && activeSection !== "Activity Logs" && (
           <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 max-w-lg mx-auto">
             <Button data-testid="button-save-profile" className="w-full h-14 rounded-2xl font-bold text-lg bg-brand-gradient shadow-lg" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || !form.name.trim()}>
               {saveMutation.isPending ? "Saving..." : <>{isNewUser ? "Create Profile" : "Save Changes"} <Save className="ml-2" size={18} /></>}
@@ -839,12 +847,32 @@ export default function Profile() {
                 </div>
                 <ChevronRight size={18} className="text-gray-300" />
               </div>
-              <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50" onClick={() => { setIsEditing(true); setActiveSection("Feature Toggles"); }}>
+              <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 border-b border-gray-50" onClick={() => { setIsEditing(true); setActiveSection("Feature Toggles"); }}>
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600"><Settings size={16} /></div>
                   <div>
                     <h4 className="font-semibold text-sm">Feature Toggles</h4>
                     <p className="text-xs text-muted-foreground">Enable/disable app features</p>
+                  </div>
+                </div>
+                <ChevronRight size={18} className="text-gray-300" />
+              </div>
+              <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50" onClick={() => { setIsEditing(true); setActiveSection("Terms & Conditions"); }}>
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-cyan-100 flex items-center justify-center text-cyan-600"><Shield size={16} /></div>
+                  <div>
+                    <h4 className="font-semibold text-sm">Terms & Conditions</h4>
+                    <p className="text-xs text-muted-foreground">Edit the terms users accept</p>
+                  </div>
+                </div>
+                <ChevronRight size={18} className="text-gray-300" />
+              </div>
+              <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50" onClick={() => { setIsEditing(true); setActiveSection("Activity Logs"); }}>
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600"><Clock size={16} /></div>
+                  <div>
+                    <h4 className="font-semibold text-sm">Activity Logs</h4>
+                    <p className="text-xs text-muted-foreground">View all user activity</p>
                   </div>
                 </div>
                 <ChevronRight size={18} className="text-gray-300" />
@@ -1096,6 +1124,7 @@ function FeatureToggles() {
         <div className="flex items-center gap-2 mb-3">
           <Settings size={16} className="text-indigo-600" />
           <h4 className="font-bold text-sm text-indigo-800">Feature Toggles</h4>
+
         </div>
         <p className="text-xs text-indigo-700 mb-4">Enable or disable app-wide features. Changes apply to all users immediately.</p>
 
@@ -1124,6 +1153,184 @@ function FeatureToggles() {
       >
         {saving ? "Saving..." : saved ? "Saved!" : "Save Feature Settings"}
       </Button>
+    </div>
+  );
+}
+
+function TermsEditor() {
+  const queryClient = useQueryClient();
+  const [content, setContent] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/terms").then(r => r.json()).then(data => setContent(data.content || "")).catch(() => {});
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setSaved(false);
+    try {
+      const res = await fetch("/api/app-settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ key: "terms_and_conditions", value: content }),
+      });
+      if (!res.ok) throw new Error("Failed to save");
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-cyan-50 rounded-2xl p-4 border border-cyan-200">
+        <h4 className="font-bold text-sm text-cyan-800 mb-2">Edit Terms & Conditions</h4>
+        <p className="text-xs text-cyan-600 mb-3">This content is shown to users during registration. They must accept before creating an account.</p>
+        <textarea
+          data-testid="textarea-terms"
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          className="w-full h-64 rounded-xl border border-cyan-200 px-4 py-3 resize-y text-sm bg-white"
+          placeholder="Enter your terms and conditions here..."
+        />
+      </div>
+      <Button
+        onClick={handleSave}
+        disabled={saving || !content.trim()}
+        className="w-full h-12 rounded-xl font-bold bg-brand-gradient"
+        data-testid="button-save-terms"
+      >
+        {saving ? "Saving..." : saved ? "Saved!" : "Save Terms & Conditions"}
+      </Button>
+    </div>
+  );
+}
+
+function ActivityLogsViewer() {
+  const [logs, setLogs] = useState<any[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const limit = 20;
+
+  const categories = ["all", "auth", "profile", "match", "chat", "moderation", "admin", "security", "privacy"];
+
+  const fetchLogs = async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({ limit: String(limit), offset: String(page * limit) });
+      if (categoryFilter !== "all") params.set("category", categoryFilter);
+      const res = await fetch(`/api/activity-logs?${params}`, { credentials: "include" });
+      const data = await res.json();
+      setLogs(data.logs || []);
+      setTotal(data.total || 0);
+    } catch { }
+    setLoading(false);
+  };
+
+  useEffect(() => { fetchLogs(); }, [page, categoryFilter]);
+
+  const getCategoryColor = (cat: string) => {
+    const colors: Record<string, string> = {
+      auth: "bg-blue-100 text-blue-700",
+      profile: "bg-green-100 text-green-700",
+      match: "bg-pink-100 text-pink-700",
+      chat: "bg-purple-100 text-purple-700",
+      moderation: "bg-red-100 text-red-700",
+      admin: "bg-amber-100 text-amber-700",
+      security: "bg-orange-100 text-orange-700",
+      privacy: "bg-cyan-100 text-cyan-700",
+    };
+    return colors[cat] || "bg-gray-100 text-gray-700";
+  };
+
+  const formatTime = (date: string) => {
+    const d = new Date(date);
+    return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+  };
+
+  const totalPages = Math.ceil(total / limit);
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200">
+        <h4 className="font-bold text-sm text-slate-800 mb-3">Activity Logs ({total})</h4>
+        <div className="flex flex-wrap gap-1.5 mb-4">
+          {categories.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => { setCategoryFilter(cat); setPage(0); }}
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                categoryFilter === cat ? "bg-slate-700 text-white" : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-100"
+              }`}
+              data-testid={`filter-log-${cat}`}
+            >
+              {cat.charAt(0).toUpperCase() + cat.slice(1)}
+            </button>
+          ))}
+        </div>
+
+        {loading ? (
+          <div className="text-center py-8 text-slate-400 text-sm">Loading logs...</div>
+        ) : logs.length === 0 ? (
+          <div className="text-center py-8 text-slate-400 text-sm">No logs found</div>
+        ) : (
+          <div className="space-y-2">
+            {logs.map((log: any) => (
+              <div key={log.id} className="bg-white rounded-xl p-3 border border-slate-100 text-sm">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${getCategoryColor(log.category)}`}>
+                      {log.category}
+                    </span>
+                    <span className="font-medium text-slate-800">{log.action.replace(/_/g, " ")}</span>
+                  </div>
+                  <span className="text-[10px] text-slate-400">{formatTime(log.createdAt)}</span>
+                </div>
+                {log.userId && (
+                  <p className="text-[10px] text-slate-400 mt-0.5">User: {log.userId.slice(0, 8)}...</p>
+                )}
+                {log.details && Object.keys(log.details).length > 0 && (
+                  <div className="mt-1 text-[10px] text-slate-500 bg-slate-50 rounded-lg px-2 py-1">
+                    {Object.entries(log.details).map(([k, v]) => (
+                      <span key={k} className="mr-3">{k}: <strong>{String(v)}</strong></span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-100">
+            <button
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={page === 0}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-white border border-slate-200 disabled:opacity-40"
+              data-testid="button-logs-prev"
+            >
+              Previous
+            </button>
+            <span className="text-xs text-slate-500">Page {page + 1} of {totalPages}</span>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+              disabled={page >= totalPages - 1}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-white border border-slate-200 disabled:opacity-40"
+              data-testid="button-logs-next"
+            >
+              Next
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

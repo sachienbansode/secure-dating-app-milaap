@@ -22,6 +22,9 @@ export default function AuthPage() {
   const [showWelcome, setShowWelcome] = useState(false);
   const [loginDestination, setLoginDestination] = useState<string | null>(null);
   const [taglines, setTaglines] = useState<string[]>([]);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
+  const [termsContent, setTermsContent] = useState("");
 
   const { data: session, isLoading: checkingSession } = useQuery({
     queryKey: ["/api/auth/me"],
@@ -35,6 +38,13 @@ export default function AuthPage() {
       .then(data => {
         if (data.welcome_taglines?.length) setTaglines(data.welcome_taglines);
       })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/terms")
+      .then(r => r.json())
+      .then(data => setTermsContent(data.content || ""))
       .catch(() => {});
   }, []);
 
@@ -102,6 +112,7 @@ export default function AuthPage() {
       const result = await verifyOtp(payload);
       await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
       const dest = result.hasProfile ? "/home" : "/profile";
+      fetch("/api/terms/accept", { method: "POST", credentials: "include" }).catch(() => {});
       if (result.hasProfile) {
         setLoginDestination(dest);
         setShowWelcome(true);
@@ -252,10 +263,26 @@ export default function AuthPage() {
                 maxLength={6}
                 onKeyDown={(e) => e.key === "Enter" && handleVerifyOtp()}
               />
+              <div className="flex items-start gap-3 bg-gray-50 rounded-xl p-3">
+                <input
+                  type="checkbox"
+                  id="terms-checkbox"
+                  data-testid="checkbox-terms"
+                  checked={termsAccepted}
+                  onChange={(e) => setTermsAccepted(e.target.checked)}
+                  className="mt-1 w-5 h-5 rounded border-gray-300 text-primary accent-primary"
+                />
+                <label htmlFor="terms-checkbox" className="text-sm text-gray-600">
+                  I agree to the{" "}
+                  <button type="button" onClick={() => setShowTerms(true)} className="text-primary font-semibold underline" data-testid="button-view-terms">
+                    Terms & Conditions
+                  </button>
+                </label>
+              </div>
               <Button
                 data-testid="button-verify-otp"
                 onClick={handleVerifyOtp}
-                disabled={isLoading || otpValue.length !== 6}
+                disabled={isLoading || otpValue.length !== 6 || !termsAccepted}
                 className="w-full h-14 rounded-2xl font-bold text-lg shadow-lg bg-brand-gradient hover:opacity-95 transition-all active:scale-95"
               >
                 {isLoading ? "Verifying..." : "Verify & Login"} <ArrowRight className="ml-2 w-5 h-5" />
@@ -271,6 +298,28 @@ export default function AuthPage() {
           )}
         </div>
       </div>
+      {showTerms && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full max-h-[80vh] flex flex-col">
+            <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="font-bold text-lg">Terms & Conditions</h3>
+              <button onClick={() => setShowTerms(false)} className="text-gray-400 hover:text-gray-600">✕</button>
+            </div>
+            <div className="p-4 overflow-y-auto text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
+              {termsContent || "Loading..."}
+            </div>
+            <div className="p-4 border-t border-gray-100">
+              <button
+                onClick={() => { setTermsAccepted(true); setShowTerms(false); }}
+                className="w-full h-12 rounded-xl font-bold text-white bg-brand-gradient"
+                data-testid="button-accept-terms"
+              >
+                I Accept
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

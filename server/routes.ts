@@ -112,6 +112,18 @@ export async function registerRoutes(
     next();
   });
 
+  const logActivity = async (userId: string | null, action: string, category: string, details?: Record<string, any>, req?: Request) => {
+    try {
+      await storage.logActivity({
+        userId,
+        action,
+        category,
+        details: details || null,
+        ipAddress: req?.ip || null,
+      });
+    } catch (e) { /* silent fail for logging */ }
+  };
+
   // ==================== AUTH ====================
   
   app.post("/api/auth/request-otp", async (req: Request, res: Response) => {
@@ -174,6 +186,8 @@ export async function registerRoutes(
 
       const profile = await storage.getProfile(user.id);
 
+      await logActivity(user.id, "user_login", "auth", { method: phone ? "phone" : "email" }, req);
+
       return res.json({
         user: { id: user.id, respectScore: user.respectScore, dailyLikesLimit: user.dailyLikesLimit, dailyLikesUsed: user.dailyLikesUsed },
         hasProfile: !!profile,
@@ -208,9 +222,11 @@ export async function registerRoutes(
   });
 
   app.post("/api/auth/logout", async (req: Request, res: Response) => {
+    const logoutUserId = req.session.userId || null;
     if (req.session.userId) {
       await storage.setUserOnlineStatus(req.session.userId, false);
     }
+    await logActivity(logoutUserId, "user_logout", "auth", {}, req);
     req.session.destroy(() => {
       res.json({ message: "Logged out" });
     });
@@ -265,6 +281,7 @@ export async function registerRoutes(
 
       if (existing) {
         const updated = await storage.updateProfile(userId, profileData);
+        await logActivity(userId, "profile_updated", "profile", { fields: Object.keys(req.body) }, req);
         return res.json(updated);
       }
 
@@ -272,6 +289,7 @@ export async function registerRoutes(
         userId,
         ...profileData,
       });
+      await logActivity(userId, "profile_created", "profile", { fields: Object.keys(req.body) }, req);
       return res.status(201).json(profile);
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
@@ -303,6 +321,7 @@ export async function registerRoutes(
         });
       }
 
+      await logActivity(userId, "intent_lock_broken", "profile", { newIntent: req.body.intent }, req);
       return res.json({ message: "Intent changed. Visibility reduced for 30 days.", penalized: true });
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
@@ -507,6 +526,7 @@ export async function registerRoutes(
         }
       }
 
+      await logActivity(userId, "swipe_action", "match", { action: parsed.data.action, targetUserId: parsed.data.targetUserId }, req);
       return res.json({ match, isMutualMatch });
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
@@ -631,6 +651,7 @@ export async function registerRoutes(
         isAiProxy: parsed.data.isAiProxy || false,
       });
 
+      await logActivity(userId, "message_sent", "chat", { matchId: parsed.data.matchId, isAiGenerated: false }, req);
       return res.status(201).json(message);
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
@@ -699,6 +720,7 @@ export async function registerRoutes(
         });
       }
 
+      await logActivity(userId, "screenshot_detected", "security", { matchId: req.body.matchId }, req);
       return res.json({ alert, message: "Screenshot detected. Other user has been notified." });
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
@@ -729,6 +751,7 @@ export async function registerRoutes(
         status: "pending",
       });
 
+      await logActivity(req.session.userId!, "user_reported", "moderation", { reportedUserId: req.body.reportedUserId, reason: req.body.reason }, req);
       return res.status(201).json(report);
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
@@ -1059,6 +1082,8 @@ ${myProfile.name}'s bio: ${myProfile.bio || "Not set"}`;
             isSystemMessage: true,
           });
 
+          await logActivity(userId, "chat_cooldown_triggered", "moderation", { matchId: req.body.matchId }, req);
+
           return res.json({
             escalated: true,
             severity: analysis.severity,
@@ -1128,6 +1153,7 @@ ${myProfile.name}'s bio: ${myProfile.bio || "Not set"}`;
       }
 
       await storage.blockUser(userId, blockedUserId);
+      await logActivity(userId, "user_blocked", "moderation", { blockedUserId: req.body.blockedUserId }, req);
       return res.json({ message: "User blocked successfully" });
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
@@ -1209,6 +1235,7 @@ ${myProfile.name}'s bio: ${myProfile.bio || "Not set"}`;
         ? `Notification would be sent to ${reportedUser.email}: Your account has been reviewed due to: ${parsed.data.reason}.`
         : "No email on file for notification.";
 
+      await logActivity(userId, "enhanced_report", "moderation", { reportedUserId: req.body.reportedUserId }, req);
       return res.status(201).json({
         report,
         chatAnalysis,
@@ -1240,6 +1267,7 @@ ${myProfile.name}'s bio: ${myProfile.bio || "Not set"}`;
       }
 
       const updated = await storage.updateProfile(req.session.userId!, { dateReadiness });
+      await logActivity(req.session.userId!, "date_readiness_updated", "profile", { level: req.body.dateReadiness }, req);
       return res.json(updated);
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
@@ -1290,6 +1318,7 @@ ${myProfile.name}'s bio: ${myProfile.bio || "Not set"}`;
         isSystemMessage: true,
       });
 
+      await logActivity(userId, "phone_unlock_requested", "privacy", { matchId: req.body.matchId }, req);
       return res.json({ request, message: "Unlock request sent. 24-hour cool-off period applies." });
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
@@ -1346,6 +1375,7 @@ ${myProfile.name}'s bio: ${myProfile.bio || "Not set"}`;
           isSystemMessage: true,
         });
 
+        await logActivity(userId, "phone_unlock_responded", "privacy", { requestId: theirRequest.id, status: "approved" }, req);
         return res.json({ message: "Approved. Contact sharing will be unlocked after 24-hour cool-off.", mutual: true });
       } else {
         await storage.updatePhoneUnlockRequest(theirRequest.id, {
@@ -1353,6 +1383,7 @@ ${myProfile.name}'s bio: ${myProfile.bio || "Not set"}`;
           respondedAt: new Date(),
         });
 
+        await logActivity(userId, "phone_unlock_responded", "privacy", { requestId: theirRequest.id, status: "rejected" }, req);
         return res.json({ message: "Request declined." });
       }
     } catch (err: any) {
@@ -1429,6 +1460,7 @@ ${myProfile.name}'s bio: ${myProfile.bio || "Not set"}`;
           photoAuthenticityScore: result.score,
           photoVerifiedAt: new Date() as any,
         });
+        await logActivity(userId, "photo_verified", "profile", { score: result.score }, req);
         return res.json(result);
       } catch {
         return res.json({ score: 70, verdict: "Needs Review", checks: {}, tips: ["Please upload clear, recent photos"] });
@@ -1482,9 +1514,49 @@ ${myProfile.name}'s bio: ${myProfile.bio || "Not set"}`;
       if (!key || value === undefined) {
         return res.status(400).json({ message: "key and value required" });
       }
+      const userId = req.session.userId!;
       const strValue = typeof value === "string" ? value : JSON.stringify(value);
       await storage.setAppSetting(key, strValue);
+      await logActivity(userId, "settings_updated", "admin", { key: req.body.key, value: req.body.value }, req);
       return res.json({ message: "Setting updated" });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ==================== TERMS & CONDITIONS ====================
+
+  app.get("/api/terms", async (_req: Request, res: Response) => {
+    try {
+      const content = await storage.getAppSetting("terms_and_conditions");
+      return res.json({ content: content || "Welcome to Milaap. By using this application, you agree to treat all users with respect and dignity. You must be 18 years or older to use this service. We are committed to creating a safe and inclusive dating environment for everyone." });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/terms/accept", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      await storage.updateUser(userId, { termsAcceptedAt: new Date() });
+      await logActivity(userId, "terms_accepted", "auth", {}, req);
+      return res.json({ success: true });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ==================== ACTIVITY LOGS ====================
+
+  app.get("/api/activity-logs", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 50;
+      const offset = parseInt(req.query.offset as string) || 0;
+      const category = req.query.category as string | undefined;
+      const userId = req.query.userId as string | undefined;
+      const logs = await storage.getActivityLogs(limit, offset, category, userId);
+      const total = await storage.getActivityLogCount(category, userId);
+      return res.json({ logs, total, limit, offset });
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
     }
