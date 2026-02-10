@@ -1,7 +1,7 @@
-import profile1 from "@/assets/profiles/profile1.jpg";
-import profile2 from "@/assets/profiles/profile2.jpg";
-import profile3 from "@/assets/profiles/profile3.jpg";
-import profile4 from "@/assets/profiles/profile4.jpg";
+import profile1 from "@/assets/profiles/indian_girl_1.jpg";
+import profile2 from "@/assets/profiles/indian_guy_1.jpg";
+import profile3 from "@/assets/profiles/indian_girl_2.jpg";
+import profile4 from "@/assets/profiles/indian_guy_2.jpg";
 
 export interface UserProfile {
   id: string;
@@ -18,47 +18,47 @@ export interface UserProfile {
 export const MOCK_PROFILES: UserProfile[] = [
   {
     id: "1",
-    name: "Sarah",
+    name: "Priya",
     age: 24,
-    bio: "Art lover & coffee enthusiast. Looking for someone to explore galleries with. 🎨☕️",
+    bio: "Classical dancer & chai lover. Looking for someone to explore heritage sites with. 💃☕️",
     image: profile1,
     respectScore: 98,
-    location: "Brooklyn, NY",
-    distance: "2 miles away",
-    interests: ["Art", "Coffee", "Jazz", "Museums"]
+    location: "South Delhi",
+    distance: "2 km away",
+    interests: ["Kathak", "Chai", "Bollywood", "Travel"]
   },
   {
     id: "2",
-    name: "James",
+    name: "Aryan",
     age: 27,
-    bio: "Tech entrepreneur by day, city explorer by night. Always down for a rooftop drink. 🍸",
+    bio: "Startup founder in BLR. Weekend cricketer and foodie. Always down for biryani. 🏏🥘",
     image: profile2,
     respectScore: 92,
-    location: "Manhattan, NY",
-    distance: "4 miles away",
-    interests: ["Tech", "Startups", "Photography", "Travel"]
+    location: "Koramangala, BLR",
+    distance: "5 km away",
+    interests: ["Cricket", "Startups", "Biryani", "Tech"]
   },
   {
     id: "3",
-    name: "Elena",
+    name: "Ananya",
     age: 25,
-    bio: "Digital artist and dreamer. Let's create something beautiful together. ✨",
+    bio: "NIFT grad. Fashion designer. Let's find the best street food in Mumbai. ✨",
     image: profile3,
     respectScore: 95,
-    location: "Queens, NY",
-    distance: "5 miles away",
-    interests: ["Design", "Illustration", "Nature", "Music"]
+    location: "Bandra West, Mumbai",
+    distance: "3 km away",
+    interests: ["Fashion", "Art", "Street Food", "Music"]
   },
   {
     id: "4",
-    name: "Mike",
+    name: "Rohan",
     age: 28,
-    bio: "Hiking, biking, and everything outdoors. Let's go on an adventure! 🏔️",
+    bio: "Trekking in the Himalayas whenever I can. Dog dad to a Golden Retriever. 🐕🏔️",
     image: profile4,
     respectScore: 89,
-    location: "Jersey City, NJ",
-    distance: "8 miles away",
-    interests: ["Hiking", "Camping", "Fitness", "Dogs"]
+    location: "Pune, MH",
+    distance: "8 km away",
+    interests: ["Trekking", "Dogs", "Photography", "Fitness"]
   }
 ];
 
@@ -66,7 +66,7 @@ export const MOCK_CHATS = [
   {
     id: "c1",
     userId: "1",
-    lastMessage: "That new gallery looks amazing!",
+    lastMessage: "Have you tried the new cafe in CP?",
     timestamp: "2m ago",
     unread: 2,
     aiHandover: false
@@ -74,7 +74,7 @@ export const MOCK_CHATS = [
   {
     id: "c2",
     userId: "2",
-    lastMessage: "Are you free this weekend?",
+    lastMessage: "Match confirmed! See you at 7?",
     timestamp: "1h ago",
     unread: 0,
     aiHandover: true
