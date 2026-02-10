@@ -65,6 +65,8 @@ export interface IStorage {
   logActivity(log: InsertActivityLog): Promise<ActivityLog>;
   getActivityLogs(limit?: number, offset?: number, category?: string, userId?: string): Promise<ActivityLog[]>;
   getActivityLogCount(category?: string, userId?: string): Promise<number>;
+
+  getAllProfilesAdmin(limit?: number, offset?: number, genderFilter?: string, search?: string): Promise<{ profiles: (Profile & { user?: User })[], total: number }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -390,6 +392,34 @@ export class DatabaseStorage implements IStorage {
       : db.select({ count: sql<number>`count(*)::int` }).from(activityLogs);
     const [result] = await query;
     return result?.count || 0;
+  }
+
+  async getAllProfilesAdmin(limit = 50, offset = 0, genderFilter?: string, search?: string): Promise<{ profiles: (Profile & { user?: User })[], total: number }> {
+    const conditions: any[] = [];
+    if (genderFilter && genderFilter !== "all") {
+      conditions.push(eq(profiles.gender, genderFilter));
+    }
+
+    const baseWhere = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const [countResult] = baseWhere
+      ? await db.select({ count: sql<number>`count(*)::int` }).from(profiles).where(baseWhere)
+      : await db.select({ count: sql<number>`count(*)::int` }).from(profiles);
+    const total = countResult?.count || 0;
+
+    const profileRows = baseWhere
+      ? await db.select().from(profiles).where(baseWhere).orderBy(desc(profiles.updatedAt)).limit(limit).offset(offset)
+      : await db.select().from(profiles).orderBy(desc(profiles.updatedAt)).limit(limit).offset(offset);
+
+    const enriched = await Promise.all(
+      profileRows.map(async (p) => {
+        const decrypted = decryptProfile(p);
+        const [user] = await db.select().from(users).where(eq(users.id, p.userId));
+        return { ...decrypted, user: user || undefined };
+      })
+    );
+
+    return { profiles: enriched, total };
   }
 }
 

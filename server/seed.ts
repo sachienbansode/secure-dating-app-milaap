@@ -125,6 +125,44 @@ const neutralPhotos = [
   "/profiles/indian_neutral_1_1.jpg", "/profiles/indian_neutral_1_2.jpg", "/profiles/indian_neutral_1_3.jpg",
 ];
 
+const couplePhotos = [
+  "/profiles/indian_couple_1_1.jpg", "/profiles/indian_couple_1_2.jpg", "/profiles/indian_couple_1_3.jpg",
+  "/profiles/indian_couple_1_4.jpg", "/profiles/indian_couple_1_5.jpg", "/profiles/indian_couple_1_6.jpg",
+  "/profiles/indian_couple_1_7.jpg", "/profiles/indian_couple_1_8.jpg", "/profiles/indian_couple_1_9.jpg",
+  "/profiles/indian_couple_1_10.jpg",
+];
+
+const coupleNames = [
+  "Aarav & Priya", "Rohan & Sneha", "Vikram & Anjali", "Arjun & Diya", "Kabir & Meera",
+  "Siddharth & Aditi", "Varun & Riya", "Karan & Isha", "Rahul & Neha", "Amit & Pooja",
+  "Rishabh & Tanvi", "Nikhil & Kriti", "Akash & Simran", "Deepak & Nidhi", "Rohit & Sanjana",
+  "Sameer & Pallavi", "Gaurav & Divya", "Kunal & Shruti", "Raj & Radhika", "Pranav & Swati",
+  "Harsh & Sonali", "Dhruv & Preeti", "Yash & Komal", "Armaan & Jyoti", "Farhan & Nisha",
+  "Vivaan & Kavita", "Shaurya & Bhavna", "Atharv & Roshni", "Ishaan & Pari", "Manish & Geeta",
+  "Vishal & Rekha", "Abhishek & Vandana", "Sachin & Chhaya", "Saurabh & Mamta", "Vijay & Lata",
+  "Utkarsh & Neelam", "Mayank & Poonam", "Nitin & Sarita", "Pankaj & Usha", "Ankit & Vidya",
+  "Imran & Aadya", "Zain & Saanvi", "Reyansh & Ananya", "Sai & Kiara", "Krishna & Myra",
+  "Advik & Anvi", "Aarav J. & Aadhya", "Vihaan & Shweta", "Aditya K. & Rani", "Rohan M. & Suman",
+];
+
+const coupleBios = [
+  "We're a fun-loving couple looking to connect with like-minded pairs!",
+  "Together 3 years and counting. Looking for double date partners!",
+  "Foodies who love trying new restaurants together.",
+  "Adventure couple - hiking, road trips, and new experiences!",
+  "Bollywood movie nights are our thing. Looking for couple friends!",
+  "We bonded over chai and cricket. Want to meet similar couples!",
+  "Travel buddies exploring India one city at a time.",
+  "Dance couple looking for partners for salsa nights!",
+  "We love cooking together - looking for couples who share the passion!",
+  "Fitness enthusiasts seeking active couple friends.",
+  "Startup founders who fell in love at a hackathon.",
+  "Music lovers - we jam every weekend!",
+  "Photography couple capturing moments across India.",
+  "Yoga practitioners living a mindful life together.",
+  "Dog parents looking for pet-friendly couple hangouts.",
+];
+
 const getRandom = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 const getRandomSubset = <T,>(arr: T[], count: number): T[] => {
   const shuffled = [...arr].sort(() => 0.5 - Math.random());
@@ -132,7 +170,7 @@ const getRandomSubset = <T,>(arr: T[], count: number): T[] => {
 };
 
 async function seed() {
-  console.log("Seeding database with 120 profiles...");
+  console.log("Seeding database with 170 profiles...");
 
   const existing = await db.select({ count: sql<number>`count(*)` }).from(profiles);
   if (Number(existing[0].count) > 0) {
@@ -142,8 +180,9 @@ async function seed() {
 
   const createProfiles = async (
     names: string[],
-    gender: "Male" | "Female" | "Trans",
-    count: number
+    gender: "Male" | "Female" | "Trans" | "Couple",
+    count: number,
+    options?: { bioPool?: string[]; interestedIn?: string[] }
   ) => {
     for (let i = 0; i < count; i++) {
       const name = names[i % names.length];
@@ -152,9 +191,9 @@ async function seed() {
 
       const age = Math.floor(Math.random() * (35 - 21) + 21);
       const respectScore = Math.floor(Math.random() * (100 - 70) + 70);
-      const bio = getRandom(bios);
+      const bio = options?.bioPool ? getRandom(options.bioPool) : getRandom(bios);
       const interests = getRandomSubset(interestsList, 3 + Math.floor(Math.random() * 3));
-      const photoPool = gender === "Male" ? malePhotos : gender === "Female" ? femalePhotos : neutralPhotos;
+      const photoPool = gender === "Male" ? malePhotos : gender === "Female" ? femalePhotos : gender === "Couple" ? couplePhotos : neutralPhotos;
       const photo = getRandom(photoPool);
 
       const intent = getRandom(intents);
@@ -197,6 +236,8 @@ async function seed() {
         festivalPrefs,
         hometownForFestivals: locationData.city,
         greenFlagStories,
+        interestedIn: options?.interestedIn || undefined,
+        dateReadiness: getRandom(["Chat-only", "Voice-ready", "Meet-ready"]),
       });
     }
   };
@@ -210,7 +251,13 @@ async function seed() {
   await createProfiles(transNames, "Trans", 20);
   console.log("Created 20 trans profiles");
 
-  console.log("Seeding complete! 120 profiles created.");
+  await createProfiles(coupleNames, "Couple", 50, {
+    bioPool: coupleBios,
+    interestedIn: ["Couple", "Female"],
+  });
+  console.log("Created 50 couple profiles");
+
+  console.log("Seeding complete! 170 profiles created.");
 }
 
 seed()
