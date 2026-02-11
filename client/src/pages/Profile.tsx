@@ -27,7 +27,7 @@ const DATE_READINESS_ICONS: Record<string, any> = { "Chat-only": MessageCircle, 
 const DATE_READINESS_COLORS: Record<string, string> = { "Chat-only": "bg-blue-50 border-blue-200 text-blue-700", "Voice-ready": "bg-green-50 border-green-200 text-green-700", "Meet-ready": "bg-purple-50 border-purple-200 text-purple-700" };
 
 const INTENT_ICONS: Record<string, string> = { Casual: "☕", Dating: "💕", Serious: "💎", Marriage: "💍" };
-const INTENT_COLORS: Record<string, string> = { Casual: "bg-blue-50 border-blue-200 text-blue-700", Dating: "bg-pink-50 border-pink-200 text-pink-700", Serious: "bg-purple-50 border-purple-200 text-purple-700", Marriage: "bg-amber-50 border-amber-200 text-amber-700" };
+const INTENT_COLORS: Record<string, string> = { Casual: "bg-blue-50 border-blue-200 text-blue-700", Dating: "bg-amber-50 border-amber-200 text-amber-700", Serious: "bg-purple-50 border-purple-200 text-purple-700", Marriage: "bg-yellow-50 border-yellow-200 text-yellow-700" };
 
 export default function Profile() {
   const [, setLocation] = useLocation();
@@ -287,23 +287,23 @@ export default function Profile() {
                 </div>
 
                 {form.gender === "Couple" && appSettings?.feature_couple_profiles !== false && (
-                  <div className="bg-pink-50 rounded-xl p-4 border border-pink-200 space-y-4">
+                  <div className="bg-purple-50 rounded-xl p-4 border border-purple-200 space-y-4">
                     <div className="flex items-center gap-2 mb-1">
-                      <Users size={16} className="text-pink-600" />
-                      <h4 className="font-bold text-sm text-pink-800">Partner 2 Details</h4>
+                      <Users size={16} className="text-purple-600" />
+                      <h4 className="font-bold text-sm text-purple-800">Partner 2 Details</h4>
                     </div>
-                    <p className="text-xs text-pink-600">Both individuals in the couple can be of any gender</p>
+                    <p className="text-xs text-purple-600">Both individuals in the couple can be of any gender</p>
                     <div>
-                      <label className="text-sm font-medium text-pink-700 mb-2 block">Partner 2 Name</label>
+                      <label className="text-sm font-medium text-purple-700 mb-2 block">Partner 2 Name</label>
                       <Input data-testid="input-partner2-name" value={form.partner2Name} onChange={(e) => setForm((f) => ({ ...f, partner2Name: e.target.value }))} placeholder="Partner's name" className="h-12 rounded-xl" />
                     </div>
                     <div className="flex gap-4">
                       <div className="flex-1">
-                        <label className="text-sm font-medium text-pink-700 mb-2 block">Partner 2 Age</label>
+                        <label className="text-sm font-medium text-purple-700 mb-2 block">Partner 2 Age</label>
                         <Input data-testid="input-partner2-age" type="number" value={form.partner2Age} onChange={(e) => setForm((f) => ({ ...f, partner2Age: parseInt(e.target.value) || 18 }))} min={18} max={100} className="h-12 rounded-xl" />
                       </div>
                       <div className="flex-1">
-                        <label className="text-sm font-medium text-pink-700 mb-2 block">Partner 2 Gender</label>
+                        <label className="text-sm font-medium text-purple-700 mb-2 block">Partner 2 Gender</label>
                         <select data-testid="select-partner2-gender" value={form.partner2Gender} onChange={(e) => setForm((f) => ({ ...f, partner2Gender: e.target.value }))} className="w-full h-12 rounded-xl border border-gray-200 px-3 bg-white">
                           <option value="">Select</option>
                           <option value="Male">Male</option>
@@ -372,7 +372,7 @@ export default function Profile() {
                 <p className="text-xs text-muted-foreground mb-1.5 font-medium uppercase tracking-wider">Romantic & Spicy</p>
                 <div className="flex flex-wrap gap-2 mb-4">
                   {ROMANTIC_INTERESTS.map((interest) => (
-                    <button key={interest} data-testid={`button-interest-${interest.toLowerCase().replace(/\s/g, "-")}`} onClick={() => toggleInterest(interest)} className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${form.interests.includes(interest) ? "bg-gradient-to-r from-pink-500 to-red-500 text-white shadow-sm" : "bg-pink-50 text-pink-700 hover:bg-pink-100 border border-pink-200"}`}>
+                    <button key={interest} data-testid={`button-interest-${interest.toLowerCase().replace(/\s/g, "-")}`} onClick={() => toggleInterest(interest)} className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${form.interests.includes(interest) ? "bg-gradient-to-r from-purple-600 to-amber-500 text-white shadow-sm" : "bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200"}`}>
                       {interest}
                     </button>
                   ))}
@@ -532,12 +532,12 @@ export default function Profile() {
                 )}
               </div>
 
-              <div className="bg-pink-50 rounded-2xl p-4 space-y-3 border border-pink-200">
+              <div className="bg-purple-50 rounded-2xl p-4 space-y-3 border border-purple-200">
                 <div className="flex items-center gap-2">
-                  <HomeIcon size={16} className="text-pink-600" />
-                  <h4 className="font-bold text-sm text-pink-800">Family-Aware Dating Mode</h4>
+                  <HomeIcon size={16} className="text-purple-600" />
+                  <h4 className="font-bold text-sm text-purple-800">Family-Aware Dating Mode</h4>
                 </div>
-                <p className="text-xs text-pink-700">Clean language only. No innuendos. Conservative matching pool. Ideal for tier 2/3 cities.</p>
+                <p className="text-xs text-purple-700">Clean language only. No innuendos. Conservative matching pool. Ideal for tier 2/3 cities.</p>
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">Enable Family Mode</span>
                   <Switch data-testid="switch-family-mode" checked={form.familyMode} onCheckedChange={(checked) => setForm((f) => ({ ...f, familyMode: checked }))} />
@@ -715,9 +715,9 @@ export default function Profile() {
                 <span className="text-purple-700/60 text-[10px] uppercase font-bold tracking-wider">AI Mode</span>
               </div>
               {currentProfile.familyMode && (
-                <div className="flex flex-col items-center bg-pink-50 px-4 py-2 rounded-xl border border-pink-100">
-                  <HomeIcon size={20} className="text-pink-600" />
-                  <span className="text-pink-700/60 text-[10px] uppercase font-bold tracking-wider">Family</span>
+                <div className="flex flex-col items-center bg-purple-50 px-4 py-2 rounded-xl border border-purple-100">
+                  <HomeIcon size={20} className="text-purple-600" />
+                  <span className="text-purple-700/60 text-[10px] uppercase font-bold tracking-wider">Family</span>
                 </div>
               )}
               {currentProfile.photoVerifiedAt && (

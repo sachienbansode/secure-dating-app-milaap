@@ -388,7 +388,7 @@ function ActivityLogsViewer() {
     const colors: Record<string, string> = {
       auth: "bg-blue-100 text-blue-700",
       profile: "bg-green-100 text-green-700",
-      match: "bg-pink-100 text-pink-700",
+      match: "bg-purple-100 text-purple-700",
       chat: "bg-purple-100 text-purple-700",
       moderation: "bg-red-100 text-red-700",
       admin: "bg-amber-100 text-amber-700",
@@ -518,7 +518,7 @@ function AllProfilesViewer() {
   const getGenderColor = (gender: string) => {
     const colors: Record<string, string> = {
       Male: "bg-blue-100 text-blue-700",
-      Female: "bg-pink-100 text-pink-700",
+      Female: "bg-purple-100 text-purple-700",
       Trans: "bg-purple-100 text-purple-700",
       Couple: "bg-amber-100 text-amber-700",
     };

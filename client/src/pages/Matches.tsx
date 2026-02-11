@@ -74,7 +74,7 @@ export default function Matches() {
           <div className="p-8 text-center text-muted-foreground animate-pulse">Loading matches...</div>
         ) : matchesData.length === 0 ? (
           <div className="p-8 text-center">
-            <div className="w-20 h-20 bg-gradient-to-br from-pink-50 to-orange-50 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-20 h-20 bg-gradient-to-br from-purple-50 to-amber-50 rounded-full flex items-center justify-center mx-auto mb-4">
               <Heart className="text-pink-400" size={32} />
             </div>
             <h3 className="font-bold text-lg mb-2" data-testid="text-no-matches">No matches yet</h3>
@@ -90,7 +90,7 @@ export default function Matches() {
                 {matchesData.map((match) => (
                   <Link key={match.id} href={`/chat/${match.id}`}>
                     <div className="flex flex-col items-center gap-1.5 shrink-0 cursor-pointer" data-testid={`card-match-${match.id}`}>
-                      <div className="w-16 h-20 rounded-2xl overflow-hidden relative shadow-md border-2 border-white ring-2 ring-pink-200">
+                      <div className="w-16 h-20 rounded-2xl overflow-hidden relative shadow-md border-2 border-white ring-2 ring-purple-200">
                         <img
                           src={match.profile?.photos?.[0] || "/profiles/generic_indian_1.jpg"}
                           alt={match.profile?.name}

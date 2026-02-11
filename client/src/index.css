@@ -50,9 +50,9 @@
   --color-sidebar-border: hsl(var(--sidebar-border));
   --color-sidebar-ring: hsl(var(--sidebar-ring));
   
-  /* Brand Colors - Blue & Pink */
-  --color-brand-gradient-start: hsl(220 85% 55%); /* Royal Blue */
-  --color-brand-gradient-end: hsl(330 85% 60%); /* Rose Pink */
+  /* Brand Colors - Deep Purple & Gold */
+  --color-brand-gradient-start: hsl(270 65% 45%); /* Deep Purple */
+  --color-brand-gradient-end: hsl(42 90% 55%); /* Royal Gold */
 }
 
 /* LIGHT MODE */
@@ -66,26 +66,26 @@
   --popover: 0 0% 100%;
   --popover-foreground: 230 25% 15%;
 
-  /* Blue-Pink Primary */
-  --primary: 240 70% 55%;
+  /* Deep Purple Primary */
+  --primary: 270 60% 50%;
   --primary-foreground: 0 0% 100%;
 
-  /* Soft Pink for Secondary/Accents */
-  --secondary: 330 60% 96%;
-  --secondary-foreground: 330 60% 45%;
+  /* Warm Gold for Secondary/Accents */
+  --secondary: 42 60% 95%;
+  --secondary-foreground: 42 70% 35%;
 
-  --muted: 230 15% 94%;
-  --muted-foreground: 230 10% 40%;
+  --muted: 270 10% 94%;
+  --muted-foreground: 270 10% 40%;
 
-  --accent: 240 50% 96%;
-  --accent-foreground: 240 30% 15%;
+  --accent: 42 40% 95%;
+  --accent-foreground: 270 30% 20%;
 
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 0 0% 98%;
 
   --border: 230 20% 90%;
   --input: 230 20% 90%;
-  --ring: 240 70% 55%;
+  --ring: 270 60% 50%;
   
   --radius: 1rem;
 }
@@ -100,24 +100,24 @@
   --popover: 230 20% 12%;
   --popover-foreground: 220 20% 98%;
 
-  --primary: 240 70% 60%;
+  --primary: 270 60% 55%;
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 240 15% 18%;
-  --secondary-foreground: 220 20% 98%;
+  --secondary: 270 15% 18%;
+  --secondary-foreground: 42 60% 80%;
 
-  --muted: 240 15% 18%;
-  --muted-foreground: 230 10% 65%;
+  --muted: 270 15% 18%;
+  --muted-foreground: 270 10% 65%;
 
-  --accent: 240 15% 18%;
-  --accent-foreground: 220 20% 98%;
+  --accent: 270 15% 18%;
+  --accent-foreground: 42 60% 80%;
 
   --destructive: 0 62.8% 30.6%;
   --destructive-foreground: 0 0% 98%;
 
   --border: 240 15% 18%;
   --input: 240 15% 18%;
-  --ring: 240 70% 60%;
+  --ring: 270 60% 55%;
 }
 
 @layer base {

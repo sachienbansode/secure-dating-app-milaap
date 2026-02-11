@@ -35,7 +35,7 @@ interface DiscoverProfile {
 
 const CITIES = ["All", "Mumbai", "Pune", "Delhi", "Bangalore", "Hyderabad", "Chennai", "Kolkata", "Ahmedabad", "Jaipur", "Lucknow", "Chandigarh", "Kochi", "Goa"];
 const INTENT_ICONS: Record<string, string> = { Casual: "☕", Dating: "💕", Serious: "💎", Marriage: "💍" };
-const INTENT_COLORS: Record<string, string> = { Casual: "bg-blue-500/80", Dating: "bg-pink-500/80", Serious: "bg-purple-500/80", Marriage: "bg-amber-500/80" };
+const INTENT_COLORS: Record<string, string> = { Casual: "bg-blue-500/80", Dating: "bg-amber-500/80", Serious: "bg-purple-500/80", Marriage: "bg-yellow-500/80" };
 
 export default function Home() {
   const [, setLocation] = useLocation();
@@ -271,7 +271,7 @@ function SwipeCard({ profile, isFront, expanded, onSwipe, onToggleExpand, appSet
             </span>
           )}
           {profile.familyMode && (
-            <span className="px-2 py-1 rounded-full text-[10px] font-bold text-white bg-pink-500/80 backdrop-blur-sm">Family</span>
+            <span className="px-2 py-1 rounded-full text-[10px] font-bold text-white bg-purple-500/80 backdrop-blur-sm">Family</span>
           )}
           {profile.photoVerifiedAt && appSettings?.feature_photo_authenticity && (
             <span className="px-2 py-1 rounded-full text-[10px] font-bold text-white bg-blue-500/80 backdrop-blur-sm flex items-center gap-0.5" data-testid={`badge-verified-${profile.userId}`}>
@@ -329,15 +329,15 @@ function SwipeCard({ profile, isFront, expanded, onSwipe, onToggleExpand, appSet
               <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
                 {profile.bio && <p className="text-white/90 mb-3 font-light text-sm">{profile.bio}</p>}
                 {coupleProfilesEnabled && profile.gender === "Couple" && profile.partner2Name && (
-                  <div className="bg-pink-500/20 backdrop-blur-sm rounded-lg px-3 py-2 mb-3 border border-pink-400/20">
-                    <p className="text-[10px] uppercase tracking-wider text-pink-300 font-bold mb-1">Couple Details</p>
+                  <div className="bg-purple-500/20 backdrop-blur-sm rounded-lg px-3 py-2 mb-3 border border-purple-400/20">
+                    <p className="text-[10px] uppercase tracking-wider text-purple-300 font-bold mb-1">Couple Details</p>
                     <div className="flex items-center gap-3 text-xs text-white/90">
                       <span>{profile.name}, {profile.age}</span>
-                      <span className="text-pink-300">&</span>
+                      <span className="text-purple-300">&</span>
                       <span>{profile.partner2Name}, {profile.partner2Age}</span>
                     </div>
                     {profile.partner2Gender && (
-                      <p className="text-[10px] text-pink-200 mt-1">Partner 2: {profile.partner2Gender}</p>
+                      <p className="text-[10px] text-purple-200 mt-1">Partner 2: {profile.partner2Gender}</p>
                     )}
                   </div>
                 )}
