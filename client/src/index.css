@@ -57,25 +57,25 @@
 
 /* LIGHT MODE */
 :root {
-  --background: 0 0% 6%;
+  --background: 0 0% 18%;
   --foreground: 40 20% 95%;
 
-  --card: 0 0% 10%;
+  --card: 0 0% 23%;
   --card-foreground: 40 20% 95%;
 
-  --popover: 0 0% 10%;
+  --popover: 0 0% 23%;
   --popover-foreground: 40 20% 95%;
 
   /* Bright Gold Primary */
   --primary: 45 100% 50%;
   --primary-foreground: 0 0% 5%;
 
-  /* Dark surface with gold accent */
-  --secondary: 0 0% 14%;
+  /* Medium dark surface with gold accent */
+  --secondary: 0 0% 28%;
   --secondary-foreground: 40 30% 85%;
 
-  --muted: 0 0% 14%;
-  --muted-foreground: 0 0% 55%;
+  --muted: 0 0% 28%;
+  --muted-foreground: 0 0% 62%;
 
   --accent: 0 75% 50%;
   --accent-foreground: 0 0% 100%;
@@ -83,31 +83,31 @@
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 98%;
 
-  --border: 0 0% 18%;
-  --input: 0 0% 16%;
+  --border: 0 0% 32%;
+  --input: 0 0% 26%;
   --ring: 45 100% 50%;
   
   --radius: 1rem;
 }
 
 .dark {
-  --background: 0 0% 4%;
+  --background: 0 0% 14%;
   --foreground: 40 20% 95%;
 
-  --card: 0 0% 8%;
+  --card: 0 0% 19%;
   --card-foreground: 40 20% 95%;
 
-  --popover: 0 0% 8%;
+  --popover: 0 0% 19%;
   --popover-foreground: 40 20% 95%;
 
   --primary: 45 100% 50%;
   --primary-foreground: 0 0% 5%;
 
-  --secondary: 0 0% 12%;
+  --secondary: 0 0% 24%;
   --secondary-foreground: 40 30% 85%;
 
-  --muted: 0 0% 12%;
-  --muted-foreground: 0 0% 55%;
+  --muted: 0 0% 24%;
+  --muted-foreground: 0 0% 62%;
 
   --accent: 0 75% 50%;
   --accent-foreground: 0 0% 100%;
@@ -115,8 +115,8 @@
   --destructive: 0 62.8% 30.6%;
   --destructive-foreground: 0 0% 98%;
 
-  --border: 0 0% 16%;
-  --input: 0 0% 14%;
+  --border: 0 0% 28%;
+  --input: 0 0% 22%;
   --ring: 45 100% 50%;
 }
 
