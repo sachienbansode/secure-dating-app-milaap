@@ -272,8 +272,11 @@ export default function AuthPage() {
                 )}
                 <Input
                   data-testid="input-contact"
+                  type={method === "phone" ? "tel" : "email"}
+                  inputMode={method === "phone" ? "numeric" : "email"}
+                  pattern={method === "phone" ? "[0-9]*" : undefined}
                   value={contactValue}
-                  onChange={(e) => setContactValue(e.target.value)}
+                  onChange={(e) => setContactValue(method === "phone" ? e.target.value.replace(/[^\d\s]/g, "") : e.target.value)}
                   placeholder={method === "phone" ? "98765 43210" : "name@example.com"}
                   className={`h-16 text-xl bg-white border-2 border-gray-100 rounded-2xl ${method === "phone" ? "pl-20" : "px-6"} focus-visible:ring-primary focus-visible:border-primary`}
                   autoFocus
