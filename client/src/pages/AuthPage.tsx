@@ -256,7 +256,7 @@ export default function AuthPage() {
         </h3>
 
         {error && (
-          <div className="bg-red-50 text-red-600 text-sm p-3 rounded-xl mb-4" data-testid="text-error">
+          <div className="bg-red-900/30 text-red-400 text-sm p-3 rounded-xl mb-4" data-testid="text-error">
             {error}
           </div>
         )}
@@ -266,7 +266,7 @@ export default function AuthPage() {
             <>
               <div className="relative">
                 {method === "phone" && (
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium border-r border-gray-300 pr-3 mr-2">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium border-r border-border pr-3 mr-2">
                     +91
                   </span>
                 )}
@@ -278,7 +278,7 @@ export default function AuthPage() {
                   value={contactValue}
                   onChange={(e) => setContactValue(method === "phone" ? e.target.value.replace(/[^\d\s]/g, "") : e.target.value)}
                   placeholder={method === "phone" ? "98765 43210" : "name@example.com"}
-                  className={`h-16 text-xl bg-white border-2 border-gray-100 rounded-2xl ${method === "phone" ? "pl-20" : "px-6"} focus-visible:ring-primary focus-visible:border-primary`}
+                  className={`h-16 text-xl bg-card border-2 border-border rounded-2xl ${method === "phone" ? "pl-20" : "px-6"} focus-visible:ring-primary focus-visible:border-primary`}
                   autoFocus
                   onKeyDown={(e) => e.key === "Enter" && handleRequestOtp()}
                 />
@@ -295,7 +295,7 @@ export default function AuthPage() {
           ) : (
             <>
               {otpHint && (
-                <div className="bg-blue-50 text-blue-700 text-sm p-3 rounded-xl" data-testid="text-otp-hint">
+                <div className="bg-blue-900/30 text-blue-400 text-sm p-3 rounded-xl" data-testid="text-otp-hint">
                   Demo OTP: <span className="font-bold">{otpHint}</span>
                 </div>
               )}
@@ -312,7 +312,7 @@ export default function AuthPage() {
                     maxLength={1}
                     value={otpValue[i] || ""}
                     autoFocus={i === 0}
-                    className="w-12 h-14 text-2xl text-center bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary font-mono transition-all"
+                    className="w-12 h-14 text-2xl text-center bg-card text-foreground border-2 border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary font-mono transition-all"
                     onChange={(e) => {
                       const val = e.target.value.replace(/\D/g, "");
                       if (val.length <= 1) {
@@ -347,16 +347,16 @@ export default function AuthPage() {
                   />
                 ))}
               </div>
-              <div className="flex items-start gap-3 bg-gray-50 rounded-xl p-3">
+              <div className="flex items-start gap-3 bg-muted rounded-xl p-3">
                 <input
                   type="checkbox"
                   id="terms-checkbox"
                   data-testid="checkbox-terms"
                   checked={termsAccepted}
                   onChange={(e) => setTermsAccepted(e.target.checked)}
-                  className="mt-1 w-5 h-5 rounded border-gray-300 text-primary accent-primary"
+                  className="mt-1 w-5 h-5 rounded border-border text-primary accent-primary"
                 />
-                <label htmlFor="terms-checkbox" className="text-sm text-gray-600">
+                <label htmlFor="terms-checkbox" className="text-sm text-muted-foreground">
                   I agree to the{" "}
                   <button type="button" onClick={() => setShowTerms(true)} className="text-primary font-semibold underline" data-testid="button-view-terms">
                     Terms & Conditions
@@ -384,15 +384,15 @@ export default function AuthPage() {
       </div>
       {showTerms && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full max-h-[80vh] flex flex-col">
-            <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="font-bold text-lg">Terms & Conditions</h3>
-              <button onClick={() => setShowTerms(false)} className="text-gray-400 hover:text-gray-600">✕</button>
+          <div className="bg-card rounded-2xl max-w-md w-full max-h-[80vh] flex flex-col">
+            <div className="p-4 border-b border-border flex items-center justify-between">
+              <h3 className="font-bold text-lg text-foreground">Terms & Conditions</h3>
+              <button onClick={() => setShowTerms(false)} className="text-muted-foreground hover:text-foreground">✕</button>
             </div>
-            <div className="p-4 overflow-y-auto text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
+            <div className="p-4 overflow-y-auto text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
               {termsContent || "Loading..."}
             </div>
-            <div className="p-4 border-t border-gray-100">
+            <div className="p-4 border-t border-border">
               <button
                 onClick={() => { setTermsAccepted(true); setShowTerms(false); }}
                 className="w-full h-12 rounded-xl font-bold text-white bg-brand-gradient"
@@ -406,15 +406,15 @@ export default function AuthPage() {
       )}
       {showTermsUpdate && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full max-h-[80vh] flex flex-col">
-            <div className="p-4 border-b border-gray-100">
-              <h3 className="font-bold text-lg">Updated Terms & Conditions</h3>
+          <div className="bg-card rounded-2xl max-w-md w-full max-h-[80vh] flex flex-col">
+            <div className="p-4 border-b border-border">
+              <h3 className="font-bold text-lg text-foreground">Updated Terms & Conditions</h3>
               <p className="text-xs text-muted-foreground mt-1">Our terms have been updated. Please review and accept to continue.</p>
             </div>
-            <div className="p-4 overflow-y-auto text-sm text-gray-700 whitespace-pre-wrap leading-relaxed flex-1">
+            <div className="p-4 overflow-y-auto text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed flex-1">
               {termsContent || "Loading..."}
             </div>
-            <div className="p-4 border-t border-gray-100">
+            <div className="p-4 border-t border-border">
               <button
                 onClick={handleAcceptTermsAndContinue}
                 className="w-full h-12 rounded-xl font-bold text-white bg-brand-gradient"

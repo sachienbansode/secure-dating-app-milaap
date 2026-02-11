@@ -119,7 +119,7 @@ export default function Home() {
   ].filter(Boolean).length;
 
   return (
-    <div className="h-full flex flex-col bg-neutral-50">
+    <div className="h-full flex flex-col bg-background">
       <header className="px-6 pt-6 pb-2 flex justify-between items-center z-10 shrink-0">
         <div>
           <h1 className="text-2xl font-heading font-bold text-brand-gradient" data-testid="text-discover-title">Discover</h1>
@@ -131,7 +131,7 @@ export default function Home() {
               <span>🎉</span> {festivalStatus.festival} Boost
             </div>
           )}
-          <Button variant="outline" size="sm" className={`rounded-full h-9 px-3 gap-1.5 border-gray-200 ${activeFilterCount > 0 ? "bg-primary/5 border-primary text-primary" : ""}`} onClick={() => setShowFilters(!showFilters)} data-testid="button-filters">
+          <Button variant="outline" size="sm" className={`rounded-full h-9 px-3 gap-1.5 border-border ${activeFilterCount > 0 ? "bg-primary/5 border-primary text-primary" : ""}`} onClick={() => setShowFilters(!showFilters)} data-testid="button-filters">
             <SlidersHorizontal size={14} />
             <span className="text-xs font-medium">Filters</span>
             {activeFilterCount > 0 && <span className="bg-primary text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">{activeFilterCount}</span>}
@@ -142,28 +142,28 @@ export default function Home() {
       <AnimatePresence>
         {showFilters && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden shrink-0 z-10">
-            <div className="px-6 pb-4 space-y-4 bg-white border-b border-gray-100 shadow-sm">
+            <div className="px-6 pb-4 space-y-4 bg-card border-b border-border shadow-sm">
               <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Gender</label>
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 block">Gender</label>
                 <div className="flex gap-2">
                   {(["All", "Male", "Female", "Trans", "Couple"] as const).filter(g => coupleProfilesEnabled || g !== "Couple").map((g) => (
-                    <button key={g} onClick={() => setFilters((f) => ({ ...f, gender: g }))} className={`px-4 py-2 rounded-full text-xs font-medium transition-all ${filters.gender === g ? "bg-brand-gradient text-white shadow-sm" : "bg-gray-100 text-gray-600"}`} data-testid={`filter-gender-${g.toLowerCase()}`}>
+                    <button key={g} onClick={() => setFilters((f) => ({ ...f, gender: g }))} className={`px-4 py-2 rounded-full text-xs font-medium transition-all ${filters.gender === g ? "bg-brand-gradient text-white shadow-sm" : "bg-muted text-muted-foreground"}`} data-testid={`filter-gender-${g.toLowerCase()}`}>
                       {g}
                     </button>
                   ))}
                 </div>
               </div>
               <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Age Range: {filters.ageMin} - {filters.ageMax}</label>
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 block">Age Range: {filters.ageMin} - {filters.ageMax}</label>
                 <div className="flex gap-3 items-center">
                   <input type="range" min="18" max="45" value={filters.ageMin} onChange={(e) => setFilters((f) => ({ ...f, ageMin: Math.min(parseInt(e.target.value), f.ageMax - 1) }))} className="flex-1 accent-primary" data-testid="filter-age-min" />
-                  <span className="text-xs text-gray-400">to</span>
+                  <span className="text-xs text-muted-foreground">to</span>
                   <input type="range" min="18" max="45" value={filters.ageMax} onChange={(e) => setFilters((f) => ({ ...f, ageMax: Math.max(parseInt(e.target.value), f.ageMin + 1) }))} className="flex-1 accent-primary" data-testid="filter-age-max" />
                 </div>
               </div>
               <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">City</label>
-                <select value={filters.city} onChange={(e) => setFilters((f) => ({ ...f, city: e.target.value }))} className="w-full h-10 rounded-xl border border-gray-200 px-3 bg-white text-sm" data-testid="filter-city">
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 block">City</label>
+                <select value={filters.city} onChange={(e) => setFilters((f) => ({ ...f, city: e.target.value }))} className="w-full h-10 rounded-xl border border-border px-3 bg-card text-foreground text-sm" data-testid="filter-city">
                   {CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
@@ -191,7 +191,7 @@ export default function Home() {
               })
             ) : (
               <div className="text-center p-8">
-                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4"><Info className="text-gray-400" size={32} /></div>
+                <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mx-auto mb-4"><Info className="text-muted-foreground" size={32} /></div>
                 <h3 className="text-lg font-bold mb-2" data-testid="text-no-profiles">No more profiles</h3>
                 <p className="text-muted-foreground text-sm mb-2">{activeFilterCount > 0 ? "Try changing your filters to see more profiles." : "Check back later for new matches in your area."}</p>
                 <div className="flex gap-3 justify-center mt-4">
@@ -206,7 +206,7 @@ export default function Home() {
 
       {matchPopup && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-8" onClick={() => setMatchPopup(null)}>
-          <motion.div initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-3xl p-8 text-center max-w-sm w-full shadow-2xl">
+          <motion.div initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-card rounded-3xl p-8 text-center max-w-sm w-full shadow-2xl">
             <div className="text-6xl mb-4">🎉</div>
             <h2 className="text-3xl font-heading font-bold text-brand-gradient mb-2">It's a Match!</h2>
             <p className="text-muted-foreground mb-6">You both liked each other. Start a conversation!</p>
@@ -260,7 +260,7 @@ function SwipeCard({ profile, isFront, expanded, onSwipe, onToggleExpand, appSet
       exit={{ x: x.get() < 0 ? -500 : 500, opacity: 0, transition: { duration: 0.2 } }}
       className="absolute w-full h-full max-h-[600px] max-w-sm"
     >
-      <div className="relative w-full h-full rounded-3xl overflow-hidden shadow-xl bg-white select-none">
+      <div className="relative w-full h-full rounded-3xl overflow-hidden shadow-xl bg-card select-none">
         <img src={photoUrl} alt={profile.name} className="w-full h-full object-cover pointer-events-none" />
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/80 pointer-events-none" />
 

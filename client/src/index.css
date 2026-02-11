@@ -50,74 +50,74 @@
   --color-sidebar-border: hsl(var(--sidebar-border));
   --color-sidebar-ring: hsl(var(--sidebar-ring));
   
-  /* Brand Colors - Vibrant Purple & Bright Gold */
-  --color-brand-gradient-start: hsl(265 90% 58%); /* Vibrant Purple */
-  --color-brand-gradient-end: hsl(45 100% 55%); /* Bright Gold */
+  /* Brand Colors - Jet Black + Gold & Red */
+  --color-brand-gradient-start: hsl(45 100% 50%); /* Bright Gold */
+  --color-brand-gradient-end: hsl(0 85% 55%); /* Vivid Red */
 }
 
 /* LIGHT MODE */
 :root {
-  --background: 240 20% 98%; 
-  --foreground: 230 25% 15%;
+  --background: 0 0% 6%;
+  --foreground: 40 20% 95%;
 
-  --card: 0 0% 100%;
-  --card-foreground: 230 25% 15%;
+  --card: 0 0% 10%;
+  --card-foreground: 40 20% 95%;
 
-  --popover: 0 0% 100%;
-  --popover-foreground: 230 25% 15%;
+  --popover: 0 0% 10%;
+  --popover-foreground: 40 20% 95%;
 
-  /* Vibrant Purple Primary */
-  --primary: 265 85% 58%;
-  --primary-foreground: 0 0% 100%;
+  /* Bright Gold Primary */
+  --primary: 45 100% 50%;
+  --primary-foreground: 0 0% 5%;
 
-  /* Bright Gold for Secondary/Accents */
-  --secondary: 45 95% 92%;
-  --secondary-foreground: 45 90% 35%;
+  /* Dark surface with gold accent */
+  --secondary: 0 0% 14%;
+  --secondary-foreground: 40 30% 85%;
 
-  --muted: 265 15% 94%;
-  --muted-foreground: 265 15% 45%;
+  --muted: 0 0% 14%;
+  --muted-foreground: 0 0% 55%;
 
-  --accent: 45 90% 92%;
-  --accent-foreground: 265 60% 30%;
+  --accent: 0 75% 50%;
+  --accent-foreground: 0 0% 100%;
 
-  --destructive: 0 84.2% 60.2%;
+  --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 98%;
 
-  --border: 230 20% 90%;
-  --input: 230 20% 90%;
-  --ring: 265 85% 58%;
+  --border: 0 0% 18%;
+  --input: 0 0% 16%;
+  --ring: 45 100% 50%;
   
   --radius: 1rem;
 }
 
 .dark {
-  --background: 230 25% 10%;
-  --foreground: 220 20% 98%;
+  --background: 0 0% 4%;
+  --foreground: 40 20% 95%;
 
-  --card: 230 20% 12%;
-  --card-foreground: 220 20% 98%;
+  --card: 0 0% 8%;
+  --card-foreground: 40 20% 95%;
 
-  --popover: 230 20% 12%;
-  --popover-foreground: 220 20% 98%;
+  --popover: 0 0% 8%;
+  --popover-foreground: 40 20% 95%;
 
-  --primary: 265 85% 62%;
-  --primary-foreground: 0 0% 100%;
+  --primary: 45 100% 50%;
+  --primary-foreground: 0 0% 5%;
 
-  --secondary: 265 20% 18%;
-  --secondary-foreground: 45 85% 75%;
+  --secondary: 0 0% 12%;
+  --secondary-foreground: 40 30% 85%;
 
-  --muted: 265 20% 18%;
-  --muted-foreground: 265 15% 65%;
+  --muted: 0 0% 12%;
+  --muted-foreground: 0 0% 55%;
 
-  --accent: 265 20% 20%;
-  --accent-foreground: 45 85% 75%;
+  --accent: 0 75% 50%;
+  --accent-foreground: 0 0% 100%;
 
   --destructive: 0 62.8% 30.6%;
   --destructive-foreground: 0 0% 98%;
 
-  --border: 240 15% 18%;
-  --input: 240 15% 18%;
-  --ring: 265 85% 62%;
+  --border: 0 0% 16%;
+  --input: 0 0% 14%;
+  --ring: 45 100% 50%;
 }
 
 @layer base {

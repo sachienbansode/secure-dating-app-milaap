@@ -228,8 +228,8 @@ export default function Profile() {
 
   if (isNewUser || isEditing) {
     return (
-      <div className="h-full flex flex-col bg-white">
-        <header className="px-6 pt-6 pb-4 flex items-center gap-3 border-b border-gray-100">
+      <div className="h-full flex flex-col bg-background">
+        <header className="px-6 pt-6 pb-4 flex items-center gap-3 border-b border-border">
           {!isNewUser && (
             <Button variant="ghost" size="icon" className="rounded-full" onClick={() => { setIsEditing(false); setActiveSection(null); }}>
               <ArrowLeft size={20} />
@@ -243,11 +243,11 @@ export default function Profile() {
         <div className="flex-1 overflow-y-auto p-6 space-y-6 pb-32">
           {(!activeSection || activeSection === "Edit Profile") && (
             <>
-              <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
-                <label className="text-sm font-medium text-gray-700 mb-3 block">Photos ({form.photos.length}/6)</label>
+              <div className="bg-card rounded-2xl p-4 border border-border">
+                <label className="text-sm font-medium text-foreground mb-3 block">Photos ({form.photos.length}/6)</label>
                 <div className="grid grid-cols-3 gap-3">
                   {form.photos.map((photo, index) => (
-                    <div key={index} className="relative aspect-[3/4] rounded-xl overflow-hidden bg-gray-100 border border-gray-200">
+                    <div key={index} className="relative aspect-[3/4] rounded-xl overflow-hidden bg-muted border border-border">
                       <img src={photo} alt={`Photo ${index + 1}`} className="w-full h-full object-cover" />
                       <button onClick={() => removePhoto(index)} className="absolute top-1 right-1 bg-black/50 text-white rounded-full w-6 h-6 flex items-center justify-center" data-testid={`button-remove-photo-${index}`}>
                         <X size={14} />
@@ -256,7 +256,7 @@ export default function Profile() {
                     </div>
                   ))}
                   {form.photos.length < 6 && (
-                    <button onClick={() => fileInputRef.current?.click()} disabled={uploadingPhoto} className="aspect-[3/4] rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-2 text-gray-400 hover:border-primary hover:text-primary transition-colors" data-testid="button-add-photo">
+                    <button onClick={() => fileInputRef.current?.click()} disabled={uploadingPhoto} className="aspect-[3/4] rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-2 text-muted-foreground hover:border-primary hover:text-primary transition-colors" data-testid="button-add-photo">
                       {uploadingPhoto ? <Loader2 size={24} className="animate-spin" /> : <><Plus size={24} /><span className="text-xs font-medium">Add Photo</span></>}
                     </button>
                   )}
@@ -264,20 +264,20 @@ export default function Profile() {
                 <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handlePhotoUpload} />
               </div>
 
-              <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 space-y-4">
+              <div className="bg-card rounded-2xl p-4 border border-border space-y-4">
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">{form.gender === "Couple" && appSettings?.feature_couple_profiles !== false ? "Partner 1 Name" : "Name"}</label>
+                  <label className="text-sm font-medium text-foreground mb-2 block">{form.gender === "Couple" && appSettings?.feature_couple_profiles !== false ? "Partner 1 Name" : "Name"}</label>
                   <Input data-testid="input-name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder={form.gender === "Couple" && appSettings?.feature_couple_profiles !== false ? "First partner's name" : "Your name"} className="h-12 rounded-xl" />
                 </div>
 
                 <div className="flex gap-4">
                   <div className="flex-1">
-                    <label className="text-sm font-medium text-gray-700 mb-2 block">{form.gender === "Couple" && appSettings?.feature_couple_profiles !== false ? "Partner 1 Age" : "Age"}</label>
+                    <label className="text-sm font-medium text-foreground mb-2 block">{form.gender === "Couple" && appSettings?.feature_couple_profiles !== false ? "Partner 1 Age" : "Age"}</label>
                     <Input data-testid="input-age" type="number" value={form.age} onChange={(e) => setForm((f) => ({ ...f, age: parseInt(e.target.value) || 18 }))} min={18} max={100} className="h-12 rounded-xl" />
                   </div>
                   <div className="flex-1">
-                    <label className="text-sm font-medium text-gray-700 mb-2 block">{form.gender === "Couple" && appSettings?.feature_couple_profiles !== false ? "Profile Type" : "Gender"}</label>
-                    <select data-testid="select-gender" value={form.gender} onChange={(e) => setForm((f) => ({ ...f, gender: e.target.value as "Male" | "Female" | "Trans" | "Couple" }))} className="w-full h-12 rounded-xl border border-gray-200 px-3 bg-white">
+                    <label className="text-sm font-medium text-foreground mb-2 block">{form.gender === "Couple" && appSettings?.feature_couple_profiles !== false ? "Profile Type" : "Gender"}</label>
+                    <select data-testid="select-gender" value={form.gender} onChange={(e) => setForm((f) => ({ ...f, gender: e.target.value as "Male" | "Female" | "Trans" | "Couple" }))} className="w-full h-12 rounded-xl border border-border px-3 bg-card text-foreground">
                       <option value="Male">Male</option>
                       <option value="Female">Female</option>
                       <option value="Trans">Trans</option>
@@ -304,7 +304,7 @@ export default function Profile() {
                       </div>
                       <div className="flex-1">
                         <label className="text-sm font-medium text-purple-700 mb-2 block">Partner 2 Gender</label>
-                        <select data-testid="select-partner2-gender" value={form.partner2Gender} onChange={(e) => setForm((f) => ({ ...f, partner2Gender: e.target.value }))} className="w-full h-12 rounded-xl border border-gray-200 px-3 bg-white">
+                        <select data-testid="select-partner2-gender" value={form.partner2Gender} onChange={(e) => setForm((f) => ({ ...f, partner2Gender: e.target.value }))} className="w-full h-12 rounded-xl border border-border px-3 bg-card text-foreground">
                           <option value="">Select</option>
                           <option value="Male">Male</option>
                           <option value="Female">Female</option>
@@ -316,12 +316,12 @@ export default function Profile() {
                 )}
 
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">Bio</label>
-                  <textarea data-testid="input-bio" value={form.bio} onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value }))} placeholder="Tell us about yourself..." className="w-full h-24 rounded-xl border border-gray-200 px-4 py-3 resize-none text-sm" maxLength={500} />
+                  <label className="text-sm font-medium text-foreground mb-2 block">Bio</label>
+                  <textarea data-testid="input-bio" value={form.bio} onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value }))} placeholder="Tell us about yourself..." className="w-full h-24 rounded-xl border border-border px-4 py-3 resize-none text-sm bg-background text-foreground" maxLength={500} />
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">City</label>
+                  <label className="text-sm font-medium text-foreground mb-2 block">City</label>
                   <LocationSearch
                     value={form.city}
                     onChange={(city, location) => setForm((f) => ({ ...f, city, location }))}
@@ -347,7 +347,7 @@ export default function Profile() {
                       className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all ${
                         form.interestedIn.includes(option)
                           ? "bg-brand-gradient text-white shadow-sm"
-                          : "bg-white text-gray-600 hover:bg-gray-50 border border-rose-200"
+                          : "bg-card text-muted-foreground hover:bg-muted border border-rose-800"
                       }`}
                     >
                       {option}
@@ -357,13 +357,13 @@ export default function Profile() {
                 <p className="text-xs text-rose-400 mt-2">Select one or more to see matching profiles</p>
               </div>
 
-              <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
-                <label className="text-sm font-medium text-gray-700 mb-3 block">Interests ({form.interests.length}/10)</label>
+              <div className="bg-card rounded-2xl p-4 border border-border">
+                <label className="text-sm font-medium text-foreground mb-3 block">Interests ({form.interests.length}/10)</label>
 
                 <p className="text-xs text-muted-foreground mb-1.5 font-medium uppercase tracking-wider">General</p>
                 <div className="flex flex-wrap gap-2 mb-4">
                   {INTERESTS.map((interest) => (
-                    <button key={interest} data-testid={`button-interest-${interest}`} onClick={() => toggleInterest(interest)} className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${form.interests.includes(interest) ? "bg-brand-gradient text-white shadow-sm" : "bg-white text-gray-600 hover:bg-gray-200 border border-gray-200"}`}>
+                    <button key={interest} data-testid={`button-interest-${interest}`} onClick={() => toggleInterest(interest)} className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${form.interests.includes(interest) ? "bg-brand-gradient text-white shadow-sm" : "bg-muted text-muted-foreground hover:bg-muted/80 border border-border"}`}>
                       {interest}
                     </button>
                   ))}
@@ -437,7 +437,7 @@ export default function Profile() {
                 <p className="text-xs text-amber-700">Choose your intent. Once set, it's locked for 30 days. Breaking the lock reduces your visibility.</p>
                 <div className="grid grid-cols-2 gap-2">
                   {INTENT_OPTIONS.map((intent) => (
-                    <button key={intent} data-testid={`button-intent-${intent.toLowerCase()}`} onClick={() => setForm((f) => ({ ...f, intent }))} className={`px-3 py-3 rounded-xl text-sm font-medium transition-all border ${form.intent === intent ? INTENT_COLORS[intent] + " shadow-sm" : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"}`}>
+                    <button key={intent} data-testid={`button-intent-${intent.toLowerCase()}`} onClick={() => setForm((f) => ({ ...f, intent }))} className={`px-3 py-3 rounded-xl text-sm font-medium transition-all border ${form.intent === intent ? INTENT_COLORS[intent] + " shadow-sm" : "bg-card border-border text-muted-foreground hover:bg-muted"}`}>
                       <span className="text-lg mr-1">{INTENT_ICONS[intent]}</span> {intent}
                     </button>
                   ))}
@@ -459,7 +459,7 @@ export default function Profile() {
                 {GREEN_FLAG_PROMPTS.map((prompt, i) => (
                   <div key={i}>
                     <label className="text-xs font-medium text-green-700 mb-1 block">"{prompt}"</label>
-                    <textarea data-testid={`input-green-flag-${i}`} value={form.greenFlagStories[i]?.answer || ""} onChange={(e) => updateGreenFlagStory(i, e.target.value)} placeholder="Your honest answer..." className="w-full h-16 rounded-lg border border-green-200 px-3 py-2 resize-none text-sm bg-white" maxLength={200} />
+                    <textarea data-testid={`input-green-flag-${i}`} value={form.greenFlagStories[i]?.answer || ""} onChange={(e) => updateGreenFlagStory(i, e.target.value)} placeholder="Your honest answer..." className="w-full h-16 rounded-lg border border-green-200 px-3 py-2 resize-none text-sm bg-card text-foreground" maxLength={200} />
                   </div>
                 ))}
               </div>
@@ -494,8 +494,8 @@ export default function Profile() {
                 {(form.aiPersonaEnabled || form.aiProxyEnabled) && (
                   <div className="space-y-3 pl-1 pt-2 border-t border-purple-100">
                     <div>
-                      <label className="text-xs font-medium text-gray-600 mb-1 block">Tone</label>
-                      <select value={form.aiTone} onChange={(e) => setForm((f) => ({ ...f, aiTone: e.target.value }))} className="w-full h-10 rounded-lg border border-gray-200 px-3 bg-white text-sm" data-testid="select-ai-tone">
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Tone</label>
+                      <select value={form.aiTone} onChange={(e) => setForm((f) => ({ ...f, aiTone: e.target.value }))} className="w-full h-10 rounded-lg border border-border px-3 bg-card text-foreground text-sm" data-testid="select-ai-tone">
                         <option value="Friendly">Friendly</option>
                         <option value="Witty">Witty</option>
                         <option value="Polite">Polite</option>
@@ -503,26 +503,26 @@ export default function Profile() {
                       </select>
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-gray-600 mb-1 block">Language</label>
-                      <select value={form.aiLanguage} onChange={(e) => setForm((f) => ({ ...f, aiLanguage: e.target.value }))} className="w-full h-10 rounded-lg border border-gray-200 px-3 bg-white text-sm" data-testid="select-ai-language">
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Language</label>
+                      <select value={form.aiLanguage} onChange={(e) => setForm((f) => ({ ...f, aiLanguage: e.target.value }))} className="w-full h-10 rounded-lg border border-border px-3 bg-card text-foreground text-sm" data-testid="select-ai-language">
                         <option value="English">English</option>
                         <option value="Hindi">Hindi</option>
                         <option value="Hinglish">Hinglish</option>
                       </select>
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-gray-600 mb-1 block">Chat Pace</label>
-                      <select value={form.aiChatPace} onChange={(e) => setForm((f) => ({ ...f, aiChatPace: e.target.value as "Slow" | "Normal" | "Fast" }))} className="w-full h-10 rounded-lg border border-gray-200 px-3 bg-white text-sm" data-testid="select-ai-pace">
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Chat Pace</label>
+                      <select value={form.aiChatPace} onChange={(e) => setForm((f) => ({ ...f, aiChatPace: e.target.value as "Slow" | "Normal" | "Fast" }))} className="w-full h-10 rounded-lg border border-border px-3 bg-card text-foreground text-sm" data-testid="select-ai-pace">
                         <option value="Slow">Slow (Thoughtful)</option>
                         <option value="Normal">Normal</option>
                         <option value="Fast">Fast (Snappy)</option>
                       </select>
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-gray-600 mb-1 block">AI Boundaries (topics AI won't discuss)</label>
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">AI Boundaries (topics AI won't discuss)</label>
                       <div className="flex flex-wrap gap-2">
                         {AI_BOUNDARIES.map((b) => (
-                          <button key={b} onClick={() => toggleBoundary(b)} className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${form.aiBoundaries.includes(b) ? "bg-red-100 text-red-700 border border-red-200" : "bg-gray-100 text-gray-600 border border-gray-200"}`} data-testid={`button-boundary-${b.toLowerCase().replace(/\s/g, "-")}`}>
+                          <button key={b} onClick={() => toggleBoundary(b)} className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${form.aiBoundaries.includes(b) ? "bg-red-900/30 text-red-400 border border-red-800" : "bg-muted text-muted-foreground border border-border"}`} data-testid={`button-boundary-${b.toLowerCase().replace(/\s/g, "-")}`}>
                             {b}
                           </button>
                         ))}
@@ -552,14 +552,14 @@ export default function Profile() {
                 <p className="text-xs text-orange-700">Select festivals you celebrate. During festival seasons, you'll be matched with people who celebrate the same!</p>
                 <div className="flex flex-wrap gap-2">
                   {FESTIVAL_LIST.map((f) => (
-                    <button key={f} onClick={() => toggleFestival(f)} className={`px-3 py-2 rounded-full text-xs font-medium transition-all ${form.festivalPrefs.includes(f) ? "bg-orange-200 text-orange-800 border border-orange-300" : "bg-white text-gray-600 border border-gray-200"}`} data-testid={`button-festival-${f.toLowerCase().replace(/\s/g, "-")}`}>
+                    <button key={f} onClick={() => toggleFestival(f)} className={`px-3 py-2 rounded-full text-xs font-medium transition-all ${form.festivalPrefs.includes(f) ? "bg-orange-200 text-orange-800 border border-orange-300" : "bg-card text-muted-foreground border border-border"}`} data-testid={`button-festival-${f.toLowerCase().replace(/\s/g, "-")}`}>
                       {f}
                     </button>
                   ))}
                 </div>
                 <div>
                   <label className="text-xs font-medium text-orange-700 mb-1 block">Hometown (for festival proximity matching)</label>
-                  <select value={form.hometownForFestivals} onChange={(e) => setForm((f) => ({ ...f, hometownForFestivals: e.target.value }))} className="w-full h-10 rounded-lg border border-orange-200 px-3 bg-white text-sm" data-testid="select-hometown">
+                  <select value={form.hometownForFestivals} onChange={(e) => setForm((f) => ({ ...f, hometownForFestivals: e.target.value }))} className="w-full h-10 rounded-lg border border-orange-200 px-3 bg-card text-foreground text-sm" data-testid="select-hometown">
                     <option value="">Select hometown</option>
                     {CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
                   </select>
@@ -577,7 +577,7 @@ export default function Profile() {
                     {DATE_READINESS_OPTIONS.map((opt) => {
                       const Icon = DATE_READINESS_ICONS[opt];
                       return (
-                        <button key={opt} data-testid={`button-readiness-${opt.toLowerCase().replace(/\s/g, "-")}`} onClick={() => setForm((f) => ({ ...f, dateReadiness: opt }))} className={`px-3 py-3 rounded-xl text-xs font-medium transition-all border flex flex-col items-center gap-1.5 ${form.dateReadiness === opt ? DATE_READINESS_COLORS[opt] + " shadow-sm" : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"}`}>
+                        <button key={opt} data-testid={`button-readiness-${opt.toLowerCase().replace(/\s/g, "-")}`} onClick={() => setForm((f) => ({ ...f, dateReadiness: opt }))} className={`px-3 py-3 rounded-xl text-xs font-medium transition-all border flex flex-col items-center gap-1.5 ${form.dateReadiness === opt ? DATE_READINESS_COLORS[opt] + " shadow-sm" : "bg-card border-border text-muted-foreground hover:bg-muted"}`}>
                           <Icon size={18} />
                           {opt}
                         </button>
@@ -587,7 +587,7 @@ export default function Profile() {
                 </div>
               )}
 
-              <div className="bg-gray-50 rounded-2xl p-4 space-y-3 border border-gray-200">
+              <div className="bg-card rounded-2xl p-4 space-y-3 border border-border">
                 <div className="flex items-center justify-between">
                   <div>
                     <h4 className="font-semibold text-sm flex items-center gap-1">
@@ -612,7 +612,7 @@ export default function Profile() {
         </div>
 
         {(
-          <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 max-w-lg mx-auto">
+          <div className="fixed bottom-0 left-0 right-0 p-4 bg-card border-t border-border max-w-lg mx-auto">
             <Button data-testid="button-save-profile" className="w-full h-14 rounded-2xl font-bold text-lg bg-brand-gradient shadow-lg" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || !form.name.trim()}>
               {saveMutation.isPending ? "Saving..." : <>{isNewUser ? "Create Profile" : "Save Changes"} <Save className="ml-2" size={18} /></>}
             </Button>
@@ -624,7 +624,7 @@ export default function Profile() {
 
         {intentWarning && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-6">
-            <div className="bg-white rounded-3xl p-6 max-w-sm w-full space-y-4">
+            <div className="bg-card rounded-3xl p-6 max-w-sm w-full space-y-4">
               <div className="text-center">
                 <Lock size={32} className="mx-auto text-amber-500 mb-2" />
                 <h3 className="text-lg font-bold">Intent Lock Warning</h3>
@@ -661,9 +661,9 @@ export default function Profile() {
   };
 
   return (
-    <div className="h-full flex flex-col bg-neutral-50">
+    <div className="h-full flex flex-col bg-background">
       <div className="flex-1 overflow-y-auto">
-        <div className="bg-white pt-10 pb-6 px-6 rounded-b-[2rem] shadow-sm relative overflow-hidden">
+        <div className="bg-card pt-10 pb-6 px-6 rounded-b-[2rem] shadow-sm relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-24 bg-brand-gradient opacity-10" />
           <div className="relative flex flex-col items-center">
             <div className="relative mb-4 group">
@@ -671,22 +671,22 @@ export default function Profile() {
                 <AvatarImage src={currentProfile.photos?.[0] || "/profiles/generic_indian_1.jpg"} className="object-cover" />
                 <AvatarFallback>{currentProfile.name?.[0] || "?"}</AvatarFallback>
               </Avatar>
-              <div className="absolute bottom-1 right-1 bg-white p-2 rounded-full shadow-md border border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => { setIsEditing(true); setActiveSection("Edit Profile"); }}>
+              <div className="absolute bottom-1 right-1 bg-card p-2 rounded-full shadow-md border border-border cursor-pointer hover:bg-muted transition-colors" onClick={() => { setIsEditing(true); setActiveSection("Edit Profile"); }}>
                 <Edit size={16} className="text-primary" />
               </div>
             </div>
-            <h2 className="text-2xl font-heading font-bold text-gray-900" data-testid="text-profile-name">{currentProfile.name}, {currentProfile.age}</h2>
+            <h2 className="text-2xl font-heading font-bold text-foreground" data-testid="text-profile-name">{currentProfile.name}, {currentProfile.age}</h2>
             <p className="text-muted-foreground text-sm mb-1">{currentProfile.gender} • {currentProfile.city}</p>
 
             {currentProfile.intent && (
-              <div className={`mt-1 px-3 py-1 rounded-full text-xs font-bold border ${INTENT_COLORS[currentProfile.intent] || "bg-gray-50 border-gray-200 text-gray-700"}`} data-testid="text-intent-badge">
+              <div className={`mt-1 px-3 py-1 rounded-full text-xs font-bold border ${INTENT_COLORS[currentProfile.intent] || "bg-muted border-border text-muted-foreground"}`} data-testid="text-intent-badge">
                 {INTENT_ICONS[currentProfile.intent]} {currentProfile.intent}
                 {currentProfile.intentLockedAt && <Lock size={10} className="inline ml-1" />}
               </div>
             )}
 
             {currentProfile.dateReadiness && appSettings?.feature_date_readiness && (
-              <div className={`mt-1 px-3 py-1 rounded-full text-xs font-bold border flex items-center gap-1 ${DATE_READINESS_COLORS[currentProfile.dateReadiness] || "bg-gray-50 border-gray-200 text-gray-600"}`} data-testid="text-readiness-badge">
+              <div className={`mt-1 px-3 py-1 rounded-full text-xs font-bold border flex items-center gap-1 ${DATE_READINESS_COLORS[currentProfile.dateReadiness] || "bg-muted border-border text-muted-foreground"}`} data-testid="text-readiness-badge">
                 {(() => { const Icon = DATE_READINESS_ICONS[currentProfile.dateReadiness] || MessageCircle; return <Icon size={12} />; })()}
                 {currentProfile.dateReadiness}
               </div>
@@ -695,12 +695,12 @@ export default function Profile() {
             {currentProfile.photos && currentProfile.photos.length > 1 && (
               <div className="flex gap-2 mt-3 mb-3">
                 {currentProfile.photos.slice(0, 4).map((photo, i) => (
-                  <div key={i} className="w-14 h-14 rounded-xl overflow-hidden border border-gray-100">
+                  <div key={i} className="w-14 h-14 rounded-xl overflow-hidden border border-border">
                     <img src={photo} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
                   </div>
                 ))}
                 {currentProfile.photos.length > 4 && (
-                  <div className="w-14 h-14 rounded-xl bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500">+{currentProfile.photos.length - 4}</div>
+                  <div className="w-14 h-14 rounded-xl bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground">+{currentProfile.photos.length - 4}</div>
                 )}
               </div>
             )}
@@ -738,7 +738,7 @@ export default function Profile() {
                 story.answer && (
                   <div key={i} className="bg-green-50 p-3 rounded-xl border border-green-100">
                     <p className="text-xs font-medium text-green-700">"{story.prompt}"</p>
-                    <p className="text-sm text-gray-800 mt-1">{story.answer}</p>
+                    <p className="text-sm text-foreground mt-1">{story.answer}</p>
                   </div>
                 )
               ))}
@@ -748,7 +748,7 @@ export default function Profile() {
 
         {currentProfile.bio && (
           <div className="px-6 pt-4">
-            <p className="text-sm text-muted-foreground bg-white p-4 rounded-2xl border border-gray-100">{currentProfile.bio}</p>
+            <p className="text-sm text-muted-foreground bg-card p-4 rounded-2xl border border-border">{currentProfile.bio}</p>
           </div>
         )}
 
@@ -757,7 +757,7 @@ export default function Profile() {
             <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Interests</h3>
             <div className="flex flex-wrap gap-2">
               {currentProfile.interests.map((interest) => (
-                <span key={interest} className="px-3 py-1.5 bg-white rounded-full text-xs font-medium border border-gray-100 shadow-sm">{interest}</span>
+                <span key={interest} className="px-3 py-1.5 bg-card rounded-full text-xs font-medium border border-border shadow-sm">{interest}</span>
               ))}
             </div>
           </div>
@@ -779,7 +779,7 @@ export default function Profile() {
         <div className="p-6 space-y-6">
           <section>
             <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3 px-1">Interested In</h3>
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+            <div className="bg-card rounded-2xl shadow-sm border border-border p-4">
               <div className="flex flex-wrap gap-2">
                 {(["Male", "Female", "Trans", "Couple"] as const).filter(o => appSettings?.feature_couple_profiles !== false || o !== "Couple").map((option) => (
                   <button
@@ -816,21 +816,21 @@ export default function Profile() {
                     className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all ${
                       localInterestedIn.includes(option)
                         ? "bg-brand-gradient text-white shadow-sm"
-                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                        : "bg-muted text-muted-foreground hover:bg-muted/80"
                     } ${savingInterest ? "opacity-60" : ""}`}
                   >
                     {option}
                   </button>
                 ))}
               </div>
-              <p className="text-xs text-gray-400 mt-2">Profiles matching your selection will appear in Discover</p>
+              <p className="text-xs text-muted-foreground mt-2">Profiles matching your selection will appear in Discover</p>
             </div>
           </section>
 
           <section>
             <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3 px-1">Settings</h3>
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 border-b border-gray-50" onClick={() => { setIsEditing(true); setActiveSection("Edit Profile"); }}>
+            <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
+              <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-muted border-b border-border" onClick={() => { setIsEditing(true); setActiveSection("Edit Profile"); }}>
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600"><Edit size={16} /></div>
                   <div>
@@ -838,9 +838,9 @@ export default function Profile() {
                     <p className="text-xs text-muted-foreground">Photos, bio, interests, intent & stories</p>
                   </div>
                 </div>
-                <ChevronRight size={18} className="text-gray-300" />
+                <ChevronRight size={18} className="text-muted-foreground" />
               </div>
-              <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 border-b border-gray-50" onClick={() => { setIsEditing(true); setActiveSection("AI & Settings"); }}>
+              <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-muted border-b border-border" onClick={() => { setIsEditing(true); setActiveSection("AI & Settings"); }}>
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600"><Sparkles size={16} /></div>
                   <div>
@@ -848,7 +848,7 @@ export default function Profile() {
                     <p className="text-xs text-muted-foreground">Proxy mode, family mode, festivals, safety</p>
                   </div>
                 </div>
-                <ChevronRight size={18} className="text-gray-300" />
+                <ChevronRight size={18} className="text-muted-foreground" />
               </div>
             </div>
           </section>
@@ -864,8 +864,8 @@ export default function Profile() {
 
           <section>
             <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3 px-1">Account</h3>
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 border-b border-gray-50">
+            <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
+              <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-muted border-b border-border">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600"><Shield size={16} /></div>
                   <div>
@@ -873,9 +873,9 @@ export default function Profile() {
                     <p className="text-xs text-muted-foreground">Manage visibility & blocks</p>
                   </div>
                 </div>
-                <ChevronRight size={18} className="text-gray-300" />
+                <ChevronRight size={18} className="text-muted-foreground" />
               </div>
-              <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50" onClick={handleLogout} data-testid="button-logout">
+              <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-muted" onClick={handleLogout} data-testid="button-logout">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-600"><LogOut size={16} /></div>
                   <div className="text-red-600 font-medium text-sm">Log Out</div>
@@ -917,7 +917,7 @@ function PhotoVerifyCard() {
   const score = result?.score ?? profile.photoAuthenticityScore;
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4" data-testid="card-photo-verify">
+    <div className="bg-card rounded-2xl shadow-sm border border-border p-4" data-testid="card-photo-verify">
       <div className="flex items-center gap-3 mb-3">
         <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center"><ShieldCheck size={20} className="text-blue-600" /></div>
         <div>
@@ -929,10 +929,10 @@ function PhotoVerifyCard() {
       {score !== null && score !== undefined && (
         <div className="mb-3">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-xs font-medium text-gray-600">Authenticity Score</span>
+            <span className="text-xs font-medium text-muted-foreground">Authenticity Score</span>
             <span className={`text-sm font-bold ${(score ?? 0) >= 70 ? "text-green-600" : (score ?? 0) >= 40 ? "text-amber-600" : "text-red-600"}`}>{score}/100</span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
+          <div className="w-full bg-muted rounded-full h-2">
             <div className={`h-2 rounded-full transition-all ${(score ?? 0) >= 70 ? "bg-green-500" : (score ?? 0) >= 40 ? "bg-amber-500" : "bg-red-500"}`} style={{ width: `${score}%` }} />
           </div>
         </div>

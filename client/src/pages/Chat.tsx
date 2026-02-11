@@ -261,19 +261,19 @@ export default function Chat() {
   };
 
   return (
-    <div className={`h-full flex flex-col bg-neutral-50 ${noScreenshotActive ? "select-none" : ""}`}>
-      <header className="bg-white px-4 py-3 flex items-center justify-between border-b border-gray-100 shadow-sm z-10">
+    <div className={`h-full flex flex-col bg-background ${noScreenshotActive ? "select-none" : ""}`}>
+      <header className="bg-card px-4 py-3 flex items-center justify-between border-b border-border shadow-sm z-10">
         <div className="flex items-center gap-3">
           <Link href="/matches">
             <Button variant="ghost" size="icon" className="rounded-full w-8 h-8 -ml-2" data-testid="button-back"><ArrowLeft size={20} /></Button>
           </Link>
           <div className="flex items-center gap-3">
             <div className="relative">
-              <Avatar className="w-10 h-10 border border-gray-100">
+              <Avatar className="w-10 h-10 border border-border">
                 <AvatarImage src={profile?.photos?.[0] || "/profiles/generic_indian_1.jpg"} />
                 <AvatarFallback>{profile?.name?.[0] || "?"}</AvatarFallback>
               </Avatar>
-              <div className={`absolute bottom-0 right-0 w-3 h-3 ${otherIsOnline ? "bg-green-500 animate-pulse" : "bg-gray-400"} border-2 border-white rounded-full`}></div>
+              <div className={`absolute bottom-0 right-0 w-3 h-3 ${otherIsOnline ? "bg-green-500 animate-pulse" : "bg-muted-foreground"} border-2 border-card rounded-full`}></div>
             </div>
             <div>
               <div className="flex items-center gap-1.5">
@@ -284,11 +284,11 @@ export default function Chat() {
                 <div className={`w-2 h-2 rounded-full ${getRespectColor(otherRespectScore)}`} title={`Respect: ${otherRespectScore}`} />
               </div>
               <div className="flex items-center gap-1.5">
-                <p className={`text-xs font-medium ${otherIsOnline ? "text-green-600" : "text-gray-400"}`}>
+                <p className={`text-xs font-medium ${otherIsOnline ? "text-green-600" : "text-muted-foreground"}`}>
                   {otherIsOnline ? "Online now" : "Offline"}
                 </p>
                 {profile?.intent && (
-                  <span className="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded-full text-gray-500 font-medium">{profile.intent}</span>
+                  <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded-full text-muted-foreground font-medium">{profile.intent}</span>
                 )}
                 {appSettings?.feature_date_readiness && (
                   <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium flex items-center gap-0.5 ${readinessConfig.color}`} data-testid="badge-date-readiness">
@@ -311,15 +311,15 @@ export default function Chat() {
             <MoreVertical size={18} />
           </Button>
           {showMenu && (
-            <div className="absolute top-full right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden z-30 w-52">
-              <button className="w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2" onClick={() => { setShowReport(true); setShowMenu(false); }} data-testid="button-report-user">
+            <div className="absolute top-full right-0 mt-1 bg-card border border-border rounded-xl shadow-lg overflow-hidden z-30 w-52">
+              <button className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-red-900/20 flex items-center gap-2" onClick={() => { setShowReport(true); setShowMenu(false); }} data-testid="button-report-user">
                 <Flag size={14} /> Report User
               </button>
-              <button className="w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 border-t border-gray-100" onClick={() => { if (otherUserId) blockMutation.mutate(otherUserId); }} data-testid="button-block-user">
+              <button className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-red-900/20 flex items-center gap-2 border-t border-border" onClick={() => { if (otherUserId) blockMutation.mutate(otherUserId); }} data-testid="button-block-user">
                 <Ban size={14} /> Block User
               </button>
               {appSettings?.feature_no_phone_number && !phoneUnlockStatus?.unlocked && (
-                <button className="w-full text-left px-4 py-3 text-sm text-blue-600 hover:bg-blue-50 flex items-center gap-2 border-t border-gray-100" onClick={() => { setShowPhoneUnlock(true); setShowMenu(false); }} data-testid="button-phone-unlock">
+                <button className="w-full text-left px-4 py-3 text-sm text-blue-400 hover:bg-blue-900/20 flex items-center gap-2 border-t border-border" onClick={() => { setShowPhoneUnlock(true); setShowMenu(false); }} data-testid="button-phone-unlock">
                   <Unlock size={14} /> Request Contact Sharing
                 </button>
               )}
@@ -354,7 +354,7 @@ export default function Chat() {
           <Unlock size={14} />
           <span className="font-medium flex-1">{profile?.name} wants to share contact details.</span>
           <button className="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold" onClick={() => phoneUnlockRespondMutation.mutate(true)} data-testid="button-approve-unlock">Approve</button>
-          <button className="bg-gray-200 text-gray-600 px-3 py-1 rounded-full text-xs font-bold ml-1" onClick={() => phoneUnlockRespondMutation.mutate(false)} data-testid="button-decline-unlock">Decline</button>
+          <button className="bg-muted text-muted-foreground px-3 py-1 rounded-full text-xs font-bold ml-1" onClick={() => phoneUnlockRespondMutation.mutate(false)} data-testid="button-decline-unlock">Decline</button>
         </div>
       )}
 
@@ -367,7 +367,7 @@ export default function Chat() {
 
       <div className="flex-1 overflow-y-auto p-4 space-y-1" style={noScreenshotActive ? { WebkitUserSelect: "none", userSelect: "none" } : undefined}>
         <div className="flex justify-center my-4">
-          <span className="text-[10px] font-medium text-gray-400 bg-gray-100 px-3 py-1 rounded-full uppercase tracking-wider">Start of conversation</span>
+          <span className="text-[10px] font-medium text-muted-foreground bg-muted px-3 py-1 rounded-full uppercase tracking-wider">Start of conversation</span>
         </div>
 
         {loadingMessages ? (
@@ -385,7 +385,7 @@ export default function Chat() {
             if (isSystem) {
               return (
                 <div key={msg.id} className="flex justify-center my-3" data-testid={`message-system-${msg.id}`}>
-                  <span className="text-[11px] font-medium text-gray-500 bg-gray-100 px-4 py-2 rounded-full max-w-[80%] text-center">{msg.content}</span>
+                  <span className="text-[11px] font-medium text-muted-foreground bg-muted px-4 py-2 rounded-full max-w-[80%] text-center">{msg.content}</span>
                 </div>
               );
             }
@@ -398,7 +398,7 @@ export default function Chat() {
                 className={`flex flex-col ${isMe ? "items-end" : "items-start"} ${isNextSame ? "mb-1" : "mb-4"}`}
                 data-testid={`message-${msg.id}`}
               >
-                <div className={`max-w-[75%] px-4 py-3 shadow-sm text-sm relative group ${isMe ? "bg-brand-gradient text-white rounded-2xl rounded-tr-sm" : "bg-white text-gray-800 rounded-2xl rounded-tl-sm border border-gray-100"}`}>
+                <div className={`max-w-[75%] px-4 py-3 shadow-sm text-sm relative group ${isMe ? "bg-brand-gradient text-white rounded-2xl rounded-tr-sm" : "bg-card text-foreground rounded-2xl rounded-tl-sm border border-border"}`}>
                   {msg.content}
                   {msg.isAiProxy && (
                     <span className="inline-flex items-center gap-0.5 ml-1 opacity-70">
@@ -415,7 +415,7 @@ export default function Chat() {
                   )}
                 </div>
                 <div className="flex items-center gap-1 mt-1 px-1">
-                  <span className="text-[10px] text-gray-400">
+                  <span className="text-[10px] text-muted-foreground">
                     {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                   </span>
                   {msg.isAiProxy && (
@@ -430,19 +430,19 @@ export default function Chat() {
         <AnimatePresence>
           {aiMode && (
             <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="sticky bottom-2 mx-auto w-full max-w-[95%] z-20">
-              <div className="bg-white/80 backdrop-blur-md border border-purple-200 rounded-2xl p-4 shadow-lg ring-1 ring-purple-100">
+              <div className="bg-card/90 backdrop-blur-md border border-purple-800 rounded-2xl p-4 shadow-lg ring-1 ring-purple-900">
                 <div className="flex items-center gap-2 mb-2">
                   <div className="bg-purple-100 p-1.5 rounded-lg"><Sparkles size={14} className="text-purple-600" /></div>
                   <span className="text-xs font-bold uppercase tracking-wider text-purple-600">AI Assistant</span>
                 </div>
-                <p className="text-sm text-gray-800 mb-4 font-medium leading-relaxed">
+                <p className="text-sm text-foreground mb-4 font-medium leading-relaxed">
                   {aiSuggestMutation.isPending ? "Crafting the perfect message for you..." : "Let me suggest something thoughtful to say..."}
                 </p>
                 <div className="flex gap-3">
                   <Button data-testid="button-use-ai-suggestion" className="h-10 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-xl flex-1 shadow-purple-200 shadow-md" onClick={handleAiSuggest} disabled={aiSuggestMutation.isPending}>
                     {aiSuggestMutation.isPending ? <><Loader2 size={16} className="animate-spin mr-2" /> Generating...</> : "Generate Suggestion"}
                   </Button>
-                  <Button variant="ghost" className="h-10 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-xl px-4" onClick={() => setAiMode(false)}>Dismiss</Button>
+                  <Button variant="ghost" className="h-10 text-muted-foreground hover:text-foreground hover:bg-muted rounded-xl px-4" onClick={() => setAiMode(false)}>Dismiss</Button>
                 </div>
                 {aiSuggestMutation.isError && <p className="text-xs text-red-500 mt-2">Could not generate suggestion. Try again later.</p>}
               </div>
@@ -453,15 +453,15 @@ export default function Chat() {
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="bg-white p-3 border-t border-gray-100 flex items-end gap-2 pb-6 md:pb-3">
-        <Button variant="ghost" size="icon" className="text-muted-foreground hover:bg-gray-100 rounded-full h-10 w-10 shrink-0"><Paperclip size={20} /></Button>
-        <div className="flex-1 bg-gray-50 border border-gray-200 rounded-[1.5rem] flex items-end min-h-[44px] focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-all">
+      <div className="bg-card p-3 border-t border-border flex items-end gap-2 pb-6 md:pb-3">
+        <Button variant="ghost" size="icon" className="text-muted-foreground hover:bg-muted rounded-full h-10 w-10 shrink-0"><Paperclip size={20} /></Button>
+        <div className="flex-1 bg-background border border-border rounded-[1.5rem] flex items-end min-h-[44px] focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-all">
           <Input data-testid="input-message" value={input} onChange={(e) => setInput(e.target.value)} placeholder={isChatCooledDown ? "Chat paused..." : "Type a message..."} className="border-0 bg-transparent focus-visible:ring-0 px-4 py-3 min-h-[44px] max-h-32 resize-none" onKeyDown={(e) => e.key === "Enter" && handleSend()} disabled={isChatCooledDown} />
-          <Button variant="ghost" size="icon" className={`mr-1 mb-1 h-8 w-8 rounded-full transition-colors ${aiMode ? "bg-purple-100 text-purple-600" : "text-gray-400 hover:text-purple-600"}`} onClick={() => setAiMode(!aiMode)} data-testid="button-ai-toggle" disabled={isChatCooledDown}>
+          <Button variant="ghost" size="icon" className={`mr-1 mb-1 h-8 w-8 rounded-full transition-colors ${aiMode ? "bg-purple-900/30 text-purple-400" : "text-muted-foreground hover:text-purple-400"}`} onClick={() => setAiMode(!aiMode)} data-testid="button-ai-toggle" disabled={isChatCooledDown}>
             <Sparkles size={18} />
           </Button>
         </div>
-        <Button data-testid="button-send" size="icon" className={`h-11 w-11 rounded-full shadow-md shrink-0 transition-transform active:scale-95 ${input.trim() && !isChatCooledDown ? "bg-brand-gradient" : "bg-gray-200 text-gray-400"}`} onClick={handleSend} disabled={!input.trim() || sendMutation.isPending || isChatCooledDown}>
+        <Button data-testid="button-send" size="icon" className={`h-11 w-11 rounded-full shadow-md shrink-0 transition-transform active:scale-95 ${input.trim() && !isChatCooledDown ? "bg-brand-gradient" : "bg-muted text-muted-foreground"}`} onClick={handleSend} disabled={!input.trim() || sendMutation.isPending || isChatCooledDown}>
           <Send size={20} className={input.trim() ? "ml-0.5" : ""} />
         </Button>
       </div>
@@ -502,11 +502,11 @@ export default function Chat() {
       <AnimatePresence>
         {showPhoneUnlock && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center" onClick={(e) => { if (e.target === e.currentTarget) setShowPhoneUnlock(false); }}>
-            <motion.div initial={{ y: 300 }} animate={{ y: 0 }} exit={{ y: 300 }} className="bg-white w-full max-w-lg rounded-t-3xl p-6 space-y-4">
-              <h3 className="text-lg font-heading font-bold text-center">Request Contact Sharing</h3>
-              <div className="bg-blue-50 rounded-xl p-4 text-sm text-blue-800 space-y-2">
+            <motion.div initial={{ y: 300 }} animate={{ y: 0 }} exit={{ y: 300 }} className="bg-card w-full max-w-lg rounded-t-3xl p-6 space-y-4">
+              <h3 className="text-lg font-heading font-bold text-center text-foreground">Request Contact Sharing</h3>
+              <div className="bg-blue-900/20 rounded-xl p-4 text-sm text-blue-400 space-y-2">
                 <p className="font-medium">How it works:</p>
-                <ul className="list-disc pl-5 text-xs space-y-1 text-blue-700">
+                <ul className="list-disc pl-5 text-xs space-y-1 text-blue-300">
                   <li>Both users must agree to share contact info</li>
                   <li>A 24-hour cool-off period applies after mutual consent</li>
                   <li>Only then can you share phone numbers in chat</li>
@@ -532,15 +532,15 @@ export default function Chat() {
       <AnimatePresence>
         {showReport && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center" onClick={(e) => { if (e.target === e.currentTarget) setShowReport(false); }}>
-            <motion.div initial={{ y: 300 }} animate={{ y: 0 }} exit={{ y: 300 }} className="bg-white w-full max-w-lg rounded-t-3xl p-6 space-y-4">
-              <h3 className="text-lg font-heading font-bold text-center">Report & Block User</h3>
+            <motion.div initial={{ y: 300 }} animate={{ y: 0 }} exit={{ y: 300 }} className="bg-card w-full max-w-lg rounded-t-3xl p-6 space-y-4">
+              <h3 className="text-lg font-heading font-bold text-center text-foreground">Report & Block User</h3>
               <p className="text-sm text-muted-foreground text-center">Why are you reporting {profile?.name || "this user"}?</p>
               {appSettings?.feature_enhanced_report && (
-                <p className="text-xs text-blue-600 text-center bg-blue-50 px-3 py-2 rounded-lg">AI will analyze the chat history for evidence-based review.</p>
+                <p className="text-xs text-blue-400 text-center bg-blue-900/20 px-3 py-2 rounded-lg">AI will analyze the chat history for evidence-based review.</p>
               )}
               <div className="space-y-2">
                 {["Inappropriate behavior", "Fake profile", "Harassment", "Spam", "Threatening messages", "Other"].map((reason) => (
-                  <button key={reason} onClick={() => setReportReason(reason)} className={`w-full text-left px-4 py-3 rounded-xl text-sm font-medium transition-all ${reportReason === reason ? "bg-red-50 border-red-200 border text-red-700" : "bg-gray-50 border border-gray-100 text-gray-700 hover:bg-gray-100"}`} data-testid={`button-report-reason-${reason.toLowerCase().replace(/\s/g, "-")}`}>
+                  <button key={reason} onClick={() => setReportReason(reason)} className={`w-full text-left px-4 py-3 rounded-xl text-sm font-medium transition-all ${reportReason === reason ? "bg-red-900/30 border-red-800 border text-red-400" : "bg-muted border border-border text-foreground hover:bg-muted/80"}`} data-testid={`button-report-reason-${reason.toLowerCase().replace(/\s/g, "-")}`}>
                     {reason}
                   </button>
                 ))}

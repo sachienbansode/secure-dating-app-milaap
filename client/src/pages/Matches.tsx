@@ -54,7 +54,7 @@ export default function Matches() {
   );
 
   return (
-    <div className="h-full flex flex-col bg-white">
+    <div className="h-full flex flex-col bg-background">
       <header className="px-6 pt-6 pb-3 shrink-0">
         <h1 className="text-2xl font-heading font-bold mb-3" data-testid="text-matches-title">Messages</h1>
         <div className="relative">
@@ -62,7 +62,7 @@ export default function Matches() {
           <Input
             data-testid="input-search-matches"
             placeholder="Search matches..."
-            className="pl-9 bg-gray-50 border-gray-100 rounded-xl h-10"
+            className="pl-9 bg-card border-border rounded-xl h-10"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -90,7 +90,7 @@ export default function Matches() {
                 {matchesData.map((match) => (
                   <Link key={match.id} href={`/chat/${match.id}`}>
                     <div className="flex flex-col items-center gap-1.5 shrink-0 cursor-pointer" data-testid={`card-match-${match.id}`}>
-                      <div className="w-16 h-20 rounded-2xl overflow-hidden relative shadow-md border-2 border-white ring-2 ring-purple-200">
+                      <div className="w-16 h-20 rounded-2xl overflow-hidden relative shadow-md border-2 border-card ring-2 ring-purple-800">
                         <img
                           src={match.profile?.photos?.[0] || "/profiles/generic_indian_1.jpg"}
                           alt={match.profile?.name}
@@ -98,7 +98,7 @@ export default function Matches() {
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
                       </div>
-                      <span className="text-[11px] font-medium text-gray-700 max-w-[64px] truncate text-center">
+                      <span className="text-[11px] font-medium text-muted-foreground max-w-[64px] truncate text-center">
                         {match.profile?.name?.split(" ")[0]}
                       </span>
                     </div>
@@ -107,19 +107,19 @@ export default function Matches() {
               </div>
             </div>
 
-            <div className="border-t border-gray-100 shrink-0" />
+            <div className="border-t border-border shrink-0" />
 
             <div className="px-3 pt-2 pb-2">
               <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 px-3">Conversations</h3>
               <div>
                 {filteredMatches.map((match) => (
                   <Link key={match.id} href={`/chat/${match.id}`}>
-                    <div className="flex items-center gap-3 px-3 py-3 hover:bg-gray-50 rounded-xl transition-colors cursor-pointer" data-testid={`row-chat-${match.id}`}>
+                    <div className="flex items-center gap-3 px-3 py-3 hover:bg-muted rounded-xl transition-colors cursor-pointer" data-testid={`row-chat-${match.id}`}>
                       <div className="relative shrink-0">
                         <img
                           src={match.profile?.photos?.[0] || "/profiles/generic_indian_1.jpg"}
                           alt={match.profile?.name}
-                          className="w-13 h-13 rounded-full object-cover border-2 border-white shadow-sm"
+                          className="w-13 h-13 rounded-full object-cover border-2 border-card shadow-sm"
                           style={{ width: "52px", height: "52px" }}
                         />
                       </div>
