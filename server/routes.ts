@@ -567,7 +567,7 @@ export async function registerRoutes(
       return res.json({
         ...profile,
         respectScore: user?.respectScore,
-        isOnline: user?.isOnline,
+        isOnline: user?.isOnline || profile.aiProxyEnabled,
         lastSeenAt: user?.lastSeenAt,
       });
     } catch (err: any) {
@@ -677,7 +677,7 @@ export async function registerRoutes(
         return {
           ...p,
           respectScore: user?.respectScore,
-          isOnline: user?.isOnline,
+          isOnline: user?.isOnline || p.aiProxyEnabled,
           lastSeenAt: user?.lastSeenAt,
         };
       }));
@@ -770,7 +770,7 @@ export async function registerRoutes(
           const user = await storage.getUser(match.targetUserId);
           return {
             ...match,
-            profile: profile ? { ...profile, respectScore: user?.respectScore, isOnline: user?.isOnline, lastSeenAt: user?.lastSeenAt } : null,
+            profile: profile ? { ...profile, respectScore: user?.respectScore, isOnline: user?.isOnline || profile.aiProxyEnabled, lastSeenAt: user?.lastSeenAt } : null,
           };
         })
       );
@@ -1827,6 +1827,46 @@ ${myProfile.name}'s bio: ${myProfile.bio || "Not set"}`;
       const logs = await storage.getActivityLogs(limit, offset, category, userId);
       const total = await storage.getActivityLogCount(category, userId);
       return res.json({ logs, total, limit, offset });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ==================== SEED MATCHES FOR TESTING ====================
+
+  app.post("/api/seed-matches", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const { eq, and, ne } = await import("drizzle-orm");
+      const { db: database } = await import("./db");
+      const { profiles: profilesTable, matches: matchesTable } = await import("@shared/schema");
+
+      const allProfiles = await database.select().from(profilesTable)
+        .where(ne(profilesTable.userId, userId))
+        .limit(10);
+
+      let matchCount = 0;
+      for (const p of allProfiles) {
+        const existingForward = await storage.getMatch(userId, p.userId);
+        const existingReverse = await storage.getMatch(p.userId, userId);
+
+        if (!existingForward) {
+          await storage.createMatch({ userId, targetUserId: p.userId, action: "like", isMatched: true });
+        } else if (!existingForward.isMatched) {
+          await database.update(matchesTable).set({ isMatched: true })
+            .where(and(eq(matchesTable.userId, userId), eq(matchesTable.targetUserId, p.userId)));
+        }
+
+        if (!existingReverse) {
+          await storage.createMatch({ userId: p.userId, targetUserId: userId, action: "like", isMatched: true });
+        } else if (!existingReverse.isMatched) {
+          await database.update(matchesTable).set({ isMatched: true })
+            .where(and(eq(matchesTable.userId, p.userId), eq(matchesTable.targetUserId, userId)));
+        }
+        matchCount++;
+      }
+
+      return res.json({ message: `Created ${matchCount} mutual matches for testing`, matchCount });
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
     }

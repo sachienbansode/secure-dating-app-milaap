@@ -225,16 +225,54 @@ function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
                 Demo OTP: <span className="font-bold">{otpHint}</span>
               </div>
             )}
-            <Input
-              data-testid="input-admin-otp"
-              value={otp}
-              onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              placeholder="000000"
-              className="h-14 text-2xl text-center bg-slate-800 border-slate-700 rounded-xl text-white tracking-[0.5em] font-mono"
-              autoFocus
-              maxLength={6}
-              onKeyDown={(e) => e.key === "Enter" && handleVerifyOtp()}
-            />
+            <div className="flex gap-2 justify-center" data-testid="input-admin-otp">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <input
+                  key={i}
+                  id={`admin-otp-box-${i}`}
+                  data-testid={`input-admin-otp-${i}`}
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  autoComplete="one-time-code"
+                  maxLength={1}
+                  value={otp[i] || ""}
+                  autoFocus={i === 0}
+                  className="w-12 h-14 text-2xl text-center bg-slate-800 border-2 border-slate-600 rounded-xl text-white font-mono focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 transition-all"
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, "");
+                    if (val.length <= 1) {
+                      const newOtp = otp.split("");
+                      newOtp[i] = val;
+                      const joined = newOtp.join("").slice(0, 6);
+                      setOtp(joined);
+                      if (val && i < 5) document.getElementById(`admin-otp-box-${i + 1}`)?.focus();
+                    } else {
+                      const pasted = val.slice(0, 6);
+                      setOtp(pasted);
+                      const focusIdx = Math.min(pasted.length, 5);
+                      document.getElementById(`admin-otp-box-${focusIdx}`)?.focus();
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Backspace" && !otp[i] && i > 0) {
+                      const newOtp = otp.split("");
+                      newOtp[i - 1] = "";
+                      setOtp(newOtp.join(""));
+                      document.getElementById(`admin-otp-box-${i - 1}`)?.focus();
+                    }
+                    if (e.key === "Enter" && otp.length === 6) handleVerifyOtp();
+                  }}
+                  onPaste={(e) => {
+                    e.preventDefault();
+                    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+                    setOtp(pasted);
+                    const focusIdx = Math.min(pasted.length, 5);
+                    document.getElementById(`admin-otp-box-${focusIdx}`)?.focus();
+                  }}
+                />
+              ))}
+            </div>
             <Button
               data-testid="button-admin-verify-otp"
               onClick={handleVerifyOtp}
