@@ -8,8 +8,9 @@ import {
   adminLoginSchema, adminVerifyOtpSchema,
   GREEN_FLAG_PROMPTS, FESTIVAL_LIST,
 } from "@shared/schema";
-import { randomInt } from "crypto";
+import { randomInt, randomUUID } from "crypto";
 import OpenAI from "openai";
+import bcrypt from "bcryptjs";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -52,21 +53,49 @@ declare module "express-session" {
     userId: string;
     isAdmin: boolean;
     adminUserId: string;
+    sessionToken: string;
   }
 }
 
-function requireAuth(req: Request, res: Response, next: Function) {
+async function requireAuth(req: Request, res: Response, next: Function) {
   if (!req.session.userId) {
     return res.status(401).json({ message: "Unauthorized" });
   }
+  if (req.session.sessionToken) {
+    const dbSession = await storage.getUserSession(req.session.sessionToken);
+    if (!dbSession || !dbSession.isActive) {
+      req.session.destroy(() => {});
+      return res.status(401).json({ message: "Session expired. Please login again." });
+    }
+    await storage.updateSessionActivity(req.session.sessionToken);
+  }
   next();
 }
 
-function requireAdmin(req: Request, res: Response, next: Function) {
+async function requireAdmin(req: Request, res: Response, next: Function) {
   if (!req.session.isAdmin || !req.session.adminUserId) {
     return res.status(403).json({ message: "Admin access required" });
   }
+  if (req.session.sessionToken) {
+    const dbSession = await storage.getUserSession(req.session.sessionToken);
+    if (!dbSession || !dbSession.isActive) {
+      req.session.destroy(() => {});
+      return res.status(401).json({ message: "Admin session expired. Please login again." });
+    }
+    await storage.updateSessionActivity(req.session.sessionToken);
+  }
   next();
+}
+
+function getClientIp(req: Request): string {
+  return (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.ip || "unknown";
+}
+
+function getClientInfo(req: Request): { ip: string; userAgent: string; location: string } {
+  const ip = getClientIp(req);
+  const userAgent = req.headers["user-agent"] || "unknown";
+  const location = (req.headers["x-forwarded-for"] as string) ? "Via proxy" : "Direct";
+  return { ip, userAgent, location };
 }
 
 function getOpenAI() {
@@ -191,12 +220,34 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Account has been suspended" });
       }
 
+      const clientInfo = getClientInfo(req);
+      await storage.invalidateUserSessions(user.id, "user");
+
+      const sessionToken = randomUUID();
+      await storage.createUserSession({
+        userId: user.id,
+        userType: "user",
+        sessionToken,
+        ipAddress: clientInfo.ip,
+        location: clientInfo.location,
+        userAgent: clientInfo.userAgent,
+        isActive: true,
+        lastActivityAt: new Date(),
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      });
+
       req.session.userId = user.id;
+      req.session.sessionToken = sessionToken;
       await storage.setUserOnlineStatus(user.id, true);
 
       const profile = await storage.getProfile(user.id);
 
-      await logActivity(user.id, "user_login", "auth", { method: phone ? "phone" : "email" }, req);
+      await logActivity(user.id, "user_login", "auth", {
+        method: phone ? "phone" : "email",
+        ip: clientInfo.ip,
+        userAgent: clientInfo.userAgent,
+        location: clientInfo.location,
+      }, req);
 
       return res.json({
         user: {
@@ -246,7 +297,10 @@ export async function registerRoutes(
     if (req.session.userId) {
       await storage.setUserOnlineStatus(req.session.userId, false);
     }
-    await logActivity(logoutUserId, "user_logout", "auth", {}, req);
+    if (req.session.sessionToken) {
+      await storage.invalidateSession(req.session.sessionToken);
+    }
+    await logActivity(logoutUserId, "user_logout", "auth", { ip: getClientIp(req) }, req);
     req.session.destroy(() => {
       res.json({ message: "Logged out" });
     });
@@ -257,15 +311,28 @@ export async function registerRoutes(
     return res.json({ ok: true });
   });
 
-  // ==================== ADMIN AUTH ====================
+  // ==================== ADMIN AUTH (Email + Password + OTP) ====================
 
-  app.post("/api/admin/auth/request-otp", async (req: Request, res: Response) => {
+  app.post("/api/admin/auth/login", async (req: Request, res: Response) => {
     try {
       const parsed = adminLoginSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ message: parsed.error.message });
       }
-      const { email } = parsed.data;
+      const { email, password } = parsed.data;
+
+      const admin = await storage.getAdminUserByEmail(email);
+      if (!admin || !admin.isActive) {
+        await logActivity(null, "admin_login_failed", "security", { email, reason: "invalid_email" }, req);
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+
+      const passwordValid = await bcrypt.compare(password, admin.passwordHash);
+      if (!passwordValid) {
+        await logActivity(admin.id, "admin_login_failed", "security", { email, reason: "invalid_password" }, req);
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+
       const otp = generateOtp();
       otpStore.set(`admin:${email}`, { otp, expiresAt: Date.now() + 5 * 60 * 1000 });
 
@@ -283,7 +350,7 @@ export async function registerRoutes(
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              from: process.env.ADMIN_EMAIL_FROM || "Milaap Admin <admin@milaap.app>",
+              from: process.env.ADMIN_EMAIL_FROM || "Milaap Admin <admin@milaap.co.in>",
               to: [email],
               subject: "Milaap Admin Login OTP",
               html: `<h2>Your Admin Login OTP</h2><p>Your OTP is: <strong>${otp}</strong></p><p>This OTP expires in 5 minutes.</p>`,
@@ -297,8 +364,10 @@ export async function registerRoutes(
         }
       }
 
+      await logActivity(admin.id, "admin_otp_sent", "admin", { email }, req);
+
       return res.json({
-        message: "OTP sent to admin email",
+        message: "Password verified. OTP sent to your email.",
         ...(isDev ? { otp_hint: otp } : {}),
       });
     } catch (err: any) {
@@ -315,20 +384,51 @@ export async function registerRoutes(
       const { email, otp } = parsed.data;
       const stored = otpStore.get(`admin:${email}`);
       if (!stored || stored.otp !== otp || Date.now() > stored.expiresAt) {
+        await logActivity(null, "admin_otp_failed", "security", { email }, req);
         return res.status(401).json({ message: "Invalid or expired OTP" });
       }
       otpStore.delete(`admin:${email}`);
 
-      let admin = await storage.getAdminByEmail(email);
+      const admin = await storage.getAdminUserByEmail(email);
       if (!admin) {
-        admin = await storage.createAdminUser(email);
+        return res.status(401).json({ message: "Admin user not found" });
       }
+
+      const clientInfo = getClientInfo(req);
+
+      await storage.invalidateUserSessions(admin.id, "admin");
+
+      const sessionToken = randomUUID();
+      await storage.createUserSession({
+        userId: admin.id,
+        userType: "admin",
+        sessionToken,
+        ipAddress: clientInfo.ip,
+        location: clientInfo.location,
+        userAgent: clientInfo.userAgent,
+        isActive: true,
+        lastActivityAt: new Date(),
+        expiresAt: new Date(Date.now() + 8 * 60 * 60 * 1000),
+      });
+
+      await storage.updateAdminUser(admin.id, {
+        lastLoginAt: new Date(),
+        lastLoginIp: clientInfo.ip,
+        lastLoginLocation: clientInfo.location,
+      });
 
       req.session.isAdmin = true;
       req.session.adminUserId = admin.id;
-      await logActivity(admin.id, "admin_login", "admin", { email }, req);
+      req.session.sessionToken = sessionToken;
 
-      return res.json({ success: true, admin: { id: admin.id, email: admin.adminEmail } });
+      await logActivity(admin.id, "admin_login", "admin", {
+        email,
+        ip: clientInfo.ip,
+        userAgent: clientInfo.userAgent,
+        location: clientInfo.location,
+      }, req);
+
+      return res.json({ success: true, admin: { id: admin.id, email: admin.email, name: admin.name, role: admin.role } });
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
     }
@@ -336,11 +436,11 @@ export async function registerRoutes(
 
   app.get("/api/admin/auth/me", requireAdmin, async (req: Request, res: Response) => {
     try {
-      const admin = await storage.getUser(req.session.adminUserId!);
-      if (!admin || !admin.isAdmin) {
+      const admin = await storage.getAdminUser(req.session.adminUserId!);
+      if (!admin || !admin.isActive) {
         return res.status(403).json({ message: "Not an admin" });
       }
-      return res.json({ admin: { id: admin.id, email: admin.adminEmail } });
+      return res.json({ admin: { id: admin.id, email: admin.email, name: admin.name, role: admin.role } });
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
     }
@@ -348,9 +448,13 @@ export async function registerRoutes(
 
   app.post("/api/admin/auth/logout", requireAdmin, async (req: Request, res: Response) => {
     const adminId = req.session.adminUserId;
-    await logActivity(adminId || null, "admin_logout", "admin", {}, req);
+    if (req.session.sessionToken) {
+      await storage.invalidateSession(req.session.sessionToken);
+    }
+    await logActivity(adminId || null, "admin_logout", "admin", { ip: getClientIp(req) }, req);
     req.session.isAdmin = false;
     req.session.adminUserId = undefined as any;
+    req.session.sessionToken = undefined as any;
     return res.json({ message: "Admin logged out" });
   });
 

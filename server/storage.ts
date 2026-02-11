@@ -3,6 +3,7 @@ import { eq, and, ne, notInArray, inArray, desc, sql, or, gt } from "drizzle-orm
 import {
   users, profiles, matches, messages, reports, screenshotAlerts, appSettings,
   chatCooldowns, phoneUnlockRequests, blockedUsers, activityLogs,
+  adminUsers, userSessions,
   type User, type InsertUser,
   type Profile, type InsertProfile,
   type Match, type InsertMatch,
@@ -14,6 +15,8 @@ import {
   type PhoneUnlockRequest, type InsertPhoneUnlockRequest,
   type BlockedUser, type InsertBlockedUser,
   type ActivityLog, type InsertActivityLog,
+  type AdminUser, type InsertAdminUser,
+  type UserSession, type InsertUserSession,
 } from "@shared/schema";
 import { encryptProfile, decryptProfile, encryptMessage, decryptMessage } from "./encryption";
 
@@ -67,9 +70,20 @@ export interface IStorage {
   getActivityLogCount(category?: string, userId?: string): Promise<number>;
 
   getAllProfilesAdmin(limit?: number, offset?: number, genderFilter?: string): Promise<{ profiles: (Profile & { user?: User })[], total: number }>;
-  getAdminByEmail(email: string): Promise<User | undefined>;
-  createAdminUser(email: string): Promise<User>;
   getAppSettingWithMeta(key: string): Promise<AppSetting | undefined>;
+
+  getAdminUserByEmail(email: string): Promise<AdminUser | undefined>;
+  getAdminUser(id: string): Promise<AdminUser | undefined>;
+  createAdminUser(data: InsertAdminUser): Promise<AdminUser>;
+  updateAdminUser(id: string, data: Partial<AdminUser>): Promise<AdminUser | undefined>;
+  getAllAdminUsers(): Promise<AdminUser[]>;
+
+  createUserSession(data: InsertUserSession): Promise<UserSession>;
+  getUserSession(sessionToken: string): Promise<UserSession | undefined>;
+  invalidateUserSessions(userId: string, userType: string): Promise<void>;
+  invalidateSession(sessionToken: string): Promise<void>;
+  updateSessionActivity(sessionToken: string): Promise<void>;
+  getActiveSessions(userId: string, userType: string): Promise<UserSession[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -425,25 +439,68 @@ export class DatabaseStorage implements IStorage {
     return { profiles: enriched, total };
   }
 
-  async getAdminByEmail(email: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users)
-      .where(and(eq(users.adminEmail, email), eq(users.isAdmin, true)));
-    return user;
-  }
-
-  async createAdminUser(email: string): Promise<User> {
-    const [user] = await db.insert(users).values({
-      email,
-      adminEmail: email,
-      isAdmin: true,
-      isVerified: true,
-    }).returning();
-    return user;
-  }
-
   async getAppSettingWithMeta(key: string): Promise<AppSetting | undefined> {
     const [setting] = await db.select().from(appSettings).where(eq(appSettings.key, key));
     return setting || undefined;
+  }
+
+  async getAdminUserByEmail(email: string): Promise<AdminUser | undefined> {
+    const [admin] = await db.select().from(adminUsers).where(eq(adminUsers.email, email));
+    return admin;
+  }
+
+  async getAdminUser(id: string): Promise<AdminUser | undefined> {
+    const [admin] = await db.select().from(adminUsers).where(eq(adminUsers.id, id));
+    return admin;
+  }
+
+  async createAdminUser(data: InsertAdminUser): Promise<AdminUser> {
+    const [admin] = await db.insert(adminUsers).values(data).returning();
+    return admin;
+  }
+
+  async updateAdminUser(id: string, data: Partial<AdminUser>): Promise<AdminUser | undefined> {
+    const [admin] = await db.update(adminUsers).set(data).where(eq(adminUsers.id, id)).returning();
+    return admin;
+  }
+
+  async getAllAdminUsers(): Promise<AdminUser[]> {
+    return db.select().from(adminUsers).orderBy(desc(adminUsers.createdAt));
+  }
+
+  async createUserSession(data: InsertUserSession): Promise<UserSession> {
+    const [session] = await db.insert(userSessions).values(data).returning();
+    return session;
+  }
+
+  async getUserSession(sessionToken: string): Promise<UserSession | undefined> {
+    const [session] = await db.select().from(userSessions)
+      .where(and(eq(userSessions.sessionToken, sessionToken), eq(userSessions.isActive, true)));
+    return session;
+  }
+
+  async invalidateUserSessions(userId: string, userType: string): Promise<void> {
+    await db.update(userSessions)
+      .set({ isActive: false })
+      .where(and(eq(userSessions.userId, userId), eq(userSessions.userType, userType), eq(userSessions.isActive, true)));
+  }
+
+  async invalidateSession(sessionToken: string): Promise<void> {
+    await db.update(userSessions)
+      .set({ isActive: false })
+      .where(eq(userSessions.sessionToken, sessionToken));
+  }
+
+  async updateSessionActivity(sessionToken: string): Promise<void> {
+    await db.update(userSessions)
+      .set({ lastActivityAt: new Date() })
+      .where(eq(userSessions.sessionToken, sessionToken));
+  }
+
+  async getActiveSessions(userId: string, userType: string): Promise<UserSession[]> {
+    return db.select().from(userSessions)
+      .where(and(eq(userSessions.userId, userId), eq(userSessions.userType, userType), eq(userSessions.isActive, true)))
+      .orderBy(desc(userSessions.createdAt));
   }
 }
 

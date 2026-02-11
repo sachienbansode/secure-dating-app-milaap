@@ -111,28 +111,29 @@ export default function AdminConsole() {
 
 function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
   const [otpHint, setOtpHint] = useState("");
-  const [step, setStep] = useState<"email" | "otp">("email");
+  const [step, setStep] = useState<"credentials" | "otp">("credentials");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleRequestOtp = async () => {
-    if (!email.trim()) return;
+  const handleLogin = async () => {
+    if (!email.trim() || !password.trim()) return;
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("/api/admin/auth/request-otp", {
+      const res = await fetch("/api/admin/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, password }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
       setOtpHint(data.otp_hint || "");
       setStep("otp");
     } catch (err: any) {
-      setError(err.message || "Failed to send OTP");
+      setError(err.message || "Login failed");
     } finally {
       setLoading(false);
     }
@@ -179,29 +180,46 @@ function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
           </div>
         )}
 
-        {step === "email" ? (
+        {step === "credentials" ? (
           <div className="space-y-4">
-            <Input
-              data-testid="input-admin-email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@example.com"
-              type="email"
-              className="h-14 text-lg bg-slate-800 border-slate-700 rounded-xl text-white placeholder-slate-500 px-4"
-              autoFocus
-              onKeyDown={(e) => e.key === "Enter" && handleRequestOtp()}
-            />
+            <div>
+              <label className="text-xs text-slate-400 mb-1 block">Email</label>
+              <Input
+                data-testid="input-admin-email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="admin@milaap.co.in"
+                type="email"
+                className="h-14 text-lg bg-slate-800 border-slate-700 rounded-xl text-white placeholder-slate-500 px-4"
+                autoFocus
+              />
+            </div>
+            <div>
+              <label className="text-xs text-slate-400 mb-1 block">Password</label>
+              <Input
+                data-testid="input-admin-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter password"
+                type="password"
+                className="h-14 text-lg bg-slate-800 border-slate-700 rounded-xl text-white placeholder-slate-500 px-4"
+                onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+              />
+            </div>
             <Button
-              data-testid="button-admin-send-otp"
-              onClick={handleRequestOtp}
-              disabled={loading || !email.trim()}
+              data-testid="button-admin-login"
+              onClick={handleLogin}
+              disabled={loading || !email.trim() || !password.trim()}
               className="w-full h-12 rounded-xl font-bold bg-amber-500 hover:bg-amber-600 text-black"
             >
-              {loading ? "Sending..." : "Send OTP"} <ArrowRight className="ml-2 w-5 h-5" />
+              {loading ? "Verifying..." : "Login"} <ArrowRight className="ml-2 w-5 h-5" />
             </Button>
           </div>
         ) : (
           <div className="space-y-4">
+            <div className="bg-green-900/30 text-green-400 text-sm p-3 rounded-xl border border-green-800">
+              Password verified. Enter the OTP sent to your email.
+            </div>
             {otpHint && (
               <div className="bg-blue-900/30 text-blue-400 text-sm p-3 rounded-xl border border-blue-800" data-testid="text-admin-otp-hint">
                 Demo OTP: <span className="font-bold">{otpHint}</span>
@@ -223,18 +241,18 @@ function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
               disabled={loading || otp.length !== 6}
               className="w-full h-12 rounded-xl font-bold bg-amber-500 hover:bg-amber-600 text-black"
             >
-              {loading ? "Verifying..." : "Login"} <ArrowRight className="ml-2 w-5 h-5" />
+              {loading ? "Verifying..." : "Verify & Login"} <ArrowRight className="ml-2 w-5 h-5" />
             </Button>
             <Button
               variant="ghost"
               className="w-full text-slate-400 hover:text-white"
-              onClick={() => { setStep("email"); setOtp(""); setError(""); }}
+              onClick={() => { setStep("credentials"); setOtp(""); setError(""); setPassword(""); }}
             >
-              Change email
+              Back to login
             </Button>
           </div>
         )}
-        <p className="text-xs text-slate-600 text-center mt-6">Email + OTP authentication only</p>
+        <p className="text-xs text-slate-600 text-center mt-6">Email + Password + OTP authentication</p>
       </motion.div>
     </div>
   );

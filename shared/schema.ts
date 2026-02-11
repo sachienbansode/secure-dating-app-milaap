@@ -138,6 +138,33 @@ export const blockedUsers = pgTable("blocked_users", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const adminUsers = pgTable("admin_users", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  name: text("name").notNull().default("Admin"),
+  role: text("role").notNull().default("super_admin"),
+  isActive: boolean("is_active").default(true),
+  lastLoginAt: timestamp("last_login_at"),
+  lastLoginIp: text("last_login_ip"),
+  lastLoginLocation: text("last_login_location"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const userSessions = pgTable("user_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  userType: text("user_type").notNull().default("user"),
+  sessionToken: text("session_token").notNull().unique(),
+  ipAddress: text("ip_address"),
+  location: text("location"),
+  userAgent: text("user_agent"),
+  isActive: boolean("is_active").default(true),
+  lastActivityAt: timestamp("last_activity_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+  expiresAt: timestamp("expires_at"),
+});
+
 export const activityLogs = pgTable("activity_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").references(() => users.id),
@@ -159,6 +186,8 @@ export const insertChatCooldownSchema = createInsertSchema(chatCooldowns).omit({
 export const insertPhoneUnlockRequestSchema = createInsertSchema(phoneUnlockRequests).omit({ id: true });
 export const insertBlockedUserSchema = createInsertSchema(blockedUsers).omit({ id: true, createdAt: true });
 export const insertActivityLogSchema = createInsertSchema(activityLogs).omit({ id: true, createdAt: true });
+export const insertAdminUserSchema = createInsertSchema(adminUsers).omit({ id: true, createdAt: true });
+export const insertUserSessionSchema = createInsertSchema(userSessions).omit({ id: true, createdAt: true });
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -182,6 +211,10 @@ export type BlockedUser = typeof blockedUsers.$inferSelect;
 export type InsertBlockedUser = z.infer<typeof insertBlockedUserSchema>;
 export type ActivityLog = typeof activityLogs.$inferSelect;
 export type InsertActivityLog = z.infer<typeof insertActivityLogSchema>;
+export type AdminUser = typeof adminUsers.$inferSelect;
+export type InsertAdminUser = z.infer<typeof insertAdminUserSchema>;
+export type UserSession = typeof userSessions.$inferSelect;
+export type InsertUserSession = z.infer<typeof insertUserSessionSchema>;
 
 export const loginSchema = z.object({
   phone: z.string().optional(),
@@ -196,6 +229,7 @@ export const verifyOtpSchema = z.object({
 
 export const adminLoginSchema = z.object({
   email: z.string().email(),
+  password: z.string().min(6),
 });
 
 export const adminVerifyOtpSchema = z.object({
