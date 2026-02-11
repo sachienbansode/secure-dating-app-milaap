@@ -255,10 +255,10 @@ export default function AuthPage() {
           <button
             data-testid="button-admin-portal"
             onClick={() => setLocation("/admin")}
-            className="flex items-center justify-center gap-2 mt-3 mx-auto text-xs font-medium py-2 px-4 rounded-full transition-all"
-            style={{ color: "rgba(255,255,255,0.3)", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
+            className="flex items-center justify-center gap-2 mt-5 mx-auto text-sm font-semibold py-3 px-6 rounded-2xl transition-all active:scale-95"
+            style={{ color: "#34d399", background: "linear-gradient(135deg, rgba(5,150,105,0.2), rgba(14,165,233,0.15))", border: "1px solid rgba(5,150,105,0.4)", boxShadow: "0 0 20px rgba(5,150,105,0.15)" }}
           >
-            <Shield size={12} /> Admin Portal
+            <Shield size={16} /> Admin Portal
           </button>
         </motion.div>
       </div>
