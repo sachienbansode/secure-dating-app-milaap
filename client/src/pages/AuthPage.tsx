@@ -171,50 +171,72 @@ export default function AuthPage() {
 
   if (method === "splash") {
     return (
-      <div className="h-full flex flex-col items-center justify-between p-8 bg-brand-gradient text-white relative overflow-hidden">
-        <div className="absolute top-[-15%] left-[-15%] w-80 h-80 bg-red-400/20 rounded-full blur-3xl mix-blend-overlay" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-blue-600/20 rounded-full blur-3xl mix-blend-overlay" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] border-[40px] border-white/5 rounded-full z-0" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] border-[20px] border-white/5 rounded-full z-0" />
+      <div className="h-full flex flex-col items-center justify-between p-8 text-white relative overflow-hidden" style={{ background: "linear-gradient(160deg, #0a0a1a 0%, #1a0a2e 25%, #2d0a0a 50%, #0a1a3d 75%, #0a0a1a 100%)" }}>
+        <motion.div
+          animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }}
+          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute top-[-20%] left-[-20%] w-[500px] h-[500px] rounded-full blur-[120px]"
+          style={{ background: "radial-gradient(circle, rgba(220,38,38,0.4) 0%, transparent 70%)" }}
+        />
+        <motion.div
+          animate={{ scale: [1.2, 1, 1.2], opacity: [0.3, 0.5, 0.3] }}
+          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+          className="absolute bottom-[-15%] right-[-15%] w-[500px] h-[500px] rounded-full blur-[120px]"
+          style={{ background: "radial-gradient(circle, rgba(37,99,235,0.4) 0%, transparent 70%)" }}
+        />
+        <motion.div
+          animate={{ scale: [1, 1.1, 1], opacity: [0.15, 0.25, 0.15] }}
+          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 4 }}
+          className="absolute top-[40%] left-[30%] w-[300px] h-[300px] rounded-full blur-[100px]"
+          style={{ background: "radial-gradient(circle, rgba(168,85,247,0.3) 0%, transparent 70%)" }}
+        />
 
-        <div className="mt-20 flex flex-col items-center text-center z-10">
+        <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, white 1px, transparent 0)", backgroundSize: "40px 40px" }} />
+
+        <div className="mt-16 flex flex-col items-center text-center z-10">
           <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.5 }}
-            className="w-32 h-32 bg-white rounded-3xl flex items-center justify-center mb-8 shadow-2xl p-4 rotate-3 hover:rotate-0 transition-transform duration-500"
+            initial={{ scale: 0, rotate: -180 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ type: "spring", stiffness: 200, damping: 15, duration: 0.8 }}
+            className="relative mb-8"
           >
-            <img src={logo} alt="Milaap Logo" className="w-full h-full object-contain" />
+            <div className="absolute inset-0 w-36 h-36 rounded-3xl blur-xl opacity-50" style={{ background: "linear-gradient(135deg, #dc2626, #2563eb)" }} />
+            <div className="relative w-36 h-36 rounded-3xl flex items-center justify-center p-4 border border-white/10" style={{ background: "linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05))", backdropFilter: "blur(20px)" }}>
+              <img src={logo} alt="Milaap Logo" className="w-full h-full object-contain drop-shadow-2xl" />
+            </div>
           </motion.div>
           <motion.h1
-            initial={{ y: 20, opacity: 0 }}
+            initial={{ y: 30, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="text-5xl font-heading font-extrabold mb-3 tracking-tight drop-shadow-sm"
+            transition={{ delay: 0.3, duration: 0.6 }}
+            className="text-6xl font-heading font-extrabold mb-4 tracking-tight"
+            style={{ background: "linear-gradient(135deg, #ffffff 0%, #ff6b6b 50%, #4dabf7 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}
           >
             Milaap
           </motion.h1>
           <motion.p
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="text-lg text-white/95 font-medium max-w-[280px]"
+            transition={{ delay: 0.5 }}
+            className="text-lg font-medium max-w-[300px] leading-relaxed"
+            style={{ color: "rgba(255,255,255,0.8)" }}
           >
             Dil se dil tak. <br />
-            Meaningful connections with respect.
+            <span style={{ color: "rgba(255,255,255,0.6)" }}>Meaningful connections with respect.</span>
           </motion.p>
         </div>
 
         <motion.div
-          initial={{ y: 50, opacity: 0 }}
+          initial={{ y: 60, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="w-full space-y-4 z-10"
+          transition={{ delay: 0.7 }}
+          className="w-full space-y-4 z-10 pb-4"
         >
           <Button
             data-testid="button-login-phone"
             onClick={() => setMethod("phone")}
-            className="w-full bg-white text-primary hover:bg-orange-50 font-bold h-14 rounded-2xl shadow-xl border-0 cursor-pointer text-lg"
+            className="w-full font-bold h-14 rounded-2xl shadow-2xl border-0 cursor-pointer text-lg text-white relative overflow-hidden"
+            style={{ background: "linear-gradient(135deg, #dc2626, #b91c1c)" }}
           >
             <Phone className="mr-3 h-5 w-5" /> Login with Phone
           </Button>
@@ -222,11 +244,12 @@ export default function AuthPage() {
             data-testid="button-login-email"
             onClick={() => setMethod("email")}
             variant="outline"
-            className="w-full border-2 border-white/30 bg-white/10 text-white hover:bg-white/20 font-semibold h-14 rounded-2xl backdrop-blur-sm cursor-pointer text-lg"
+            className="w-full font-semibold h-14 rounded-2xl cursor-pointer text-lg text-white border-0"
+            style={{ background: "linear-gradient(135deg, rgba(37,99,235,0.3), rgba(37,99,235,0.15))", border: "1px solid rgba(37,99,235,0.4)" }}
           >
             <Mail className="mr-3 h-5 w-5" /> Login with Email
           </Button>
-          <p className="text-xs text-center text-white/70 mt-6 font-medium">
+          <p className="text-xs text-center mt-4 font-medium" style={{ color: "rgba(255,255,255,0.4)" }}>
             By continuing, you agree to our Terms & Privacy Policy.
           </p>
         </motion.div>
@@ -235,20 +258,24 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="h-full flex flex-col p-6 bg-background">
+    <div className="h-full flex flex-col p-6 relative overflow-hidden" style={{ background: "linear-gradient(180deg, #0a0a1a 0%, #1a0a2e 50%, #0d0d20 100%)" }}>
+      <motion.div className="absolute top-[-10%] right-[-20%] w-[400px] h-[400px] rounded-full blur-[100px] opacity-20" style={{ background: "radial-gradient(circle, #dc2626, transparent 70%)" }} />
+      <motion.div className="absolute bottom-[-10%] left-[-20%] w-[400px] h-[400px] rounded-full blur-[100px] opacity-15" style={{ background: "radial-gradient(circle, #2563eb, transparent 70%)" }} />
+
       <Button
         variant="ghost"
-        className="w-fit p-0 hover:bg-transparent -ml-2 mb-8 text-primary"
+        className="w-fit p-0 hover:bg-transparent -ml-2 mb-8 z-10"
+        style={{ color: "#ff6b6b" }}
         onClick={() => { setMethod("splash"); setStep("input"); setError(""); setContactValue(""); setOtpValue(""); }}
       >
         ← Back
       </Button>
 
-      <div className="flex-1">
-        <h2 className="text-3xl font-heading font-bold text-foreground mb-2">
+      <div className="flex-1 z-10">
+        <h2 className="text-3xl font-heading font-bold text-white mb-2">
           Namaste! 🙏
         </h2>
-        <h3 className="text-xl text-muted-foreground mb-8">
+        <h3 className="text-xl mb-8" style={{ color: "rgba(255,255,255,0.5)" }}>
           {step === "input"
             ? (method === "phone" ? "Enter your mobile number" : "Enter your email address")
             : "Enter the 6-digit OTP"
@@ -256,7 +283,7 @@ export default function AuthPage() {
         </h3>
 
         {error && (
-          <div className="bg-red-900/30 text-red-400 text-sm p-3 rounded-xl mb-4" data-testid="text-error">
+          <div className="text-sm p-3 rounded-xl mb-4 border" style={{ background: "rgba(220,38,38,0.15)", color: "#ff6b6b", borderColor: "rgba(220,38,38,0.3)" }} data-testid="text-error">
             {error}
           </div>
         )}
@@ -266,7 +293,7 @@ export default function AuthPage() {
             <>
               <div className="relative">
                 {method === "phone" && (
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium border-r border-border pr-3 mr-2">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 font-medium pr-3 mr-2" style={{ color: "rgba(255,255,255,0.4)", borderRight: "1px solid rgba(255,255,255,0.15)" }}>
                     +91
                   </span>
                 )}
@@ -278,7 +305,8 @@ export default function AuthPage() {
                   value={contactValue}
                   onChange={(e) => setContactValue(method === "phone" ? e.target.value.replace(/[^\d\s]/g, "") : e.target.value)}
                   placeholder={method === "phone" ? "98765 43210" : "name@example.com"}
-                  className={`h-16 text-xl bg-card border-2 border-border rounded-2xl ${method === "phone" ? "pl-20" : "px-6"} focus-visible:ring-primary focus-visible:border-primary`}
+                  className={`h-16 text-xl rounded-2xl ${method === "phone" ? "pl-20" : "px-6"} text-white placeholder-white/30`}
+                  style={{ background: "rgba(255,255,255,0.08)", border: "2px solid rgba(255,255,255,0.12)" }}
                   autoFocus
                   onKeyDown={(e) => e.key === "Enter" && handleRequestOtp()}
                 />
@@ -287,7 +315,8 @@ export default function AuthPage() {
                 data-testid="button-send-otp"
                 onClick={handleRequestOtp}
                 disabled={isLoading || !contactValue.trim()}
-                className="w-full h-14 rounded-2xl font-bold text-lg shadow-lg bg-brand-gradient hover:opacity-95 transition-all active:scale-95"
+                className="w-full h-14 rounded-2xl font-bold text-lg shadow-lg text-white transition-all active:scale-95"
+                style={{ background: "linear-gradient(135deg, #dc2626, #2563eb)" }}
               >
                 {isLoading ? "Sending..." : "Send OTP"} <ArrowRight className="ml-2 w-5 h-5" />
               </Button>
@@ -295,7 +324,7 @@ export default function AuthPage() {
           ) : (
             <>
               {otpHint && (
-                <div className="bg-blue-900/30 text-blue-400 text-sm p-3 rounded-xl" data-testid="text-otp-hint">
+                <div className="text-sm p-3 rounded-xl border" style={{ background: "rgba(37,99,235,0.15)", color: "#60a5fa", borderColor: "rgba(37,99,235,0.3)" }} data-testid="text-otp-hint">
                   Demo OTP: <span className="font-bold">{otpHint}</span>
                 </div>
               )}
@@ -312,7 +341,8 @@ export default function AuthPage() {
                     maxLength={1}
                     value={otpValue[i] || ""}
                     autoFocus={i === 0}
-                    className="w-12 h-14 text-2xl text-center bg-card text-foreground border-2 border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary font-mono transition-all"
+                    className="w-12 h-14 text-2xl text-center text-white border-2 rounded-xl font-mono transition-all focus:outline-none"
+                    style={{ background: "rgba(255,255,255,0.08)", borderColor: "rgba(255,255,255,0.15)" }}
                     onChange={(e) => {
                       const val = e.target.value.replace(/\D/g, "");
                       if (val.length <= 1) {
@@ -347,18 +377,18 @@ export default function AuthPage() {
                   />
                 ))}
               </div>
-              <div className="flex items-start gap-3 bg-muted rounded-xl p-3">
+              <div className="flex items-start gap-3 rounded-xl p-3" style={{ background: "rgba(255,255,255,0.06)" }}>
                 <input
                   type="checkbox"
                   id="terms-checkbox"
                   data-testid="checkbox-terms"
                   checked={termsAccepted}
                   onChange={(e) => setTermsAccepted(e.target.checked)}
-                  className="mt-1 w-5 h-5 rounded border-border text-primary accent-primary"
+                  className="mt-1 w-5 h-5 rounded accent-red-500"
                 />
-                <label htmlFor="terms-checkbox" className="text-sm text-muted-foreground">
+                <label htmlFor="terms-checkbox" className="text-sm" style={{ color: "rgba(255,255,255,0.5)" }}>
                   I agree to the{" "}
-                  <button type="button" onClick={() => setShowTerms(true)} className="text-primary font-semibold underline" data-testid="button-view-terms">
+                  <button type="button" onClick={() => setShowTerms(true)} className="font-semibold underline" style={{ color: "#ff6b6b" }} data-testid="button-view-terms">
                     Terms & Conditions
                   </button>
                 </label>
@@ -367,13 +397,15 @@ export default function AuthPage() {
                 data-testid="button-verify-otp"
                 onClick={handleVerifyOtp}
                 disabled={isLoading || otpValue.length !== 6 || !termsAccepted}
-                className="w-full h-14 rounded-2xl font-bold text-lg shadow-lg bg-brand-gradient hover:opacity-95 transition-all active:scale-95"
+                className="w-full h-14 rounded-2xl font-bold text-lg shadow-lg text-white transition-all active:scale-95"
+                style={{ background: "linear-gradient(135deg, #dc2626, #2563eb)" }}
               >
                 {isLoading ? "Verifying..." : "Verify & Login"} <ArrowRight className="ml-2 w-5 h-5" />
               </Button>
               <Button
                 variant="ghost"
-                className="w-full text-muted-foreground"
+                className="w-full"
+                style={{ color: "rgba(255,255,255,0.4)" }}
                 onClick={() => { setStep("input"); setOtpValue(""); setError(""); }}
               >
                 Change {method === "phone" ? "number" : "email"}
@@ -383,19 +415,20 @@ export default function AuthPage() {
         </div>
       </div>
       {showTerms && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-card rounded-2xl max-w-md w-full max-h-[80vh] flex flex-col">
-            <div className="p-4 border-b border-border flex items-center justify-between">
-              <h3 className="font-bold text-lg text-foreground">Terms & Conditions</h3>
-              <button onClick={() => setShowTerms(false)} className="text-muted-foreground hover:text-foreground">✕</button>
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="rounded-2xl max-w-md w-full max-h-[80vh] flex flex-col border" style={{ background: "#141428", borderColor: "rgba(255,255,255,0.1)" }}>
+            <div className="p-4 flex items-center justify-between" style={{ borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
+              <h3 className="font-bold text-lg text-white">Terms & Conditions</h3>
+              <button onClick={() => setShowTerms(false)} style={{ color: "rgba(255,255,255,0.4)" }}>✕</button>
             </div>
-            <div className="p-4 overflow-y-auto text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
+            <div className="p-4 overflow-y-auto text-sm whitespace-pre-wrap leading-relaxed" style={{ color: "rgba(255,255,255,0.6)" }}>
               {termsContent || "Loading..."}
             </div>
-            <div className="p-4 border-t border-border">
+            <div className="p-4" style={{ borderTop: "1px solid rgba(255,255,255,0.1)" }}>
               <button
                 onClick={() => { setTermsAccepted(true); setShowTerms(false); }}
-                className="w-full h-12 rounded-xl font-bold text-white bg-brand-gradient"
+                className="w-full h-12 rounded-xl font-bold text-white"
+                style={{ background: "linear-gradient(135deg, #dc2626, #2563eb)" }}
                 data-testid="button-accept-terms"
               >
                 I Accept
@@ -405,19 +438,20 @@ export default function AuthPage() {
         </div>
       )}
       {showTermsUpdate && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-card rounded-2xl max-w-md w-full max-h-[80vh] flex flex-col">
-            <div className="p-4 border-b border-border">
-              <h3 className="font-bold text-lg text-foreground">Updated Terms & Conditions</h3>
-              <p className="text-xs text-muted-foreground mt-1">Our terms have been updated. Please review and accept to continue.</p>
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="rounded-2xl max-w-md w-full max-h-[80vh] flex flex-col border" style={{ background: "#141428", borderColor: "rgba(255,255,255,0.1)" }}>
+            <div className="p-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
+              <h3 className="font-bold text-lg text-white">Updated Terms & Conditions</h3>
+              <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.4)" }}>Our terms have been updated. Please review and accept to continue.</p>
             </div>
-            <div className="p-4 overflow-y-auto text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed flex-1">
+            <div className="p-4 overflow-y-auto text-sm whitespace-pre-wrap leading-relaxed flex-1" style={{ color: "rgba(255,255,255,0.6)" }}>
               {termsContent || "Loading..."}
             </div>
-            <div className="p-4 border-t border-border">
+            <div className="p-4" style={{ borderTop: "1px solid rgba(255,255,255,0.1)" }}>
               <button
                 onClick={handleAcceptTermsAndContinue}
-                className="w-full h-12 rounded-xl font-bold text-white bg-brand-gradient"
+                className="w-full h-12 rounded-xl font-bold text-white"
+                style={{ background: "linear-gradient(135deg, #dc2626, #2563eb)" }}
                 data-testid="button-accept-updated-terms"
               >
                 I Accept & Continue

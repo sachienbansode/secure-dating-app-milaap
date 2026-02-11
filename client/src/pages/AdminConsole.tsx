@@ -160,22 +160,34 @@ function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
   };
 
   return (
-    <div className="h-full flex flex-col items-center justify-center p-6 bg-slate-900">
+    <div className="h-full flex flex-col items-center justify-center p-6 relative overflow-hidden" style={{ background: "linear-gradient(160deg, #030712 0%, #0a1628 30%, #041420 60%, #030712 100%)" }}>
+      <div className="absolute top-[-15%] left-[-10%] w-[400px] h-[400px] rounded-full blur-[120px] opacity-20" style={{ background: "radial-gradient(circle, #059669, transparent 70%)" }} />
+      <div className="absolute bottom-[-10%] right-[-15%] w-[350px] h-[350px] rounded-full blur-[100px] opacity-15" style={{ background: "radial-gradient(circle, #0ea5e9, transparent 70%)" }} />
+      <div className="absolute inset-0 opacity-[0.02]" style={{ backgroundImage: "linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)", backgroundSize: "60px 60px" }} />
+
       <motion.div
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="w-full max-w-sm"
+        className="w-full max-w-sm z-10"
       >
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-slate-700">
-            <Shield size={28} className="text-red-400" />
-          </div>
-          <h1 className="text-2xl font-heading font-bold text-white">Admin Console</h1>
-          <p className="text-slate-400 text-sm mt-1">Milaap Administration</p>
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ type: "spring", stiffness: 200, damping: 15 }}
+            className="relative w-20 h-20 mx-auto mb-5"
+          >
+            <div className="absolute inset-0 rounded-2xl blur-lg opacity-40" style={{ background: "linear-gradient(135deg, #059669, #0ea5e9)" }} />
+            <div className="relative w-20 h-20 rounded-2xl flex items-center justify-center" style={{ background: "linear-gradient(135deg, rgba(5,150,105,0.2), rgba(14,165,233,0.2))", border: "1px solid rgba(5,150,105,0.3)" }}>
+              <Shield size={32} style={{ color: "#34d399" }} />
+            </div>
+          </motion.div>
+          <h1 className="text-2xl font-heading font-bold text-white tracking-tight">Admin Console</h1>
+          <p className="text-sm mt-1" style={{ color: "rgba(255,255,255,0.35)" }}>Milaap Administration Portal</p>
         </div>
 
         {error && (
-          <div className="bg-red-900/30 text-red-400 text-sm p-3 rounded-xl mb-4 border border-red-800" data-testid="text-admin-error">
+          <div className="text-sm p-3 rounded-xl mb-4 border" style={{ background: "rgba(239,68,68,0.1)", color: "#f87171", borderColor: "rgba(239,68,68,0.2)" }} data-testid="text-admin-error">
             {error}
           </div>
         )}
@@ -183,26 +195,28 @@ function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
         {step === "credentials" ? (
           <div className="space-y-4">
             <div>
-              <label className="text-xs text-slate-400 mb-1 block">Email</label>
+              <label className="text-xs mb-1.5 block font-medium" style={{ color: "rgba(255,255,255,0.35)" }}>Email</label>
               <Input
                 data-testid="input-admin-email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="admin@milaap.co.in"
                 type="email"
-                className="h-14 text-lg bg-slate-800 border-slate-700 rounded-xl text-white placeholder-slate-500 px-4"
+                className="h-14 text-lg rounded-xl text-white px-4"
+                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "white" }}
                 autoFocus
               />
             </div>
             <div>
-              <label className="text-xs text-slate-400 mb-1 block">Password</label>
+              <label className="text-xs mb-1.5 block font-medium" style={{ color: "rgba(255,255,255,0.35)" }}>Password</label>
               <Input
                 data-testid="input-admin-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter password"
                 type="password"
-                className="h-14 text-lg bg-slate-800 border-slate-700 rounded-xl text-white placeholder-slate-500 px-4"
+                className="h-14 text-lg rounded-xl text-white px-4"
+                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "white" }}
                 onKeyDown={(e) => e.key === "Enter" && handleLogin()}
               />
             </div>
@@ -210,18 +224,19 @@ function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
               data-testid="button-admin-login"
               onClick={handleLogin}
               disabled={loading || !email.trim() || !password.trim()}
-              className="w-full h-12 rounded-xl font-bold bg-red-500 hover:bg-red-600 text-white"
+              className="w-full h-12 rounded-xl font-bold text-white"
+              style={{ background: "linear-gradient(135deg, #059669, #0ea5e9)" }}
             >
               {loading ? "Verifying..." : "Login"} <ArrowRight className="ml-2 w-5 h-5" />
             </Button>
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="bg-green-900/30 text-green-400 text-sm p-3 rounded-xl border border-green-800">
+            <div className="text-sm p-3 rounded-xl border" style={{ background: "rgba(5,150,105,0.1)", color: "#34d399", borderColor: "rgba(5,150,105,0.25)" }}>
               Password verified. Enter the OTP sent to your email.
             </div>
             {otpHint && (
-              <div className="bg-blue-900/30 text-blue-400 text-sm p-3 rounded-xl border border-blue-800" data-testid="text-admin-otp-hint">
+              <div className="text-sm p-3 rounded-xl border" style={{ background: "rgba(14,165,233,0.1)", color: "#38bdf8", borderColor: "rgba(14,165,233,0.25)" }} data-testid="text-admin-otp-hint">
                 Demo OTP: <span className="font-bold">{otpHint}</span>
               </div>
             )}
@@ -238,7 +253,8 @@ function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
                   maxLength={1}
                   value={otp[i] || ""}
                   autoFocus={i === 0}
-                  className="w-12 h-14 text-2xl text-center bg-slate-800 border-2 border-slate-600 rounded-xl text-white font-mono focus:outline-none focus:ring-2 focus:ring-red-500/40 focus:border-red-500 transition-all"
+                  className="w-12 h-14 text-2xl text-center border-2 rounded-xl text-white font-mono focus:outline-none transition-all"
+                  style={{ background: "rgba(255,255,255,0.06)", borderColor: "rgba(255,255,255,0.12)" }}
                   onChange={(e) => {
                     const val = e.target.value.replace(/\D/g, "");
                     if (val.length <= 1) {
@@ -277,13 +293,15 @@ function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
               data-testid="button-admin-verify-otp"
               onClick={handleVerifyOtp}
               disabled={loading || otp.length !== 6}
-              className="w-full h-12 rounded-xl font-bold bg-red-500 hover:bg-red-600 text-white"
+              className="w-full h-12 rounded-xl font-bold text-white"
+              style={{ background: "linear-gradient(135deg, #059669, #0ea5e9)" }}
             >
               {loading ? "Verifying..." : "Verify & Login"} <ArrowRight className="ml-2 w-5 h-5" />
             </Button>
             <Button
               variant="ghost"
-              className="w-full text-slate-400 hover:text-white"
+              className="w-full hover:text-white"
+              style={{ color: "rgba(255,255,255,0.35)" }}
               onClick={() => { setStep("credentials"); setOtp(""); setError(""); setPassword(""); }}
             >
               Back to login
