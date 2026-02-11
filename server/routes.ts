@@ -5,6 +5,7 @@ import { storage } from "./storage";
 import {
   loginSchema, verifyOtpSchema, updateProfileSchema,
   swipeSchema, sendMessageSchema, reportSchema,
+  adminLoginSchema, adminVerifyOtpSchema,
   GREEN_FLAG_PROMPTS, FESTIVAL_LIST,
 } from "@shared/schema";
 import { randomInt } from "crypto";
@@ -49,12 +50,21 @@ function generateOtp(): string {
 declare module "express-session" {
   interface SessionData {
     userId: string;
+    isAdmin: boolean;
+    adminUserId: string;
   }
 }
 
 function requireAuth(req: Request, res: Response, next: Function) {
   if (!req.session.userId) {
     return res.status(401).json({ message: "Unauthorized" });
+  }
+  next();
+}
+
+function requireAdmin(req: Request, res: Response, next: Function) {
+  if (!req.session.isAdmin || !req.session.adminUserId) {
+    return res.status(403).json({ message: "Admin access required" });
   }
   next();
 }
@@ -189,9 +199,17 @@ export async function registerRoutes(
       await logActivity(user.id, "user_login", "auth", { method: phone ? "phone" : "email" }, req);
 
       return res.json({
-        user: { id: user.id, respectScore: user.respectScore, dailyLikesLimit: user.dailyLikesLimit, dailyLikesUsed: user.dailyLikesUsed },
+        user: {
+          id: user.id,
+          respectScore: user.respectScore,
+          dailyLikesLimit: user.dailyLikesLimit,
+          dailyLikesUsed: user.dailyLikesUsed,
+          termsAcceptedAt: user.termsAcceptedAt,
+          termsAcceptedVersion: user.termsAcceptedVersion,
+        },
         hasProfile: !!profile,
         profile: profile || null,
+        isNewUser: !profile,
       });
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
@@ -213,6 +231,8 @@ export async function registerRoutes(
           dailyLikesUsed: user.dailyLikesUsed,
           isOnline: user.isOnline,
           lastSeenAt: user.lastSeenAt,
+          termsAcceptedAt: user.termsAcceptedAt,
+          termsAcceptedVersion: user.termsAcceptedVersion,
         },
         profile: profile || null,
       });
@@ -235,6 +255,103 @@ export async function registerRoutes(
   app.post("/api/auth/heartbeat", requireAuth, async (req: Request, res: Response) => {
     await storage.setUserOnlineStatus(req.session.userId!, true);
     return res.json({ ok: true });
+  });
+
+  // ==================== ADMIN AUTH ====================
+
+  app.post("/api/admin/auth/request-otp", async (req: Request, res: Response) => {
+    try {
+      const parsed = adminLoginSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: parsed.error.message });
+      }
+      const { email } = parsed.data;
+      const otp = generateOtp();
+      otpStore.set(`admin:${email}`, { otp, expiresAt: Date.now() + 5 * 60 * 1000 });
+
+      const isDev = process.env.NODE_ENV !== "production";
+      if (isDev) {
+        console.log(`[ADMIN OTP] ${email}: ${otp}`);
+      }
+
+      if (process.env.RESEND_API_KEY) {
+        try {
+          const response = await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${process.env.RESEND_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              from: process.env.ADMIN_EMAIL_FROM || "Milaap Admin <admin@milaap.app>",
+              to: [email],
+              subject: "Milaap Admin Login OTP",
+              html: `<h2>Your Admin Login OTP</h2><p>Your OTP is: <strong>${otp}</strong></p><p>This OTP expires in 5 minutes.</p>`,
+            }),
+          });
+          if (!response.ok) {
+            console.log(`[ADMIN EMAIL] Failed to send email, OTP logged to console`);
+          }
+        } catch {
+          console.log(`[ADMIN EMAIL] Email service unavailable, OTP logged to console`);
+        }
+      }
+
+      return res.json({
+        message: "OTP sent to admin email",
+        ...(isDev ? { otp_hint: otp } : {}),
+      });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/admin/auth/verify-otp", async (req: Request, res: Response) => {
+    try {
+      const parsed = adminVerifyOtpSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: parsed.error.message });
+      }
+      const { email, otp } = parsed.data;
+      const stored = otpStore.get(`admin:${email}`);
+      if (!stored || stored.otp !== otp || Date.now() > stored.expiresAt) {
+        return res.status(401).json({ message: "Invalid or expired OTP" });
+      }
+      otpStore.delete(`admin:${email}`);
+
+      let admin = await storage.getAdminByEmail(email);
+      if (!admin) {
+        admin = await storage.createAdminUser(email);
+      }
+
+      req.session.isAdmin = true;
+      req.session.adminUserId = admin.id;
+      await logActivity(admin.id, "admin_login", "admin", { email }, req);
+
+      return res.json({ success: true, admin: { id: admin.id, email: admin.adminEmail } });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/admin/auth/me", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const admin = await storage.getUser(req.session.adminUserId!);
+      if (!admin || !admin.isAdmin) {
+        return res.status(403).json({ message: "Not an admin" });
+      }
+      return res.json({ admin: { id: admin.id, email: admin.adminEmail } });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/admin/auth/logout", requireAdmin, async (req: Request, res: Response) => {
+    const adminId = req.session.adminUserId;
+    await logActivity(adminId || null, "admin_logout", "admin", {}, req);
+    req.session.isAdmin = false;
+    req.session.adminUserId = undefined as any;
+    return res.json({ message: "Admin logged out" });
   });
 
   // ==================== PROFILES ====================
@@ -1508,16 +1625,16 @@ ${myProfile.name}'s bio: ${myProfile.bio || "Not set"}`;
     }
   });
 
-  app.post("/api/app-settings", requireAuth, async (req: Request, res: Response) => {
+  app.post("/api/app-settings", requireAdmin, async (req: Request, res: Response) => {
     try {
       const { key, value } = req.body;
       if (!key || value === undefined) {
         return res.status(400).json({ message: "key and value required" });
       }
-      const userId = req.session.userId!;
+      const adminId = req.session.adminUserId!;
       const strValue = typeof value === "string" ? value : JSON.stringify(value);
       await storage.setAppSetting(key, strValue);
-      await logActivity(userId, "settings_updated", "admin", { key: req.body.key, value: req.body.value }, req);
+      await logActivity(adminId, "settings_updated", "admin", { key, value }, req);
       return res.json({ message: "Setting updated" });
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
@@ -1526,10 +1643,14 @@ ${myProfile.name}'s bio: ${myProfile.bio || "Not set"}`;
 
   // ==================== TERMS & CONDITIONS ====================
 
+  const DEFAULT_TERMS = "Welcome to Milaap. By using this application, you agree to treat all users with respect and dignity. You must be 18 years or older to use this service. We are committed to creating a safe and inclusive dating environment for everyone.";
+
   app.get("/api/terms", async (_req: Request, res: Response) => {
     try {
       const content = await storage.getAppSetting("terms_and_conditions");
-      return res.json({ content: content || "Welcome to Milaap. By using this application, you agree to treat all users with respect and dignity. You must be 18 years or older to use this service. We are committed to creating a safe and inclusive dating environment for everyone." });
+      const versionStr = await storage.getAppSetting("terms_version");
+      const version = versionStr ? parseInt(versionStr) : 1;
+      return res.json({ content: content || DEFAULT_TERMS, version });
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
     }
@@ -1538,17 +1659,43 @@ ${myProfile.name}'s bio: ${myProfile.bio || "Not set"}`;
   app.post("/api/terms/accept", requireAuth, async (req: Request, res: Response) => {
     try {
       const userId = req.session.userId!;
-      await storage.updateUser(userId, { termsAcceptedAt: new Date() });
-      await logActivity(userId, "terms_accepted", "auth", {}, req);
+      const { version } = req.body;
+      const currentVersionStr = await storage.getAppSetting("terms_version");
+      const currentVersion = currentVersionStr ? parseInt(currentVersionStr) : 1;
+      const acceptVersion = version || currentVersion;
+      await storage.updateUser(userId, {
+        termsAcceptedAt: new Date(),
+        termsAcceptedVersion: acceptVersion,
+      });
+      await logActivity(userId, "terms_accepted", "auth", { version: acceptVersion }, req);
       return res.json({ success: true });
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
     }
   });
 
-  // ==================== ACTIVITY LOGS ====================
+  app.post("/api/admin/terms", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const { content } = req.body;
+      if (!content) {
+        return res.status(400).json({ message: "Content required" });
+      }
+      const currentVersionStr = await storage.getAppSetting("terms_version");
+      const currentVersion = currentVersionStr ? parseInt(currentVersionStr) : 1;
+      const newVersion = currentVersion + 1;
+      await storage.setAppSetting("terms_and_conditions", content);
+      await storage.setAppSetting("terms_version", newVersion.toString());
+      const adminId = req.session.adminUserId!;
+      await logActivity(adminId, "terms_updated", "admin", { version: newVersion }, req);
+      return res.json({ success: true, version: newVersion });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
 
-  app.get("/api/admin/profiles", requireAuth, async (req: Request, res: Response) => {
+  // ==================== ADMIN-ONLY ROUTES ====================
+
+  app.get("/api/admin/profiles", requireAdmin, async (req: Request, res: Response) => {
     try {
       const limit = parseInt(req.query.limit as string) || 20;
       const offset = parseInt(req.query.offset as string) || 0;
@@ -1560,7 +1707,7 @@ ${myProfile.name}'s bio: ${myProfile.bio || "Not set"}`;
     }
   });
 
-  app.get("/api/activity-logs", requireAuth, async (req: Request, res: Response) => {
+  app.get("/api/admin/activity-logs", requireAdmin, async (req: Request, res: Response) => {
     try {
       const limit = parseInt(req.query.limit as string) || 50;
       const offset = parseInt(req.query.offset as string) || 0;

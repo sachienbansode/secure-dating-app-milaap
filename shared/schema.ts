@@ -9,6 +9,8 @@ export const users = pgTable("users", {
   email: text("email"),
   passwordHash: text("password_hash"),
   isVerified: boolean("is_verified").default(false),
+  isAdmin: boolean("is_admin").default(false),
+  adminEmail: text("admin_email"),
   respectScore: integer("respect_score").default(85),
   reportCount: integer("report_count").default(0),
   isBanned: boolean("is_banned").default(false),
@@ -23,6 +25,7 @@ export const users = pgTable("users", {
   chatCooldownCount: integer("chat_cooldown_count").default(0),
   chatBanned: boolean("chat_banned").default(false),
   termsAcceptedAt: timestamp("terms_accepted_at"),
+  termsAcceptedVersion: integer("terms_accepted_version"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -188,6 +191,15 @@ export const loginSchema = z.object({
 export const verifyOtpSchema = z.object({
   phone: z.string().optional(),
   email: z.string().email().optional(),
+  otp: z.string().length(6),
+});
+
+export const adminLoginSchema = z.object({
+  email: z.string().email(),
+});
+
+export const adminVerifyOtpSchema = z.object({
+  email: z.string().email(),
   otp: z.string().length(6),
 });
 

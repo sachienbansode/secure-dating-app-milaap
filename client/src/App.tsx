@@ -9,6 +9,7 @@ import Home from "@/pages/Home";
 import Matches from "@/pages/Matches";
 import Chat from "@/pages/Chat";
 import Profile from "@/pages/Profile";
+import AdminConsole from "@/pages/AdminConsole";
 
 function Router() {
   return (
@@ -16,9 +17,10 @@ function Router() {
       <Route path="/" component={AuthPage} />
       <Route path="/home" component={Home} />
       <Route path="/matches" component={Matches} />
-      <Route path="/chat" component={Matches} /> {/* Redirect chat tab to matches list */}
+      <Route path="/chat" component={Matches} />
       <Route path="/chat/:id" component={Chat} />
       <Route path="/profile" component={Profile} />
+      <Route path="/admin" component={AdminConsole} />
       <Route component={NotFound} />
     </Switch>
   );

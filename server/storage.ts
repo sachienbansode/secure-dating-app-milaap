@@ -67,6 +67,9 @@ export interface IStorage {
   getActivityLogCount(category?: string, userId?: string): Promise<number>;
 
   getAllProfilesAdmin(limit?: number, offset?: number, genderFilter?: string): Promise<{ profiles: (Profile & { user?: User })[], total: number }>;
+  getAdminByEmail(email: string): Promise<User | undefined>;
+  createAdminUser(email: string): Promise<User>;
+  getAppSettingWithMeta(key: string): Promise<AppSetting | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -420,6 +423,27 @@ export class DatabaseStorage implements IStorage {
     );
 
     return { profiles: enriched, total };
+  }
+
+  async getAdminByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users)
+      .where(and(eq(users.adminEmail, email), eq(users.isAdmin, true)));
+    return user;
+  }
+
+  async createAdminUser(email: string): Promise<User> {
+    const [user] = await db.insert(users).values({
+      email,
+      adminEmail: email,
+      isAdmin: true,
+      isVerified: true,
+    }).returning();
+    return user;
+  }
+
+  async getAppSettingWithMeta(key: string): Promise<AppSetting | undefined> {
+    const [setting] = await db.select().from(appSettings).where(eq(appSettings.key, key));
+    return setting || undefined;
   }
 }
 

@@ -25,6 +25,9 @@ export default function AuthPage() {
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [termsContent, setTermsContent] = useState("");
+  const [termsVersion, setTermsVersion] = useState(1);
+  const [showTermsUpdate, setShowTermsUpdate] = useState(false);
+  const [pendingDestination, setPendingDestination] = useState<string | null>(null);
 
   const { data: session, isLoading: checkingSession } = useQuery({
     queryKey: ["/api/auth/me"],
@@ -44,7 +47,10 @@ export default function AuthPage() {
   useEffect(() => {
     fetch("/api/terms")
       .then(r => r.json())
-      .then(data => setTermsContent(data.content || ""))
+      .then(data => {
+        setTermsContent(data.content || "");
+        setTermsVersion(data.version || 1);
+      })
       .catch(() => {});
   }, []);
 
@@ -101,6 +107,28 @@ export default function AuthPage() {
     }
   };
 
+  const handleAcceptTermsAndContinue = async () => {
+    try {
+      await fetch("/api/terms/accept", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ version: termsVersion }),
+      });
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    } catch {}
+    setShowTermsUpdate(false);
+    if (pendingDestination) {
+      if (pendingDestination === "/home") {
+        setLoginDestination(pendingDestination);
+        setShowWelcome(true);
+      } else {
+        setLocation(pendingDestination);
+      }
+      setPendingDestination(null);
+    }
+  };
+
   const handleVerifyOtp = async () => {
     if (otpValue.length !== 6) return;
     setIsLoading(true);
@@ -112,12 +140,27 @@ export default function AuthPage() {
       const result = await verifyOtp(payload);
       await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
       const dest = result.hasProfile ? "/home" : "/profile";
-      fetch("/api/terms/accept", { method: "POST", credentials: "include" }).catch(() => {});
-      if (result.hasProfile) {
-        setLoginDestination(dest);
-        setShowWelcome(true);
-      } else {
+      const isNew = result.isNewUser || !result.hasProfile;
+      const userAcceptedVersion = result.user?.termsAcceptedVersion || 0;
+
+      if (isNew) {
+        await fetch("/api/terms/accept", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ version: termsVersion }),
+        });
         setLocation(dest);
+      } else if (userAcceptedVersion < termsVersion) {
+        setPendingDestination(dest);
+        setShowTermsUpdate(true);
+      } else {
+        if (result.hasProfile) {
+          setLoginDestination(dest);
+          setShowWelcome(true);
+        } else {
+          setLocation(dest);
+        }
       }
     } catch (err: any) {
       setError(err.message || "Invalid OTP");
@@ -315,6 +358,28 @@ export default function AuthPage() {
                 data-testid="button-accept-terms"
               >
                 I Accept
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showTermsUpdate && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full max-h-[80vh] flex flex-col">
+            <div className="p-4 border-b border-gray-100">
+              <h3 className="font-bold text-lg">Updated Terms & Conditions</h3>
+              <p className="text-xs text-muted-foreground mt-1">Our terms have been updated. Please review and accept to continue.</p>
+            </div>
+            <div className="p-4 overflow-y-auto text-sm text-gray-700 whitespace-pre-wrap leading-relaxed flex-1">
+              {termsContent || "Loading..."}
+            </div>
+            <div className="p-4 border-t border-gray-100">
+              <button
+                onClick={handleAcceptTermsAndContinue}
+                className="w-full h-12 rounded-xl font-bold text-white bg-brand-gradient"
+                data-testid="button-accept-updated-terms"
+              >
+                I Accept & Continue
               </button>
             </div>
           </div>
