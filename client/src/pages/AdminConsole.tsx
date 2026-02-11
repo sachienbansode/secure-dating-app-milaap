@@ -7,7 +7,7 @@ import {
   Mail, ArrowRight, LogOut, Users, MessageSquareQuote,
   Settings, Shield, Clock, ShieldAlert, ShieldCheck,
   Lock, EyeOff, Trash2, Plus, ChevronRight, ArrowLeft,
-  Activity, Heart,
+  Activity, Heart, Paperclip,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import type { AuthResponse } from "@/lib/auth";
@@ -676,6 +676,7 @@ function FeatureToggles() {
     { key: "feature_photo_authenticity", label: "Photo Authenticity Score", desc: "AI photo verification with scored badges", icon: ShieldCheck },
     { key: "global_screenshot_protection", label: "Screenshot Protection", desc: "Global screenshot detection and alerts", icon: EyeOff },
     { key: "feature_couple_profiles", label: "Couple Profiles", desc: "Allow couple profile creation and visibility in discover", icon: Heart },
+    { key: "feature_attachments", label: "Chat Attachments", desc: "Allow sending pictures and videos in chat (max 5MB)", icon: Paperclip },
   ];
 
   const handleSave = async () => {
@@ -687,6 +688,14 @@ function FeatureToggles() {
           credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ key, value: String(settings[key] !== false) }),
+        });
+      }
+      if (settings.attachment_extensions) {
+        await fetch("/api/app-settings", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ key: "attachment_extensions", value: settings.attachment_extensions }),
         });
       }
       setSaved(true);
@@ -723,8 +732,26 @@ function FeatureToggles() {
         </div>
       </div>
 
+      {settings.feature_attachments !== false && (
+        <div className="bg-blue-900/20 rounded-2xl p-4 border border-blue-800">
+          <div className="flex items-center gap-2 mb-3">
+            <Paperclip size={16} className="text-blue-400" />
+            <h4 className="font-bold text-sm text-blue-400">Attachment Settings</h4>
+          </div>
+          <p className="text-xs text-blue-300 mb-3">Configure allowed file extensions for chat attachments. Comma-separated.</p>
+          <Input
+            value={settings.attachment_extensions || ".jpg,.jpeg,.png,.webp,.gif,.mp4,.mov,.avi,.mkv"}
+            onChange={(e) => setSettings(s => ({ ...s, attachment_extensions: e.target.value }))}
+            placeholder=".jpg,.jpeg,.png,.webp,.gif,.mp4,.mov,.avi,.mkv"
+            className="bg-card border-blue-800 text-foreground text-sm"
+            data-testid="input-attachment-extensions"
+          />
+          <p className="text-[10px] text-muted-foreground mt-2">Max file size: 5MB. Only image and video MIME types are accepted regardless of extension.</p>
+        </div>
+      )}
+
       <Button
-        className="w-full h-12 rounded-2xl font-bold bg-indigo-500 hover:bg-indigo-600 text-white"
+        className="w-full h-12 rounded-2xl font-bold bg-red-500 hover:bg-red-600 text-white"
         onClick={handleSave}
         disabled={saving}
         data-testid="button-save-feature-toggles"
