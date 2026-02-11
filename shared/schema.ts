@@ -87,6 +87,13 @@ export const messages = pgTable("messages", {
   isAiProxy: boolean("is_ai_proxy").default(false),
   isRead: boolean("is_read").default(false),
   isSystemMessage: boolean("is_system_message").default(false),
+  attachmentUrl: text("attachment_url"),
+  attachmentType: text("attachment_type"),
+  attachmentSize: integer("attachment_size"),
+  attachmentOriginalName: text("attachment_original_name"),
+  isOneTimeView: boolean("is_one_time_view").default(false),
+  oneTimeViewed: boolean("one_time_viewed").default(false),
+  oneTimeViewedAt: timestamp("one_time_viewed_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
