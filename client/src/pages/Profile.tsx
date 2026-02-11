@@ -203,6 +203,14 @@ export default function Profile() {
     setForm((prev) => ({ ...prev, photos: prev.photos.filter((_, i) => i !== index) }));
   };
 
+  const profile = session?.profile;
+  const [localInterestedIn, setLocalInterestedIn] = useState<string[]>(profile?.interestedIn || []);
+  const [savingInterest, setSavingInterest] = useState(false);
+
+  useEffect(() => {
+    setLocalInterestedIn(profile?.interestedIn || []);
+  }, [profile?.interestedIn]);
+
   useEffect(() => {
     if (!loadingSession && !session?.user) setLocation("/");
   }, [loadingSession, session, setLocation]);
@@ -616,14 +624,8 @@ export default function Profile() {
     );
   }
 
-  const profile = session.profile!;
+  const currentProfile = profile!;
   const respectScore = session.user.respectScore ?? 85;
-  const [localInterestedIn, setLocalInterestedIn] = useState<string[]>(profile.interestedIn || []);
-  const [savingInterest, setSavingInterest] = useState(false);
-
-  useEffect(() => {
-    setLocalInterestedIn(profile.interestedIn || []);
-  }, [profile.interestedIn]);
 
   const getScoreColor = (score: number) => {
     if (score >= 70) return "text-green-600 bg-green-50 border-green-100";
@@ -646,39 +648,39 @@ export default function Profile() {
           <div className="relative flex flex-col items-center">
             <div className="relative mb-4 group">
               <Avatar className="w-28 h-28 border-4 border-white shadow-lg">
-                <AvatarImage src={profile.photos?.[0] || "/profiles/generic_indian_1.jpg"} className="object-cover" />
-                <AvatarFallback>{profile.name?.[0] || "?"}</AvatarFallback>
+                <AvatarImage src={currentProfile.photos?.[0] || "/profiles/generic_indian_1.jpg"} className="object-cover" />
+                <AvatarFallback>{currentProfile.name?.[0] || "?"}</AvatarFallback>
               </Avatar>
               <div className="absolute bottom-1 right-1 bg-white p-2 rounded-full shadow-md border border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => { setIsEditing(true); setActiveSection("Edit Profile"); }}>
                 <Edit size={16} className="text-primary" />
               </div>
             </div>
-            <h2 className="text-2xl font-heading font-bold text-gray-900" data-testid="text-profile-name">{profile.name}, {profile.age}</h2>
-            <p className="text-muted-foreground text-sm mb-1">{profile.gender} • {profile.city}</p>
+            <h2 className="text-2xl font-heading font-bold text-gray-900" data-testid="text-profile-name">{currentProfile.name}, {currentProfile.age}</h2>
+            <p className="text-muted-foreground text-sm mb-1">{currentProfile.gender} • {currentProfile.city}</p>
 
-            {profile.intent && (
-              <div className={`mt-1 px-3 py-1 rounded-full text-xs font-bold border ${INTENT_COLORS[profile.intent] || "bg-gray-50 border-gray-200 text-gray-700"}`} data-testid="text-intent-badge">
-                {INTENT_ICONS[profile.intent]} {profile.intent}
-                {profile.intentLockedAt && <Lock size={10} className="inline ml-1" />}
+            {currentProfile.intent && (
+              <div className={`mt-1 px-3 py-1 rounded-full text-xs font-bold border ${INTENT_COLORS[currentProfile.intent] || "bg-gray-50 border-gray-200 text-gray-700"}`} data-testid="text-intent-badge">
+                {INTENT_ICONS[currentProfile.intent]} {currentProfile.intent}
+                {currentProfile.intentLockedAt && <Lock size={10} className="inline ml-1" />}
               </div>
             )}
 
-            {profile.dateReadiness && appSettings?.feature_date_readiness && (
-              <div className={`mt-1 px-3 py-1 rounded-full text-xs font-bold border flex items-center gap-1 ${DATE_READINESS_COLORS[profile.dateReadiness] || "bg-gray-50 border-gray-200 text-gray-600"}`} data-testid="text-readiness-badge">
-                {(() => { const Icon = DATE_READINESS_ICONS[profile.dateReadiness] || MessageCircle; return <Icon size={12} />; })()}
-                {profile.dateReadiness}
+            {currentProfile.dateReadiness && appSettings?.feature_date_readiness && (
+              <div className={`mt-1 px-3 py-1 rounded-full text-xs font-bold border flex items-center gap-1 ${DATE_READINESS_COLORS[currentProfile.dateReadiness] || "bg-gray-50 border-gray-200 text-gray-600"}`} data-testid="text-readiness-badge">
+                {(() => { const Icon = DATE_READINESS_ICONS[currentProfile.dateReadiness] || MessageCircle; return <Icon size={12} />; })()}
+                {currentProfile.dateReadiness}
               </div>
             )}
 
-            {profile.photos && profile.photos.length > 1 && (
+            {currentProfile.photos && currentProfile.photos.length > 1 && (
               <div className="flex gap-2 mt-3 mb-3">
-                {profile.photos.slice(0, 4).map((photo, i) => (
+                {currentProfile.photos.slice(0, 4).map((photo, i) => (
                   <div key={i} className="w-14 h-14 rounded-xl overflow-hidden border border-gray-100">
                     <img src={photo} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
                   </div>
                 ))}
-                {profile.photos.length > 4 && (
-                  <div className="w-14 h-14 rounded-xl bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500">+{profile.photos.length - 4}</div>
+                {currentProfile.photos.length > 4 && (
+                  <div className="w-14 h-14 rounded-xl bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500">+{currentProfile.photos.length - 4}</div>
                 )}
               </div>
             )}
@@ -689,16 +691,16 @@ export default function Profile() {
                 <span className="text-[10px] uppercase font-bold tracking-wider opacity-60">Respect • {getScoreLabel(respectScore)}</span>
               </div>
               <div className="flex flex-col items-center bg-purple-50 px-4 py-2 rounded-xl border border-purple-100">
-                <span className="text-purple-600 font-bold text-xl">{profile.aiProxyEnabled ? "Proxy" : profile.aiPersonaEnabled ? "On" : "Off"}</span>
+                <span className="text-purple-600 font-bold text-xl">{currentProfile.aiProxyEnabled ? "Proxy" : currentProfile.aiPersonaEnabled ? "On" : "Off"}</span>
                 <span className="text-purple-700/60 text-[10px] uppercase font-bold tracking-wider">AI Mode</span>
               </div>
-              {profile.familyMode && (
+              {currentProfile.familyMode && (
                 <div className="flex flex-col items-center bg-pink-50 px-4 py-2 rounded-xl border border-pink-100">
                   <HomeIcon size={20} className="text-pink-600" />
                   <span className="text-pink-700/60 text-[10px] uppercase font-bold tracking-wider">Family</span>
                 </div>
               )}
-              {profile.photoVerifiedAt && (
+              {currentProfile.photoVerifiedAt && (
                 <div className="flex flex-col items-center bg-blue-50 px-4 py-2 rounded-xl border border-blue-100" data-testid="badge-photo-verified">
                   <ShieldCheck size={20} className="text-blue-600" />
                   <span className="text-blue-700/60 text-[10px] uppercase font-bold tracking-wider">Verified</span>
@@ -708,11 +710,11 @@ export default function Profile() {
           </div>
         </div>
 
-        {profile.greenFlagStories && (profile.greenFlagStories as any[]).length > 0 && (
+        {currentProfile.greenFlagStories && (currentProfile.greenFlagStories as any[]).length > 0 && (
           <div className="px-6 pt-4">
             <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Green Flag Stories</h3>
             <div className="space-y-2">
-              {(profile.greenFlagStories as {prompt: string; answer: string}[]).map((story, i) => (
+              {(currentProfile.greenFlagStories as {prompt: string; answer: string}[]).map((story, i) => (
                 story.answer && (
                   <div key={i} className="bg-green-50 p-3 rounded-xl border border-green-100">
                     <p className="text-xs font-medium text-green-700">"{story.prompt}"</p>
@@ -724,28 +726,28 @@ export default function Profile() {
           </div>
         )}
 
-        {profile.bio && (
+        {currentProfile.bio && (
           <div className="px-6 pt-4">
-            <p className="text-sm text-muted-foreground bg-white p-4 rounded-2xl border border-gray-100">{profile.bio}</p>
+            <p className="text-sm text-muted-foreground bg-white p-4 rounded-2xl border border-gray-100">{currentProfile.bio}</p>
           </div>
         )}
 
-        {profile.interests && profile.interests.length > 0 && (
+        {currentProfile.interests && currentProfile.interests.length > 0 && (
           <div className="px-6 pt-4">
             <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Interests</h3>
             <div className="flex flex-wrap gap-2">
-              {profile.interests.map((interest) => (
+              {currentProfile.interests.map((interest) => (
                 <span key={interest} className="px-3 py-1.5 bg-white rounded-full text-xs font-medium border border-gray-100 shadow-sm">{interest}</span>
               ))}
             </div>
           </div>
         )}
 
-        {profile.festivalPrefs && (profile.festivalPrefs as string[]).length > 0 && (
+        {currentProfile.festivalPrefs && (currentProfile.festivalPrefs as string[]).length > 0 && (
           <div className="px-6 pt-4">
             <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Festival Celebrations</h3>
             <div className="flex flex-wrap gap-2">
-              {(profile.festivalPrefs as string[]).map((f) => (
+              {(currentProfile.festivalPrefs as string[]).map((f) => (
                 <span key={f} className="px-3 py-1.5 bg-orange-50 rounded-full text-xs font-medium border border-orange-100 text-orange-700">
                   {f}
                 </span>
@@ -773,20 +775,20 @@ export default function Profile() {
                       setSavingInterest(true);
                       try {
                         const res = await apiRequest("POST", "/api/profile", {
-                          name: profile.name,
-                          age: profile.age,
-                          gender: profile.gender,
-                          city: profile.city,
-                          location: profile.location,
+                          name: currentProfile.name,
+                          age: currentProfile.age,
+                          gender: currentProfile.gender,
+                          city: currentProfile.city,
+                          location: currentProfile.location,
                           interestedIn: updated,
                         });
                         if (res.ok) {
                           queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
                         } else {
-                          setLocalInterestedIn(profile.interestedIn || []);
+                          setLocalInterestedIn(currentProfile.interestedIn || []);
                         }
                       } catch {
-                        setLocalInterestedIn(profile.interestedIn || []);
+                        setLocalInterestedIn(currentProfile.interestedIn || []);
                       } finally {
                         setSavingInterest(false);
                       }
