@@ -68,6 +68,9 @@ export default function Profile() {
     greenFlagStories: [] as {prompt: string; answer: string}[],
     dateReadiness: "Chat-only" as string,
     interestedIn: [] as string[],
+    partner2Name: "" as string,
+    partner2Age: 25 as number,
+    partner2Gender: "" as string,
   });
 
   useEffect(() => {
@@ -97,6 +100,9 @@ export default function Profile() {
         greenFlagStories: (p.greenFlagStories as {prompt: string; answer: string}[]) || [],
         dateReadiness: p.dateReadiness || "Chat-only",
         interestedIn: p.interestedIn || [],
+        partner2Name: (p as any).partner2Name || "",
+        partner2Age: (p as any).partner2Age || 25,
+        partner2Gender: (p as any).partner2Gender || "",
       });
     }
   }, [session?.profile]);
@@ -259,17 +265,17 @@ export default function Profile() {
 
               <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 space-y-4">
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">Name</label>
-                  <Input data-testid="input-name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Your name" className="h-12 rounded-xl" />
+                  <label className="text-sm font-medium text-gray-700 mb-2 block">{form.gender === "Couple" ? "Partner 1 Name" : "Name"}</label>
+                  <Input data-testid="input-name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder={form.gender === "Couple" ? "First partner's name" : "Your name"} className="h-12 rounded-xl" />
                 </div>
 
                 <div className="flex gap-4">
                   <div className="flex-1">
-                    <label className="text-sm font-medium text-gray-700 mb-2 block">Age</label>
+                    <label className="text-sm font-medium text-gray-700 mb-2 block">{form.gender === "Couple" ? "Partner 1 Age" : "Age"}</label>
                     <Input data-testid="input-age" type="number" value={form.age} onChange={(e) => setForm((f) => ({ ...f, age: parseInt(e.target.value) || 18 }))} min={18} max={100} className="h-12 rounded-xl" />
                   </div>
                   <div className="flex-1">
-                    <label className="text-sm font-medium text-gray-700 mb-2 block">Gender</label>
+                    <label className="text-sm font-medium text-gray-700 mb-2 block">{form.gender === "Couple" ? "Profile Type" : "Gender"}</label>
                     <select data-testid="select-gender" value={form.gender} onChange={(e) => setForm((f) => ({ ...f, gender: e.target.value as "Male" | "Female" | "Trans" | "Couple" }))} className="w-full h-12 rounded-xl border border-gray-200 px-3 bg-white">
                       <option value="Male">Male</option>
                       <option value="Female">Female</option>
@@ -278,6 +284,35 @@ export default function Profile() {
                     </select>
                   </div>
                 </div>
+
+                {form.gender === "Couple" && (
+                  <div className="bg-pink-50 rounded-xl p-4 border border-pink-200 space-y-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Users size={16} className="text-pink-600" />
+                      <h4 className="font-bold text-sm text-pink-800">Partner 2 Details</h4>
+                    </div>
+                    <p className="text-xs text-pink-600">Both individuals in the couple can be of any gender</p>
+                    <div>
+                      <label className="text-sm font-medium text-pink-700 mb-2 block">Partner 2 Name</label>
+                      <Input data-testid="input-partner2-name" value={form.partner2Name} onChange={(e) => setForm((f) => ({ ...f, partner2Name: e.target.value }))} placeholder="Partner's name" className="h-12 rounded-xl" />
+                    </div>
+                    <div className="flex gap-4">
+                      <div className="flex-1">
+                        <label className="text-sm font-medium text-pink-700 mb-2 block">Partner 2 Age</label>
+                        <Input data-testid="input-partner2-age" type="number" value={form.partner2Age} onChange={(e) => setForm((f) => ({ ...f, partner2Age: parseInt(e.target.value) || 18 }))} min={18} max={100} className="h-12 rounded-xl" />
+                      </div>
+                      <div className="flex-1">
+                        <label className="text-sm font-medium text-pink-700 mb-2 block">Partner 2 Gender</label>
+                        <select data-testid="select-partner2-gender" value={form.partner2Gender} onChange={(e) => setForm((f) => ({ ...f, partner2Gender: e.target.value }))} className="w-full h-12 rounded-xl border border-gray-200 px-3 bg-white">
+                          <option value="">Select</option>
+                          <option value="Male">Male</option>
+                          <option value="Female">Female</option>
+                          <option value="Trans">Trans</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <label className="text-sm font-medium text-gray-700 mb-2 block">Bio</label>

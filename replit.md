@@ -10,6 +10,10 @@ Milaap is a mobile-first dating application designed for the Indian market featu
 - 2026-02-11: Single active session enforcement - new login invalidates previous sessions for both users and admins
 - 2026-02-11: Enhanced activity logging with IP, user agent, and location capture on all login events
 - 2026-02-11: Session validation middleware checks session DB table on every protected request
+- 2026-02-11: Enhanced couple profiles with partner2Name, partner2Age, partner2Gender fields - both individuals can be any gender
+- 2026-02-11: Couple profiles use couple stock photos, discover cards show both names and ages
+- 2026-02-11: Added View Profile (eye) button on discover cards for expanded profile info
+- 2026-02-11: Updated 50 couple profiles with separate partner1/partner2 data (names split, random genders assigned)
 - 2026-02-10: Added 50 couple profiles with Indian couple stock images (10 images), couple names, interested in Couple & Female, all mandatory fields populated
 - 2026-02-10: Added admin "All Profiles" viewer with gender filtering, pagination, created/modified timestamps, expandable photo gallery, profile details
 - 2026-02-10: Added comprehensive activity logging system (18+ logged actions across auth/profile/chat/moderation/admin/security/privacy), admin viewer with category filtering and pagination

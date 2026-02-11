@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
-import { MapPin, Info, Heart, X, Star, SlidersHorizontal, ChevronDown, Shield, Lock, Leaf, PartyPopper, FlagIcon, ShieldCheck, MessageCircle, Mic, Users } from "lucide-react";
+import { MapPin, Info, Heart, X, Star, SlidersHorizontal, ChevronDown, Shield, Lock, Leaf, PartyPopper, FlagIcon, ShieldCheck, MessageCircle, Mic, Users, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -28,6 +28,9 @@ interface DiscoverProfile {
   dateReadiness?: string | null;
   photoVerifiedAt?: string | null;
   photoAuthenticityScore?: number | null;
+  partner2Name?: string | null;
+  partner2Age?: number | null;
+  partner2Gender?: string | null;
 }
 
 const CITIES = ["All", "Mumbai", "Pune", "Delhi", "Bangalore", "Hyderabad", "Chennai", "Kolkata", "Ahmedabad", "Jaipur", "Lucknow", "Chandigarh", "Kochi", "Goa"];
@@ -301,13 +304,21 @@ function SwipeCard({ profile, isFront, expanded, onSwipe, onToggleExpand, appSet
 
         <div className="absolute bottom-0 left-0 right-0 p-6 text-white cursor-pointer" onClick={(e) => { e.stopPropagation(); if (isFront) onToggleExpand(); }}>
           <div className="flex items-center justify-between mb-1">
-            <h2 className="text-3xl font-heading font-bold" data-testid={`text-name-${profile.userId}`}>{profile.name}, {profile.age}</h2>
+            <h2 className="text-3xl font-heading font-bold" data-testid={`text-name-${profile.userId}`}>
+              {profile.gender === "Couple" && profile.partner2Name
+                ? `${profile.name} & ${profile.partner2Name}`
+                : profile.name}
+              {profile.gender === "Couple" && profile.partner2Age
+                ? `, ${profile.age} & ${profile.partner2Age}`
+                : `, ${profile.age}`}
+            </h2>
             {isFront && <motion.div animate={{ rotate: expanded ? 180 : 0 }}><ChevronDown size={20} className="text-white/70" /></motion.div>}
           </div>
           <div className="flex items-center text-white/80 text-sm mb-3 flex-wrap gap-y-1">
             <MapPin size={14} className="mr-1" /><span>{profile.location}</span>
             <span className="mx-2 text-white/40">·</span>
             <span className="bg-white/15 px-2 py-0.5 rounded-full text-xs">{profile.gender}</span>
+            
             {profile.isOnline && <span className="ml-2 text-green-400 text-xs font-medium flex items-center gap-1"><span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />Online</span>}
           </div>
 
@@ -315,6 +326,19 @@ function SwipeCard({ profile, isFront, expanded, onSwipe, onToggleExpand, appSet
             {expanded && isFront && (
               <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
                 {profile.bio && <p className="text-white/90 mb-3 font-light text-sm">{profile.bio}</p>}
+                {profile.gender === "Couple" && profile.partner2Name && (
+                  <div className="bg-pink-500/20 backdrop-blur-sm rounded-lg px-3 py-2 mb-3 border border-pink-400/20">
+                    <p className="text-[10px] uppercase tracking-wider text-pink-300 font-bold mb-1">Couple Details</p>
+                    <div className="flex items-center gap-3 text-xs text-white/90">
+                      <span>{profile.name}, {profile.age}</span>
+                      <span className="text-pink-300">&</span>
+                      <span>{profile.partner2Name}, {profile.partner2Age}</span>
+                    </div>
+                    {profile.partner2Gender && (
+                      <p className="text-[10px] text-pink-200 mt-1">Partner 2: {profile.partner2Gender}</p>
+                    )}
+                  </div>
+                )}
                 <div className="flex items-center gap-2 mb-3 text-xs text-white/70">
                   <span className="bg-white/15 px-2 py-1 rounded-full">{profile.city}</span>
                 </div>
@@ -351,12 +375,15 @@ function SwipeCard({ profile, isFront, expanded, onSwipe, onToggleExpand, appSet
         </div>
 
         {isFront && (
-          <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-4 pointer-events-auto z-20 px-6">
+          <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-3 pointer-events-auto z-20 px-6">
             <Button data-testid="button-pass" size="icon" variant="outline" className="w-14 h-14 rounded-full bg-white/90 backdrop-blur border-red-200 shadow-lg hover:bg-red-50" onClick={() => onSwipe("pass")}>
               <X className="text-red-500" size={24} />
             </Button>
-            <Button data-testid="button-superlike" size="icon" variant="outline" className="w-12 h-12 rounded-full bg-white/90 backdrop-blur border-blue-200 shadow-lg hover:bg-blue-50 self-center" onClick={() => onSwipe("superlike")}>
-              <Star className="text-blue-500 fill-blue-500" size={18} />
+            <Button data-testid="button-view-profile" size="icon" variant="outline" className="w-11 h-11 rounded-full bg-white/90 backdrop-blur border-purple-200 shadow-lg hover:bg-purple-50 self-center" onClick={(e) => { e.stopPropagation(); onToggleExpand(); }}>
+              <Eye className="text-purple-500" size={16} />
+            </Button>
+            <Button data-testid="button-superlike" size="icon" variant="outline" className="w-11 h-11 rounded-full bg-white/90 backdrop-blur border-blue-200 shadow-lg hover:bg-blue-50 self-center" onClick={() => onSwipe("superlike")}>
+              <Star className="text-blue-500 fill-blue-500" size={16} />
             </Button>
             <Button data-testid="button-like" size="icon" className="w-14 h-14 rounded-full bg-green-500 shadow-lg hover:bg-green-600 border-0" onClick={() => onSwipe("like")}>
               <Heart className="text-white fill-white" size={24} />

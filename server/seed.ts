@@ -205,6 +205,20 @@ async function seed() {
         answer: Math.random() > 0.3 ? getRandom(answers) : "",
       })).filter(s => s.answer);
 
+      let partner1Name = name;
+      let partner2Name: string | undefined;
+      let partner2Age: number | undefined;
+      let partner2Gender: string | undefined;
+
+      if (gender === "Couple" && name.includes(" & ")) {
+        const parts = name.split(" & ");
+        partner1Name = parts[0];
+        partner2Name = parts[1];
+        partner2Age = Math.floor(Math.random() * (35 - 21) + 21);
+        const genderOptions = ["Male", "Female", "Trans"];
+        partner2Gender = getRandom(genderOptions);
+      }
+
       const [user] = await db
         .insert(users)
         .values({
@@ -216,7 +230,7 @@ async function seed() {
 
       await db.insert(profiles).values({
         userId: user.id,
-        name: encrypt(name),
+        name: encrypt(partner1Name),
         age,
         gender,
         bio: encrypt(bio),
@@ -238,6 +252,11 @@ async function seed() {
         greenFlagStories,
         interestedIn: options?.interestedIn || undefined,
         dateReadiness: getRandom(["Chat-only", "Voice-ready", "Meet-ready"]),
+        ...(partner2Name && {
+          partner2Name: encrypt(partner2Name),
+          partner2Age,
+          partner2Gender,
+        }),
       });
     }
   };
