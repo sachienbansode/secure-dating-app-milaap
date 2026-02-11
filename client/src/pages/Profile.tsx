@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { getMe, logout, type AuthResponse } from "@/lib/auth";
+import LocationSearch from "@/components/LocationSearch";
 
 const CITIES = ["Mumbai", "Pune", "Delhi", "Bangalore", "Hyderabad", "Chennai", "Kolkata", "Ahmedabad", "Jaipur", "Lucknow", "Chandigarh", "Kochi", "Goa"];
 const INTERESTS = ["Bollywood", "Cricket", "Chai", "Street Food", "Yoga", "Tech", "Art", "Music", "Travel", "Reading", "Cooking", "Dancing", "Photography", "Fitness", "Meditation", "Gaming", "Fashion", "Startups", "Biriyani", "Hiking"];
@@ -321,9 +322,11 @@ export default function Profile() {
 
                 <div>
                   <label className="text-sm font-medium text-gray-700 mb-2 block">City</label>
-                  <select data-testid="select-city" value={form.city} onChange={(e) => setForm((f) => ({ ...f, city: e.target.value, location: e.target.value }))} className="w-full h-12 rounded-xl border border-gray-200 px-3 bg-white">
-                    {CITIES.map((city) => <option key={city} value={city}>{city}</option>)}
-                  </select>
+                  <LocationSearch
+                    value={form.city}
+                    onChange={(city, location) => setForm((f) => ({ ...f, city, location }))}
+                    placeholder="Search city or use GPS..."
+                  />
                 </div>
               </div>
 
