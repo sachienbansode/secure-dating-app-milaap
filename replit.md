@@ -4,6 +4,9 @@
 Milaap is a mobile-first dating application designed for the Indian market featuring OTP-based authentication, AES-256-GCM data encryption at rest, AI-assisted messaging via OpenAI, photo uploads, respect-based matchmaking, and 12 advanced cultural features.
 
 ## Recent Changes
+- 2026-02-11: Added chat attachments feature - send pictures/videos (max 5MB), one-time view option, admin-configurable extensions and toggle
+- 2026-02-11: Revamped color theme to Red, Blue & Black dark theme (vivid red primary, electric blue accent, dark blue-black backgrounds)
+- 2026-02-11: Added chat archive and delete (soft delete) - data retained in DB for audit logs
 - 2026-02-11: Separated admin_users table from users table for proper admin management
 - 2026-02-11: Added user_sessions table for session tracking (IP, location, user agent, single-session enforcement)
 - 2026-02-11: Admin login changed to Email + Password + OTP (3-step auth), default admin: admin@milaap.co.in / Admin@123

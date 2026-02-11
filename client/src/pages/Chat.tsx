@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRoute, Link, useLocation } from "wouter";
-import { ArrowLeft, Send, Sparkles, MoreVertical, ShieldCheck, Phone, Video, Paperclip, CheckCheck, Flag, Loader2, Bot, ShieldAlert, Camera, Ban, Unlock, Clock, MessageCircle, Mic, Users, Archive, Trash2 } from "lucide-react";
+import { ArrowLeft, Send, Sparkles, MoreVertical, ShieldCheck, Phone, Video, Paperclip, CheckCheck, Flag, Loader2, Bot, ShieldAlert, Camera, Ban, Unlock, Clock, MessageCircle, Mic, Users, Archive, Trash2, Image, X, Eye, EyeOff, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -18,6 +18,12 @@ interface ChatMessage {
   isAiProxy: boolean;
   isRead: boolean;
   isSystemMessage?: boolean;
+  attachmentUrl?: string | null;
+  attachmentType?: string | null;
+  attachmentSize?: number | null;
+  attachmentOriginalName?: string | null;
+  isOneTimeView?: boolean;
+  oneTimeViewed?: boolean;
   createdAt: string;
 }
 
@@ -41,6 +47,12 @@ export default function Chat() {
   const [cooldownAlert, setCooldownAlert] = useState<string | null>(null);
   const [phoneBlockedAlert, setPhoneBlockedAlert] = useState(false);
   const [showPhoneUnlock, setShowPhoneUnlock] = useState(false);
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [attachmentPreview, setAttachmentPreview] = useState<string | null>(null);
+  const [isOneTimeView, setIsOneTimeView] = useState(false);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
+  const [viewOnceMedia, setViewOnceMedia] = useState<{ url: string; type: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { data: session, isLoading: checkingSession } = useQuery({
@@ -274,6 +286,87 @@ export default function Chat() {
     reportMutation.mutate({ reportedUserId: otherUserId, reason: reportReason, matchId });
   };
 
+  const handleAttachmentSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      setCooldownAlert("File too large. Maximum size is 5MB.");
+      setTimeout(() => setCooldownAlert(null), 3000);
+      return;
+    }
+
+    const imageTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    const videoTypes = ["video/mp4", "video/quicktime", "video/x-msvideo", "video/x-matroska"];
+    if (!imageTypes.includes(file.type) && !videoTypes.includes(file.type)) {
+      setCooldownAlert("Only image and video files are allowed.");
+      setTimeout(() => setCooldownAlert(null), 3000);
+      return;
+    }
+
+    setAttachmentFile(file);
+    if (imageTypes.includes(file.type)) {
+      const reader = new FileReader();
+      reader.onload = (ev) => setAttachmentPreview(ev.target?.result as string);
+      reader.readAsDataURL(file);
+    } else {
+      setAttachmentPreview("video");
+    }
+  };
+
+  const handleSendAttachment = async () => {
+    if (!attachmentFile || !matchId) return;
+    setUploadingAttachment(true);
+    try {
+      const formData = new FormData();
+      formData.append("attachment", attachmentFile);
+      formData.append("matchId", matchId);
+      formData.append("isOneTimeView", String(isOneTimeView));
+
+      const res = await fetch("/api/messages/attachment", {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        setCooldownAlert(err.message || "Failed to send attachment");
+        setTimeout(() => setCooldownAlert(null), 3000);
+      } else {
+        queryClient.invalidateQueries({ queryKey: [`/api/messages/${matchId}`] });
+      }
+    } catch {
+      setCooldownAlert("Failed to send attachment");
+      setTimeout(() => setCooldownAlert(null), 3000);
+    }
+    setAttachmentFile(null);
+    setAttachmentPreview(null);
+    setIsOneTimeView(false);
+    setUploadingAttachment(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleViewOnce = async (messageId: string) => {
+    try {
+      const res = await fetch(`/api/messages/${messageId}/view-once`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (data.canView && data.url) {
+        setViewOnceMedia({ url: data.url, type: data.type });
+        queryClient.invalidateQueries({ queryKey: [`/api/messages/${matchId}`] });
+      } else if (!data.canView) {
+        setCooldownAlert(data.message || "This attachment has already been viewed.");
+        setTimeout(() => setCooldownAlert(null), 3000);
+      }
+    } catch {
+      setCooldownAlert("Failed to load attachment");
+      setTimeout(() => setCooldownAlert(null), 3000);
+    }
+  };
+
   if (!matchId) return <div>Invalid chat</div>;
 
   const getRespectColor = (score: number) => {
@@ -426,8 +519,39 @@ export default function Chat() {
                 className={`flex flex-col ${isMe ? "items-end" : "items-start"} ${isNextSame ? "mb-1" : "mb-4"}`}
                 data-testid={`message-${msg.id}`}
               >
-                <div className={`max-w-[75%] px-4 py-3 shadow-sm text-sm relative group ${isMe ? "bg-brand-gradient text-white rounded-2xl rounded-tr-sm" : "bg-card text-foreground rounded-2xl rounded-tl-sm border border-border"}`}>
-                  {msg.content}
+                <div className={`max-w-[75%] shadow-sm text-sm relative group ${msg.attachmentUrl && !msg.isOneTimeView ? "p-1" : "px-4 py-3"} ${isMe ? "bg-brand-gradient text-white rounded-2xl rounded-tr-sm" : "bg-card text-foreground rounded-2xl rounded-tl-sm border border-border"}`}>
+                  {msg.attachmentUrl && !msg.isOneTimeView && (
+                    <div className="mb-1">
+                      {msg.attachmentType === "image" ? (
+                        <img src={msg.attachmentUrl} alt="Shared image" className="rounded-xl max-w-full max-h-60 object-cover cursor-pointer" onClick={() => window.open(msg.attachmentUrl!, "_blank")} data-testid={`attachment-image-${msg.id}`} />
+                      ) : (
+                        <video src={msg.attachmentUrl} controls className="rounded-xl max-w-full max-h-60" data-testid={`attachment-video-${msg.id}`} />
+                      )}
+                    </div>
+                  )}
+                  {msg.isOneTimeView && (
+                    <div className="flex items-center gap-2">
+                      {msg.oneTimeViewed && msg.senderId !== currentUserId ? (
+                        <span className="flex items-center gap-1.5 text-xs opacity-70"><EyeOff size={14} /> Opened</span>
+                      ) : (
+                        <button
+                          className={`flex items-center gap-1.5 text-xs font-medium ${isMe ? "text-white/90 hover:text-white" : "text-blue-400 hover:text-blue-300"}`}
+                          onClick={() => handleViewOnce(msg.id)}
+                          data-testid={`button-view-once-${msg.id}`}
+                        >
+                          {msg.senderId === currentUserId ? (
+                            <><Eye size={14} /> {msg.attachmentType === "image" ? "📷" : "🎥"} View once {msg.oneTimeViewed ? "(Opened)" : ""}</>
+                          ) : (
+                            <><Eye size={14} /> Tap to view</>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  {!msg.attachmentUrl && msg.content}
+                  {msg.attachmentUrl && !msg.isOneTimeView && (
+                    <div className="px-3 pb-2 pt-1 text-xs opacity-80">{msg.content}</div>
+                  )}
                   {msg.isAiProxy && (
                     <span className="inline-flex items-center gap-0.5 ml-1 opacity-70">
                       <Bot size={10} />
@@ -481,8 +605,64 @@ export default function Chat() {
         <div ref={messagesEndRef} />
       </div>
 
+      {attachmentPreview && (
+        <div className="bg-card border-t border-border px-4 py-3">
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              {attachmentPreview === "video" ? (
+                <div className="w-16 h-16 rounded-xl bg-muted flex items-center justify-center">
+                  <Play size={24} className="text-blue-400" />
+                </div>
+              ) : (
+                <img src={attachmentPreview} alt="Preview" className="w-16 h-16 rounded-xl object-cover" />
+              )}
+              <button className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center" onClick={() => { setAttachmentFile(null); setAttachmentPreview(null); setIsOneTimeView(false); if (fileInputRef.current) fileInputRef.current.value = ""; }} data-testid="button-remove-attachment">
+                <X size={12} />
+              </button>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-foreground font-medium truncate">{attachmentFile?.name}</p>
+              <p className="text-[10px] text-muted-foreground">{attachmentFile ? (attachmentFile.size / 1024 / 1024).toFixed(2) + " MB" : ""}</p>
+              <button
+                className={`flex items-center gap-1 mt-1 text-[11px] font-medium transition-colors ${isOneTimeView ? "text-red-400" : "text-muted-foreground hover:text-blue-400"}`}
+                onClick={() => setIsOneTimeView(!isOneTimeView)}
+                data-testid="button-toggle-one-time"
+              >
+                {isOneTimeView ? <><EyeOff size={12} /> View once enabled</> : <><Eye size={12} /> Enable view once</>}
+              </button>
+            </div>
+            <Button
+              size="icon"
+              className="h-10 w-10 rounded-full bg-brand-gradient shrink-0"
+              onClick={handleSendAttachment}
+              disabled={uploadingAttachment}
+              data-testid="button-send-attachment"
+            >
+              {uploadingAttachment ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+            </Button>
+          </div>
+        </div>
+      )}
+
       <div className="bg-card p-3 border-t border-border flex items-end gap-2 pb-6 md:pb-3">
-        <Button variant="ghost" size="icon" className="text-muted-foreground hover:bg-muted rounded-full h-10 w-10 shrink-0"><Paperclip size={20} /></Button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*,video/*"
+          className="hidden"
+          onChange={handleAttachmentSelect}
+          data-testid="input-attachment-file"
+        />
+        <Button
+          variant="ghost"
+          size="icon"
+          className={`text-muted-foreground hover:bg-muted hover:text-blue-400 rounded-full h-10 w-10 shrink-0 ${!appSettings?.feature_attachments ? "opacity-50 cursor-not-allowed" : ""}`}
+          onClick={() => { if (appSettings?.feature_attachments !== false) fileInputRef.current?.click(); }}
+          disabled={isChatCooledDown || appSettings?.feature_attachments === false}
+          data-testid="button-attachment"
+        >
+          <Paperclip size={20} />
+        </Button>
         <div className="flex-1 bg-background border border-border rounded-[1.5rem] flex items-end min-h-[44px] focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-all">
           <Input data-testid="input-message" value={input} onChange={(e) => setInput(e.target.value)} placeholder={isChatCooledDown ? "Chat paused..." : "Type a message..."} className="border-0 bg-transparent focus-visible:ring-0 px-4 py-3 min-h-[44px] max-h-32 resize-none" onKeyDown={(e) => e.key === "Enter" && handleSend()} disabled={isChatCooledDown} />
           <Button variant="ghost" size="icon" className={`mr-1 mb-1 h-8 w-8 rounded-full transition-colors ${aiMode ? "bg-blue-900/30 text-blue-400" : "text-muted-foreground hover:text-blue-400"}`} onClick={() => setAiMode(!aiMode)} data-testid="button-ai-toggle" disabled={isChatCooledDown}>
@@ -581,6 +761,30 @@ export default function Chat() {
               </div>
               {reportMutation.isSuccess && <p className="text-green-600 text-sm text-center">Report submitted. The user has been blocked and action will be taken.</p>}
             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {viewOnceMedia && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black z-50 flex items-center justify-center"
+            onClick={() => setViewOnceMedia(null)}
+          >
+            <button className="absolute top-4 right-4 bg-white/20 text-white rounded-full w-10 h-10 flex items-center justify-center z-10" data-testid="button-close-view-once">
+              <X size={24} />
+            </button>
+            <p className="absolute top-4 left-4 text-white/60 text-xs font-medium bg-black/50 px-3 py-1.5 rounded-full flex items-center gap-1.5">
+              <EyeOff size={12} /> View once
+            </p>
+            {viewOnceMedia.type === "image" ? (
+              <img src={viewOnceMedia.url} alt="View once" className="max-w-full max-h-full object-contain" />
+            ) : (
+              <video src={viewOnceMedia.url} controls autoPlay className="max-w-full max-h-full" />
+            )}
           </motion.div>
         )}
       </AnimatePresence>
