@@ -42,6 +42,25 @@ const upload = multer({
   },
 });
 
+const chatAttachmentDir = path.join(process.cwd(), "uploads", "chat");
+if (!fs.existsSync(chatAttachmentDir)) {
+  fs.mkdirSync(chatAttachmentDir, { recursive: true });
+}
+
+const chatAttachmentStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, chatAttachmentDir),
+  filename: (_req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname) || ".jpg";
+    cb(null, `chat-${uniqueSuffix}${ext}`);
+  },
+});
+
+const chatAttachmentUpload = multer({
+  storage: chatAttachmentStorage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+});
+
 const otpStore = new Map<string, { otp: string; expiresAt: number }>();
 
 function generateOtp(): string {
@@ -962,6 +981,119 @@ export async function registerRoutes(
     }
   });
 
+  // ==================== CHAT ATTACHMENTS ====================
+
+  app.post("/api/messages/attachment", requireAuth, (req: Request, res: Response, next: Function) => {
+    chatAttachmentUpload.single("attachment")(req, res, (err: any) => {
+      if (err) {
+        if (err.code === "LIMIT_FILE_SIZE") {
+          return res.status(400).json({ message: "File too large. Maximum size is 5MB." });
+        }
+        return res.status(400).json({ message: err.message || "Upload failed" });
+      }
+      next();
+    });
+  }, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const { matchId, isOneTimeView } = req.body;
+
+      if (!matchId) {
+        return res.status(400).json({ message: "matchId is required" });
+      }
+
+      const attachmentsEnabled = await storage.getAppSetting("feature_attachments");
+      if (attachmentsEnabled !== "true") {
+        return res.status(403).json({ message: "Attachments are currently disabled by admin." });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      const allowedExtensionsSetting = await storage.getAppSetting("attachment_extensions");
+      const allowedExtensions = allowedExtensionsSetting
+        ? allowedExtensionsSetting.split(",").map((e: string) => e.trim().toLowerCase())
+        : [".jpg", ".jpeg", ".png", ".webp", ".gif", ".mp4", ".mov", ".avi", ".mkv"];
+
+      const fileExt = path.extname(req.file.originalname).toLowerCase();
+      if (!allowedExtensions.includes(fileExt)) {
+        fs.unlinkSync(req.file.path);
+        return res.status(400).json({ message: `File type ${fileExt} is not allowed. Allowed: ${allowedExtensions.join(", ")}` });
+      }
+
+      const imageTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+      const videoTypes = ["video/mp4", "video/quicktime", "video/x-msvideo", "video/x-matroska"];
+      const allowedMimes = [...imageTypes, ...videoTypes];
+
+      if (!allowedMimes.includes(req.file.mimetype)) {
+        fs.unlinkSync(req.file.path);
+        return res.status(400).json({ message: "Only image and video files are allowed." });
+      }
+
+      const user = await storage.getUser(userId);
+      if (user?.chatBanned) {
+        fs.unlinkSync(req.file.path);
+        return res.status(403).json({ message: "Your chat privileges have been revoked." });
+      }
+
+      const match = await storage.getMatchById(matchId);
+      if (!match || !match.isMatched) {
+        fs.unlinkSync(req.file.path);
+        return res.status(403).json({ message: "Cannot send attachments to non-matched users" });
+      }
+      if (match.userId !== userId && match.targetUserId !== userId) {
+        fs.unlinkSync(req.file.path);
+        return res.status(403).json({ message: "Not part of this match" });
+      }
+
+      const attachmentType = imageTypes.includes(req.file.mimetype) ? "image" : "video";
+      const attachmentUrl = `/uploads/chat/${req.file.filename}`;
+
+      const message = await storage.sendMessage({
+        matchId,
+        senderId: userId,
+        content: isOneTimeView === "true" ? "📷 View once" : (attachmentType === "image" ? "📷 Photo" : "🎥 Video"),
+        isAiGenerated: false,
+        isAiProxy: false,
+        attachmentUrl,
+        attachmentType,
+        attachmentSize: req.file.size,
+        attachmentOriginalName: req.file.originalname,
+        isOneTimeView: isOneTimeView === "true",
+      });
+
+      await logActivity(userId, "attachment_sent", "chat", { matchId, attachmentType, isOneTimeView: isOneTimeView === "true" }, req);
+      return res.status(201).json(message);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/messages/:messageId/view-once", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const messageId = req.params.messageId;
+
+      const message = await storage.getMessageById(messageId);
+      if (!message) return res.status(404).json({ message: "Message not found" });
+      if (!message.isOneTimeView) return res.status(400).json({ message: "This is not a one-time view message" });
+
+      if (message.senderId === userId) {
+        return res.json({ canView: true, url: message.attachmentUrl, type: message.attachmentType });
+      }
+
+      if (message.oneTimeViewed) {
+        return res.json({ canView: false, message: "This attachment has already been viewed." });
+      }
+
+      await storage.markOneTimeViewed(messageId);
+      return res.json({ canView: true, url: message.attachmentUrl, type: message.attachmentType });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
   // ==================== SCREENSHOT PROTECTION ====================
 
   app.get("/api/settings/no-screenshot", requireAuth, async (_req: Request, res: Response) => {
@@ -1778,6 +1910,8 @@ ${myProfile.name}'s bio: ${myProfile.bio || "Not set"}`;
       const photoAuthenticity = await storage.getAppSetting("feature_photo_authenticity");
       const dateReadiness = await storage.getAppSetting("feature_date_readiness");
       const coupleProfiles = await storage.getAppSetting("feature_couple_profiles");
+      const attachments = await storage.getAppSetting("feature_attachments");
+      const attachmentExtensions = await storage.getAppSetting("attachment_extensions");
 
       return res.json({
         welcome_taglines: parsedTaglines,
@@ -1788,6 +1922,8 @@ ${myProfile.name}'s bio: ${myProfile.bio || "Not set"}`;
         feature_photo_authenticity: photoAuthenticity !== null ? photoAuthenticity === "true" : true,
         feature_date_readiness: dateReadiness !== null ? dateReadiness === "true" : true,
         feature_couple_profiles: coupleProfiles !== null ? coupleProfiles === "true" : true,
+        feature_attachments: attachments !== null ? attachments === "true" : true,
+        attachment_extensions: attachmentExtensions || ".jpg,.jpeg,.png,.webp,.gif,.mp4,.mov,.avi,.mkv",
       });
     } catch (err: any) {
       return res.status(500).json({ message: err.message });

@@ -41,7 +41,9 @@ export interface IStorage {
 
   sendMessage(message: InsertMessage): Promise<Message>;
   getMessages(matchId: string, limit?: number): Promise<Message[]>;
+  getMessageById(id: string): Promise<Message | undefined>;
   markMessagesRead(matchId: string, userId: string): Promise<void>;
+  markOneTimeViewed(messageId: string): Promise<void>;
   getConversationDropRate(userId: string): Promise<number>;
 
   createReport(report: InsertReport): Promise<Report>;
@@ -270,6 +272,18 @@ export class DatabaseStorage implements IStorage {
       .limit(limit);
     
     return result.map(m => ({ ...m, content: m.isSystemMessage ? m.content : decryptMessage(m.content) })).reverse();
+  }
+
+  async getMessageById(id: string): Promise<Message | undefined> {
+    const [msg] = await db.select().from(messages).where(eq(messages.id, id));
+    if (!msg) return undefined;
+    return { ...msg, content: msg.isSystemMessage ? msg.content : decryptMessage(msg.content) };
+  }
+
+  async markOneTimeViewed(messageId: string): Promise<void> {
+    await db.update(messages)
+      .set({ oneTimeViewed: true, oneTimeViewedAt: new Date() })
+      .where(eq(messages.id, messageId));
   }
 
   async markMessagesRead(matchId: string, userId: string): Promise<void> {
