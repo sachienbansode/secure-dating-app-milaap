@@ -50,76 +50,74 @@
   --color-sidebar-border: hsl(var(--sidebar-border));
   --color-sidebar-ring: hsl(var(--sidebar-ring));
   
-  /* Indian Context Brand Colors */
-  /* Marigold Orange to Rani Pink Gradient */
-  --color-brand-gradient-start: hsl(25 95% 55%); /* Marigold */
-  --color-brand-gradient-end: hsl(330 85% 55%); /* Rani Pink */
+  /* Brand Colors - Blue & Pink */
+  --color-brand-gradient-start: hsl(220 85% 55%); /* Royal Blue */
+  --color-brand-gradient-end: hsl(330 85% 60%); /* Rose Pink */
 }
 
 /* LIGHT MODE */
 :root {
-  /* Warm cream background reminiscent of paper/sandstone */
-  --background: 40 30% 98%; 
-  --foreground: 330 30% 15%; /* Deep purple-brown text */
+  --background: 240 20% 98%; 
+  --foreground: 230 25% 15%;
 
   --card: 0 0% 100%;
-  --card-foreground: 330 30% 15%;
+  --card-foreground: 230 25% 15%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 330 30% 15%;
+  --popover-foreground: 230 25% 15%;
 
-  /* Rani Pink for Primary */
-  --primary: 330 85% 55%;
+  /* Blue-Pink Primary */
+  --primary: 240 70% 55%;
   --primary-foreground: 0 0% 100%;
 
-  /* Marigold/Saffron for Secondary/Accents */
-  --secondary: 35 90% 96%;
-  --secondary-foreground: 25 90% 45%;
+  /* Soft Pink for Secondary/Accents */
+  --secondary: 330 60% 96%;
+  --secondary-foreground: 330 60% 45%;
 
-  --muted: 40 10% 94%;
-  --muted-foreground: 330 10% 40%;
+  --muted: 230 15% 94%;
+  --muted-foreground: 230 10% 40%;
 
-  --accent: 35 90% 96%;
-  --accent-foreground: 330 30% 15%;
+  --accent: 240 50% 96%;
+  --accent-foreground: 240 30% 15%;
 
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 0 0% 98%;
 
-  --border: 40 20% 90%;
-  --input: 40 20% 90%;
-  --ring: 330 85% 55%;
+  --border: 230 20% 90%;
+  --input: 230 20% 90%;
+  --ring: 240 70% 55%;
   
   --radius: 1rem;
 }
 
 .dark {
-  --background: 330 30% 10%;
-  --foreground: 40 30% 98%;
+  --background: 230 25% 10%;
+  --foreground: 220 20% 98%;
 
-  --card: 330 25% 12%;
-  --card-foreground: 40 30% 98%;
+  --card: 230 20% 12%;
+  --card-foreground: 220 20% 98%;
 
-  --popover: 330 25% 12%;
-  --popover-foreground: 40 30% 98%;
+  --popover: 230 20% 12%;
+  --popover-foreground: 220 20% 98%;
 
-  --primary: 330 85% 55%;
+  --primary: 240 70% 60%;
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 330 20% 18%;
-  --secondary-foreground: 40 30% 98%;
+  --secondary: 240 15% 18%;
+  --secondary-foreground: 220 20% 98%;
 
-  --muted: 330 20% 18%;
-  --muted-foreground: 330 10% 65%;
+  --muted: 240 15% 18%;
+  --muted-foreground: 230 10% 65%;
 
-  --accent: 330 20% 18%;
-  --accent-foreground: 40 30% 98%;
+  --accent: 240 15% 18%;
+  --accent-foreground: 220 20% 98%;
 
   --destructive: 0 62.8% 30.6%;
   --destructive-foreground: 0 0% 98%;
 
-  --border: 330 20% 18%;
-  --input: 330 20% 18%;
-  --ring: 330 85% 55%;
+  --border: 240 15% 18%;
+  --input: 240 15% 18%;
+  --ring: 240 70% 60%;
 }
 
 @layer base {

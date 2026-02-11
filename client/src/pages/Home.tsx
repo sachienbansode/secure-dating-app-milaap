@@ -98,7 +98,8 @@ export default function Home() {
     return <div className="h-full flex items-center justify-center"><div className="animate-pulse text-muted-foreground">Loading...</div></div>;
   }
 
-  const filteredProfiles = profiles.filter((p) => !dismissed.includes(p.userId));
+  const coupleProfilesEnabled = appSettings?.feature_couple_profiles !== false;
+  const filteredProfiles = profiles.filter((p) => !dismissed.includes(p.userId) && (coupleProfilesEnabled || p.gender !== "Couple"));
 
   const handleSwipe = (userId: string, action: "like" | "pass" | "superlike") => {
     setDismissed((prev) => [...prev, userId]);
@@ -145,7 +146,7 @@ export default function Home() {
               <div>
                 <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Gender</label>
                 <div className="flex gap-2">
-                  {(["All", "Male", "Female", "Trans", "Couple"] as const).map((g) => (
+                  {(["All", "Male", "Female", "Trans", "Couple"] as const).filter(g => coupleProfilesEnabled || g !== "Couple").map((g) => (
                     <button key={g} onClick={() => setFilters((f) => ({ ...f, gender: g }))} className={`px-4 py-2 rounded-full text-xs font-medium transition-all ${filters.gender === g ? "bg-brand-gradient text-white shadow-sm" : "bg-gray-100 text-gray-600"}`} data-testid={`filter-gender-${g.toLowerCase()}`}>
                       {g}
                     </button>
@@ -305,10 +306,10 @@ function SwipeCard({ profile, isFront, expanded, onSwipe, onToggleExpand, appSet
         <div className="absolute bottom-0 left-0 right-0 p-6 text-white cursor-pointer" onClick={(e) => { e.stopPropagation(); if (isFront) onToggleExpand(); }}>
           <div className="flex items-center justify-between mb-1">
             <h2 className="text-3xl font-heading font-bold" data-testid={`text-name-${profile.userId}`}>
-              {profile.gender === "Couple" && profile.partner2Name
+              {coupleProfilesEnabled && profile.gender === "Couple" && profile.partner2Name
                 ? `${profile.name} & ${profile.partner2Name}`
                 : profile.name}
-              {profile.gender === "Couple" && profile.partner2Age
+              {coupleProfilesEnabled && profile.gender === "Couple" && profile.partner2Age
                 ? `, ${profile.age} & ${profile.partner2Age}`
                 : `, ${profile.age}`}
             </h2>
@@ -326,7 +327,7 @@ function SwipeCard({ profile, isFront, expanded, onSwipe, onToggleExpand, appSet
             {expanded && isFront && (
               <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
                 {profile.bio && <p className="text-white/90 mb-3 font-light text-sm">{profile.bio}</p>}
-                {profile.gender === "Couple" && profile.partner2Name && (
+                {coupleProfilesEnabled && profile.gender === "Couple" && profile.partner2Name && (
                   <div className="bg-pink-500/20 backdrop-blur-sm rounded-lg px-3 py-2 mb-3 border border-pink-400/20">
                     <p className="text-[10px] uppercase tracking-wider text-pink-300 font-bold mb-1">Couple Details</p>
                     <div className="flex items-center gap-3 text-xs text-white/90">

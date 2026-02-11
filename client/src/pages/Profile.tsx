@@ -265,27 +265,27 @@ export default function Profile() {
 
               <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 space-y-4">
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">{form.gender === "Couple" ? "Partner 1 Name" : "Name"}</label>
-                  <Input data-testid="input-name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder={form.gender === "Couple" ? "First partner's name" : "Your name"} className="h-12 rounded-xl" />
+                  <label className="text-sm font-medium text-gray-700 mb-2 block">{form.gender === "Couple" && appSettings?.feature_couple_profiles !== false ? "Partner 1 Name" : "Name"}</label>
+                  <Input data-testid="input-name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder={form.gender === "Couple" && appSettings?.feature_couple_profiles !== false ? "First partner's name" : "Your name"} className="h-12 rounded-xl" />
                 </div>
 
                 <div className="flex gap-4">
                   <div className="flex-1">
-                    <label className="text-sm font-medium text-gray-700 mb-2 block">{form.gender === "Couple" ? "Partner 1 Age" : "Age"}</label>
+                    <label className="text-sm font-medium text-gray-700 mb-2 block">{form.gender === "Couple" && appSettings?.feature_couple_profiles !== false ? "Partner 1 Age" : "Age"}</label>
                     <Input data-testid="input-age" type="number" value={form.age} onChange={(e) => setForm((f) => ({ ...f, age: parseInt(e.target.value) || 18 }))} min={18} max={100} className="h-12 rounded-xl" />
                   </div>
                   <div className="flex-1">
-                    <label className="text-sm font-medium text-gray-700 mb-2 block">{form.gender === "Couple" ? "Profile Type" : "Gender"}</label>
+                    <label className="text-sm font-medium text-gray-700 mb-2 block">{form.gender === "Couple" && appSettings?.feature_couple_profiles !== false ? "Profile Type" : "Gender"}</label>
                     <select data-testid="select-gender" value={form.gender} onChange={(e) => setForm((f) => ({ ...f, gender: e.target.value as "Male" | "Female" | "Trans" | "Couple" }))} className="w-full h-12 rounded-xl border border-gray-200 px-3 bg-white">
                       <option value="Male">Male</option>
                       <option value="Female">Female</option>
                       <option value="Trans">Trans</option>
-                      <option value="Couple">Couple</option>
+                      {appSettings?.feature_couple_profiles !== false && <option value="Couple">Couple</option>}
                     </select>
                   </div>
                 </div>
 
-                {form.gender === "Couple" && (
+                {form.gender === "Couple" && appSettings?.feature_couple_profiles !== false && (
                   <div className="bg-pink-50 rounded-xl p-4 border border-pink-200 space-y-4">
                     <div className="flex items-center gap-2 mb-1">
                       <Users size={16} className="text-pink-600" />
@@ -330,7 +330,7 @@ export default function Profile() {
               <div className="bg-rose-50 rounded-2xl p-4 border border-rose-200">
                 <label className="text-sm font-medium text-rose-800 mb-3 block">Interested In</label>
                 <div className="flex flex-wrap gap-2">
-                  {(["Male", "Female", "Trans", "Couple"] as const).map((option) => (
+                  {(["Male", "Female", "Trans", "Couple"] as const).filter(o => appSettings?.feature_couple_profiles !== false || o !== "Couple").map((option) => (
                     <button
                       key={option}
                       type="button"
@@ -778,7 +778,7 @@ export default function Profile() {
             <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3 px-1">Interested In</h3>
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
               <div className="flex flex-wrap gap-2">
-                {(["Male", "Female", "Trans", "Couple"] as const).map((option) => (
+                {(["Male", "Female", "Trans", "Couple"] as const).filter(o => appSettings?.feature_couple_profiles !== false || o !== "Couple").map((option) => (
                   <button
                     key={option}
                     type="button"

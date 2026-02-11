@@ -648,6 +648,11 @@ export async function registerRoutes(
       };
       let profilesList = await storage.getDiscoverProfiles(userId, limit, filters);
 
+      const coupleProfilesEnabled = await storage.getAppSetting("feature_couple_profiles");
+      if (coupleProfilesEnabled === "false") {
+        profilesList = profilesList.filter(p => p.gender !== "Couple");
+      }
+
       const festivalSeason = isActiveFestivalSeason();
       if (festivalSeason.active && festivalSeason.festival && myProfile?.festivalPrefs) {
         const myFestivals = myProfile.festivalPrefs as string[];
@@ -1714,6 +1719,7 @@ ${myProfile.name}'s bio: ${myProfile.bio || "Not set"}`;
       const noPhoneNumber = await storage.getAppSetting("feature_no_phone_number");
       const photoAuthenticity = await storage.getAppSetting("feature_photo_authenticity");
       const dateReadiness = await storage.getAppSetting("feature_date_readiness");
+      const coupleProfiles = await storage.getAppSetting("feature_couple_profiles");
 
       return res.json({
         welcome_taglines: parsedTaglines,
@@ -1723,6 +1729,7 @@ ${myProfile.name}'s bio: ${myProfile.bio || "Not set"}`;
         feature_no_phone_number: noPhoneNumber !== null ? noPhoneNumber === "true" : true,
         feature_photo_authenticity: photoAuthenticity !== null ? photoAuthenticity === "true" : true,
         feature_date_readiness: dateReadiness !== null ? dateReadiness === "true" : true,
+        feature_couple_profiles: coupleProfiles !== null ? coupleProfiles === "true" : true,
       });
     } catch (err: any) {
       return res.status(500).json({ message: err.message });

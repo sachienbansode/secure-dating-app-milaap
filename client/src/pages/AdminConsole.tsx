@@ -7,7 +7,7 @@ import {
   Mail, ArrowRight, LogOut, Users, MessageSquareQuote,
   Settings, Shield, Clock, ShieldAlert, ShieldCheck,
   Lock, EyeOff, Trash2, Plus, ChevronRight, ArrowLeft,
-  Activity,
+  Activity, Heart,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import type { AuthResponse } from "@/lib/auth";
@@ -637,6 +637,7 @@ function FeatureToggles() {
     { key: "feature_no_phone_number", label: "No-Phone-Number Culture", desc: "AI blocks contact sharing, mutual consent unlock", icon: Lock },
     { key: "feature_photo_authenticity", label: "Photo Authenticity Score", desc: "AI photo verification with scored badges", icon: ShieldCheck },
     { key: "global_screenshot_protection", label: "Screenshot Protection", desc: "Global screenshot detection and alerts", icon: EyeOff },
+    { key: "feature_couple_profiles", label: "Couple Profiles", desc: "Allow couple profile creation and visibility in discover", icon: Heart },
   ];
 
   const handleSave = async () => {
