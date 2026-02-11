@@ -211,9 +211,37 @@ export class DatabaseStorage implements IStorage {
     return match;
   }
 
-  async getMutualMatches(userId: string): Promise<Match[]> {
+  async getMutualMatches(userId: string, includeArchived = false): Promise<Match[]> {
+    const conditions = [eq(matches.userId, userId), eq(matches.isMatched, true), eq(matches.isDeleted, false)];
+    if (!includeArchived) {
+      conditions.push(eq(matches.isArchived, false));
+    }
     return db.select().from(matches)
-      .where(and(eq(matches.userId, userId), eq(matches.isMatched, true)))
+      .where(and(...conditions))
+      .orderBy(desc(matches.createdAt));
+  }
+
+  async archiveMatch(matchId: string, userId: string): Promise<void> {
+    await db.update(matches)
+      .set({ isArchived: true, archivedAt: new Date() })
+      .where(and(eq(matches.id, matchId), eq(matches.userId, userId)));
+  }
+
+  async unarchiveMatch(matchId: string, userId: string): Promise<void> {
+    await db.update(matches)
+      .set({ isArchived: false, archivedAt: null })
+      .where(and(eq(matches.id, matchId), eq(matches.userId, userId)));
+  }
+
+  async deleteMatch(matchId: string, userId: string): Promise<void> {
+    await db.update(matches)
+      .set({ isDeleted: true, deletedAt: new Date() })
+      .where(and(eq(matches.id, matchId), eq(matches.userId, userId)));
+  }
+
+  async getArchivedMatches(userId: string): Promise<Match[]> {
+    return db.select().from(matches)
+      .where(and(eq(matches.userId, userId), eq(matches.isMatched, true), eq(matches.isArchived, true), eq(matches.isDeleted, false)))
       .orderBy(desc(matches.createdAt));
   }
 

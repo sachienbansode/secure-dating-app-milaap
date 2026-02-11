@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRoute, Link, useLocation } from "wouter";
-import { ArrowLeft, Send, Sparkles, MoreVertical, ShieldCheck, Phone, Video, Paperclip, CheckCheck, Flag, Loader2, Bot, ShieldAlert, Camera, Ban, Unlock, Clock, MessageCircle, Mic, Users } from "lucide-react";
+import { ArrowLeft, Send, Sparkles, MoreVertical, ShieldCheck, Phone, Video, Paperclip, CheckCheck, Flag, Loader2, Bot, ShieldAlert, Camera, Ban, Unlock, Clock, MessageCircle, Mic, Users, Archive, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -22,9 +22,9 @@ interface ChatMessage {
 }
 
 const DATE_READINESS_CONFIG: Record<string, { icon: any; label: string; color: string }> = {
-  "Chat-only": { icon: MessageCircle, label: "Chat-only", color: "text-blue-600 bg-blue-50" },
-  "Voice-ready": { icon: Mic, label: "Voice-ready", color: "text-green-600 bg-green-50" },
-  "Meet-ready": { icon: Users, label: "Meet-ready", color: "text-purple-600 bg-purple-50" },
+  "Chat-only": { icon: MessageCircle, label: "Chat-only", color: "text-blue-400 bg-blue-900/20" },
+  "Voice-ready": { icon: Mic, label: "Voice-ready", color: "text-green-400 bg-green-900/20" },
+  "Meet-ready": { icon: Users, label: "Meet-ready", color: "text-blue-400 bg-blue-900/20" },
 };
 
 export default function Chat() {
@@ -143,6 +143,28 @@ export default function Chat() {
     },
   });
 
+  const archiveMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/matches/${matchId}/archive`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/matches"] });
+      setLocation("/matches");
+    },
+  });
+
+  const deleteChatMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/matches/${matchId}/delete`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/matches"] });
+      setLocation("/matches");
+    },
+  });
+
   const screenshotAlertMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/screenshot-alert", { matchId });
@@ -256,7 +278,7 @@ export default function Chat() {
 
   const getRespectColor = (score: number) => {
     if (score >= 70) return "bg-green-500";
-    if (score >= 40) return "bg-amber-500";
+    if (score >= 40) return "bg-red-400";
     return "bg-red-500";
   };
 
@@ -301,7 +323,7 @@ export default function Chat() {
         </div>
         <div className="flex items-center gap-1 relative">
           {noScreenshotActive && (
-            <div className="bg-red-50 px-2 py-1 rounded-full flex items-center gap-1" title="Screenshot protection active">
+            <div className="bg-red-900/30 px-2 py-1 rounded-full flex items-center gap-1" title="Screenshot protection active">
               <ShieldAlert size={12} className="text-red-500" />
             </div>
           )}
@@ -323,34 +345,40 @@ export default function Chat() {
                   <Unlock size={14} /> Request Contact Sharing
                 </button>
               )}
+              <button className="w-full text-left px-4 py-3 text-sm text-blue-400 hover:bg-blue-900/20 flex items-center gap-2 border-t border-border" onClick={() => { archiveMutation.mutate(); setShowMenu(false); }} data-testid="button-archive-chat">
+                <Archive size={14} /> Archive Chat
+              </button>
+              <button className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-red-900/20 flex items-center gap-2 border-t border-border" onClick={() => { deleteChatMutation.mutate(); setShowMenu(false); }} data-testid="button-delete-chat">
+                <Trash2 size={14} /> Delete Chat
+              </button>
             </div>
           )}
         </div>
       </header>
 
       {hasAiProxyMessages && (
-        <div className="bg-purple-50 px-4 py-2 flex items-center gap-2 text-xs text-purple-700 border-b border-purple-100">
+        <div className="bg-blue-900/20 px-4 py-2 flex items-center gap-2 text-xs text-blue-400 border-b border-blue-900/30">
           <Bot size={14} />
           <span className="font-medium">Some replies may be AI-assisted (sent while user was offline)</span>
         </div>
       )}
 
       {isChatBanned && (
-        <div className="bg-red-50 px-4 py-3 flex items-center gap-2 text-xs text-red-700 border-b border-red-100">
+        <div className="bg-red-900/20 px-4 py-3 flex items-center gap-2 text-xs text-red-400 border-b border-red-900/30">
           <Ban size={14} />
           <span className="font-medium">Your chat privileges have been revoked due to repeated violations.</span>
         </div>
       )}
 
       {isChatCooledDown && !isChatBanned && (
-        <div className="bg-amber-50 px-4 py-3 flex items-center gap-2 text-xs text-amber-700 border-b border-amber-100">
+        <div className="bg-red-900/10 px-4 py-3 flex items-center gap-2 text-xs text-red-300 border-b border-red-900/20">
           <Clock size={14} />
           <span className="font-medium">Cool-down active. {cooldownStatus?.minutesLeft} minute(s) remaining. Take a moment to reflect.</span>
         </div>
       )}
 
       {phoneUnlockStatus?.theirRequest?.status === "pending" && !phoneUnlockStatus?.myRequest && (
-        <div className="bg-blue-50 px-4 py-3 flex items-center gap-2 text-xs text-blue-700 border-b border-blue-100">
+        <div className="bg-blue-900/20 px-4 py-3 flex items-center gap-2 text-xs text-blue-400 border-b border-blue-900/30">
           <Unlock size={14} />
           <span className="font-medium flex-1">{profile?.name} wants to share contact details.</span>
           <button className="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold" onClick={() => phoneUnlockRespondMutation.mutate(true)} data-testid="button-approve-unlock">Approve</button>
@@ -359,7 +387,7 @@ export default function Chat() {
       )}
 
       {phoneUnlockStatus?.unlocked && (
-        <div className="bg-green-50 px-4 py-2 flex items-center gap-2 text-xs text-green-700 border-b border-green-100">
+        <div className="bg-green-900/20 px-4 py-2 flex items-center gap-2 text-xs text-green-400 border-b border-green-900/30">
           <Unlock size={14} />
           <span className="font-medium">Contact sharing unlocked! You can now share phone numbers.</span>
         </div>
@@ -419,7 +447,7 @@ export default function Chat() {
                     {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                   </span>
                   {msg.isAiProxy && (
-                    <span className="text-[9px] text-purple-400 font-medium bg-purple-50 px-1.5 py-0.5 rounded-full">AI-assisted</span>
+                    <span className="text-[9px] text-blue-400 font-medium bg-blue-900/20 px-1.5 py-0.5 rounded-full">AI-assisted</span>
                   )}
                 </div>
               </motion.div>
@@ -430,16 +458,16 @@ export default function Chat() {
         <AnimatePresence>
           {aiMode && (
             <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="sticky bottom-2 mx-auto w-full max-w-[95%] z-20">
-              <div className="bg-card/90 backdrop-blur-md border border-purple-800 rounded-2xl p-4 shadow-lg ring-1 ring-purple-900">
+              <div className="bg-card/90 backdrop-blur-md border border-blue-800 rounded-2xl p-4 shadow-lg ring-1 ring-blue-900">
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="bg-purple-100 p-1.5 rounded-lg"><Sparkles size={14} className="text-purple-600" /></div>
-                  <span className="text-xs font-bold uppercase tracking-wider text-purple-600">AI Assistant</span>
+                  <div className="bg-blue-900/30 p-1.5 rounded-lg"><Sparkles size={14} className="text-blue-400" /></div>
+                  <span className="text-xs font-bold uppercase tracking-wider text-blue-400">AI Assistant</span>
                 </div>
                 <p className="text-sm text-foreground mb-4 font-medium leading-relaxed">
                   {aiSuggestMutation.isPending ? "Crafting the perfect message for you..." : "Let me suggest something thoughtful to say..."}
                 </p>
                 <div className="flex gap-3">
-                  <Button data-testid="button-use-ai-suggestion" className="h-10 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-xl flex-1 shadow-purple-200 shadow-md" onClick={handleAiSuggest} disabled={aiSuggestMutation.isPending}>
+                  <Button data-testid="button-use-ai-suggestion" className="h-10 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl flex-1 shadow-blue-900/30 shadow-md" onClick={handleAiSuggest} disabled={aiSuggestMutation.isPending}>
                     {aiSuggestMutation.isPending ? <><Loader2 size={16} className="animate-spin mr-2" /> Generating...</> : "Generate Suggestion"}
                   </Button>
                   <Button variant="ghost" className="h-10 text-muted-foreground hover:text-foreground hover:bg-muted rounded-xl px-4" onClick={() => setAiMode(false)}>Dismiss</Button>
@@ -457,7 +485,7 @@ export default function Chat() {
         <Button variant="ghost" size="icon" className="text-muted-foreground hover:bg-muted rounded-full h-10 w-10 shrink-0"><Paperclip size={20} /></Button>
         <div className="flex-1 bg-background border border-border rounded-[1.5rem] flex items-end min-h-[44px] focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-all">
           <Input data-testid="input-message" value={input} onChange={(e) => setInput(e.target.value)} placeholder={isChatCooledDown ? "Chat paused..." : "Type a message..."} className="border-0 bg-transparent focus-visible:ring-0 px-4 py-3 min-h-[44px] max-h-32 resize-none" onKeyDown={(e) => e.key === "Enter" && handleSend()} disabled={isChatCooledDown} />
-          <Button variant="ghost" size="icon" className={`mr-1 mb-1 h-8 w-8 rounded-full transition-colors ${aiMode ? "bg-purple-900/30 text-purple-400" : "text-muted-foreground hover:text-purple-400"}`} onClick={() => setAiMode(!aiMode)} data-testid="button-ai-toggle" disabled={isChatCooledDown}>
+          <Button variant="ghost" size="icon" className={`mr-1 mb-1 h-8 w-8 rounded-full transition-colors ${aiMode ? "bg-blue-900/30 text-blue-400" : "text-muted-foreground hover:text-blue-400"}`} onClick={() => setAiMode(!aiMode)} data-testid="button-ai-toggle" disabled={isChatCooledDown}>
             <Sparkles size={18} />
           </Button>
         </div>
@@ -480,7 +508,7 @@ export default function Chat() {
       <AnimatePresence>
         {cooldownAlert && (
           <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="fixed top-4 left-4 right-4 z-50">
-            <div className="bg-amber-500 text-white px-4 py-3 rounded-2xl shadow-lg flex items-center gap-3 max-w-lg mx-auto">
+            <div className="bg-red-500 text-white px-4 py-3 rounded-2xl shadow-lg flex items-center gap-3 max-w-lg mx-auto">
               <Clock size={20} />
               <span className="text-sm font-medium">{cooldownAlert}</span>
             </div>
@@ -513,7 +541,7 @@ export default function Chat() {
                 </ul>
               </div>
               {phoneUnlockStatus?.myRequest?.status === "pending" && (
-                <p className="text-amber-600 text-sm text-center font-medium">Your request is pending approval.</p>
+                <p className="text-red-400 text-sm text-center font-medium">Your request is pending approval.</p>
               )}
               {phoneUnlockStatus?.myRequest?.status === "approved" && !phoneUnlockStatus?.unlocked && (
                 <p className="text-green-600 text-sm text-center font-medium">Approved! Waiting for 24-hour cool-off to complete.</p>

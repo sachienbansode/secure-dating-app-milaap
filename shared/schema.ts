@@ -71,6 +71,10 @@ export const matches = pgTable("matches", {
   targetUserId: varchar("target_user_id").notNull().references(() => users.id),
   action: text("action").notNull(),
   isMatched: boolean("is_matched").default(false),
+  isArchived: boolean("is_archived").default(false),
+  isDeleted: boolean("is_deleted").default(false),
+  archivedAt: timestamp("archived_at"),
+  deletedAt: timestamp("deleted_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

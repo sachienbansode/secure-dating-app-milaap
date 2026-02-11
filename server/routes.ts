@@ -781,6 +781,64 @@ export async function registerRoutes(
     }
   });
 
+  // ==================== ARCHIVE & DELETE CHAT ====================
+
+  app.post("/api/matches/:matchId/archive", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const matchId = req.params.matchId as string;
+      await storage.archiveMatch(matchId, userId);
+      await logActivity(userId, "chat_archived", "chat", { matchId }, req);
+      return res.json({ message: "Chat archived" });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/matches/:matchId/unarchive", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const matchId = req.params.matchId as string;
+      await storage.unarchiveMatch(matchId, userId);
+      await logActivity(userId, "chat_unarchived", "chat", { matchId }, req);
+      return res.json({ message: "Chat unarchived" });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/matches/:matchId/delete", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const matchId = req.params.matchId as string;
+      await storage.deleteMatch(matchId, userId);
+      await logActivity(userId, "chat_deleted", "chat", { matchId }, req);
+      return res.json({ message: "Chat deleted" });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/matches/archived", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const archivedMatches = await storage.getArchivedMatches(userId);
+      const enriched = await Promise.all(
+        archivedMatches.map(async (match) => {
+          const profile = await storage.getProfile(match.targetUserId);
+          const user = await storage.getUser(match.targetUserId);
+          return {
+            ...match,
+            profile: profile ? { ...profile, respectScore: user?.respectScore, isOnline: user?.isOnline || profile.aiProxyEnabled, lastSeenAt: user?.lastSeenAt } : null,
+          };
+        })
+      );
+      return res.json(enriched);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
   // ==================== CHAT / MESSAGES ====================
 
   app.post("/api/messages", requireAuth, async (req: Request, res: Response) => {

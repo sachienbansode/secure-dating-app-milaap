@@ -101,6 +101,6 @@ Milaap is a mobile-first dating application designed for the Indian market featu
 - Indian cultural context throughout (names, cities, interests like Bollywood, Cricket, Chai)
 - 50% profiles from Mumbai/Pune, rest from major Indian cities
 - Gender-appropriate profile images (male photos for males, female for females, neutral for trans)
-- Mobile-first UI with Jet Black + Gold & Red (luxurious, premium Indian feel) theme
+- Mobile-first UI with Red, Blue & Black dark theme
 - Tailwind v4 syntax (@plugin, @theme inline)
 - Users should be able to upload their own photos during profile creation

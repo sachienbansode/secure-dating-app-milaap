@@ -172,8 +172,8 @@ export default function AuthPage() {
   if (method === "splash") {
     return (
       <div className="h-full flex flex-col items-center justify-between p-8 bg-brand-gradient text-white relative overflow-hidden">
-        <div className="absolute top-[-15%] left-[-15%] w-80 h-80 bg-yellow-400/20 rounded-full blur-3xl mix-blend-overlay" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-purple-600/20 rounded-full blur-3xl mix-blend-overlay" />
+        <div className="absolute top-[-15%] left-[-15%] w-80 h-80 bg-red-400/20 rounded-full blur-3xl mix-blend-overlay" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-blue-600/20 rounded-full blur-3xl mix-blend-overlay" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] border-[40px] border-white/5 rounded-full z-0" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] border-[20px] border-white/5 rounded-full z-0" />
 

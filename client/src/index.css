@@ -50,74 +50,75 @@
   --color-sidebar-border: hsl(var(--sidebar-border));
   --color-sidebar-ring: hsl(var(--sidebar-ring));
   
-  /* Brand Colors - Jet Black + Gold & Red */
-  --color-brand-gradient-start: hsl(45 100% 50%); /* Bright Gold */
-  --color-brand-gradient-end: hsl(0 85% 55%); /* Vivid Red */
+  /* Brand Colors - Red & Blue */
+  --color-brand-gradient-start: hsl(0 85% 55%); /* Vivid Red */
+  --color-brand-gradient-end: hsl(220 90% 55%); /* Electric Blue */
 }
 
-/* LIGHT MODE */
+/* LIGHT MODE - Dark theme with Red, Blue, Black */
 :root {
-  --background: 0 0% 18%;
-  --foreground: 40 20% 95%;
+  --background: 220 15% 8%;
+  --foreground: 210 20% 95%;
 
-  --card: 0 0% 23%;
-  --card-foreground: 40 20% 95%;
+  --card: 220 15% 12%;
+  --card-foreground: 210 20% 95%;
 
-  --popover: 0 0% 23%;
-  --popover-foreground: 40 20% 95%;
+  --popover: 220 15% 12%;
+  --popover-foreground: 210 20% 95%;
 
-  /* Bright Gold Primary */
-  --primary: 45 100% 50%;
-  --primary-foreground: 0 0% 5%;
+  /* Vivid Red Primary */
+  --primary: 0 85% 55%;
+  --primary-foreground: 0 0% 100%;
 
-  /* Medium dark surface with gold accent */
-  --secondary: 0 0% 28%;
-  --secondary-foreground: 40 30% 85%;
+  /* Dark Blue-tinted surfaces */
+  --secondary: 220 15% 16%;
+  --secondary-foreground: 210 20% 80%;
 
-  --muted: 0 0% 28%;
-  --muted-foreground: 0 0% 62%;
+  --muted: 220 12% 16%;
+  --muted-foreground: 210 10% 55%;
 
-  --accent: 0 75% 50%;
+  /* Electric Blue accent */
+  --accent: 220 90% 55%;
   --accent-foreground: 0 0% 100%;
 
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 98%;
 
-  --border: 0 0% 32%;
-  --input: 0 0% 26%;
-  --ring: 45 100% 50%;
+  --border: 220 12% 20%;
+  --input: 220 12% 15%;
+  --ring: 0 85% 55%;
   
   --radius: 1rem;
 }
 
 .dark {
-  --background: 0 0% 14%;
-  --foreground: 40 20% 95%;
+  --background: 220 18% 5%;
+  --foreground: 210 20% 95%;
 
-  --card: 0 0% 19%;
-  --card-foreground: 40 20% 95%;
+  --card: 220 18% 9%;
+  --card-foreground: 210 20% 95%;
 
-  --popover: 0 0% 19%;
-  --popover-foreground: 40 20% 95%;
+  --popover: 220 18% 9%;
+  --popover-foreground: 210 20% 95%;
 
-  --primary: 45 100% 50%;
-  --primary-foreground: 0 0% 5%;
+  --primary: 0 85% 55%;
+  --primary-foreground: 0 0% 100%;
 
-  --secondary: 0 0% 24%;
-  --secondary-foreground: 40 30% 85%;
+  --secondary: 220 15% 13%;
+  --secondary-foreground: 210 20% 80%;
 
-  --muted: 0 0% 24%;
-  --muted-foreground: 0 0% 62%;
+  --muted: 220 12% 13%;
+  --muted-foreground: 210 10% 55%;
 
-  --accent: 0 75% 50%;
+  --accent: 220 90% 55%;
   --accent-foreground: 0 0% 100%;
 
   --destructive: 0 62.8% 30.6%;
   --destructive-foreground: 0 0% 98%;
 
-  --border: 0 0% 28%;
-  --input: 0 0% 22%;
-  --ring: 45 100% 50%;
+  --border: 220 12% 18%;
+  --input: 220 12% 12%;
+  --ring: 0 85% 55%;
 }
 
 @layer base {

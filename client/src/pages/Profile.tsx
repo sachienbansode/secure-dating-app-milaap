@@ -24,10 +24,10 @@ const GREEN_FLAG_PROMPTS = [
 const AI_BOUNDARIES = ["Personal finances", "Family details", "Ex relationships", "Religious beliefs", "Political views", "Health issues"];
 const DATE_READINESS_OPTIONS = ["Chat-only", "Voice-ready", "Meet-ready"] as const;
 const DATE_READINESS_ICONS: Record<string, any> = { "Chat-only": MessageCircle, "Voice-ready": Mic, "Meet-ready": Users };
-const DATE_READINESS_COLORS: Record<string, string> = { "Chat-only": "bg-blue-50 border-blue-200 text-blue-700", "Voice-ready": "bg-green-50 border-green-200 text-green-700", "Meet-ready": "bg-purple-50 border-purple-200 text-purple-700" };
+const DATE_READINESS_COLORS: Record<string, string> = { "Chat-only": "bg-blue-900/20 border-blue-800 text-blue-400", "Voice-ready": "bg-green-50 border-green-200 text-green-700", "Meet-ready": "bg-blue-900/20 border-blue-800 text-blue-400" };
 
 const INTENT_ICONS: Record<string, string> = { Casual: "☕", Dating: "💕", Serious: "💎", Marriage: "💍" };
-const INTENT_COLORS: Record<string, string> = { Casual: "bg-blue-50 border-blue-200 text-blue-700", Dating: "bg-amber-50 border-amber-200 text-amber-700", Serious: "bg-purple-50 border-purple-200 text-purple-700", Marriage: "bg-yellow-50 border-yellow-200 text-yellow-700" };
+const INTENT_COLORS: Record<string, string> = { Casual: "bg-blue-900/20 border-blue-800 text-blue-400", Dating: "bg-red-900/20 border-red-800 text-red-400", Serious: "bg-blue-900/20 border-blue-800 text-blue-400", Marriage: "bg-blue-900/20 border-blue-800 text-blue-400" };
 
 export default function Profile() {
   const [, setLocation] = useLocation();
@@ -287,23 +287,23 @@ export default function Profile() {
                 </div>
 
                 {form.gender === "Couple" && appSettings?.feature_couple_profiles !== false && (
-                  <div className="bg-purple-50 rounded-xl p-4 border border-purple-200 space-y-4">
+                  <div className="bg-blue-900/20 rounded-xl p-4 border border-blue-800 space-y-4">
                     <div className="flex items-center gap-2 mb-1">
-                      <Users size={16} className="text-purple-600" />
-                      <h4 className="font-bold text-sm text-purple-800">Partner 2 Details</h4>
+                      <Users size={16} className="text-blue-400" />
+                      <h4 className="font-bold text-sm text-blue-300">Partner 2 Details</h4>
                     </div>
-                    <p className="text-xs text-purple-600">Both individuals in the couple can be of any gender</p>
+                    <p className="text-xs text-blue-400">Both individuals in the couple can be of any gender</p>
                     <div>
-                      <label className="text-sm font-medium text-purple-700 mb-2 block">Partner 2 Name</label>
+                      <label className="text-sm font-medium text-blue-400 mb-2 block">Partner 2 Name</label>
                       <Input data-testid="input-partner2-name" value={form.partner2Name} onChange={(e) => setForm((f) => ({ ...f, partner2Name: e.target.value }))} placeholder="Partner's name" className="h-12 rounded-xl" />
                     </div>
                     <div className="flex gap-4">
                       <div className="flex-1">
-                        <label className="text-sm font-medium text-purple-700 mb-2 block">Partner 2 Age</label>
+                        <label className="text-sm font-medium text-blue-400 mb-2 block">Partner 2 Age</label>
                         <Input data-testid="input-partner2-age" type="number" value={form.partner2Age} onChange={(e) => setForm((f) => ({ ...f, partner2Age: parseInt(e.target.value) || 18 }))} min={18} max={100} className="h-12 rounded-xl" />
                       </div>
                       <div className="flex-1">
-                        <label className="text-sm font-medium text-purple-700 mb-2 block">Partner 2 Gender</label>
+                        <label className="text-sm font-medium text-blue-400 mb-2 block">Partner 2 Gender</label>
                         <select data-testid="select-partner2-gender" value={form.partner2Gender} onChange={(e) => setForm((f) => ({ ...f, partner2Gender: e.target.value }))} className="w-full h-12 rounded-xl border border-border px-3 bg-card text-foreground">
                           <option value="">Select</option>
                           <option value="Male">Male</option>
@@ -372,7 +372,7 @@ export default function Profile() {
                 <p className="text-xs text-muted-foreground mb-1.5 font-medium uppercase tracking-wider">Romantic & Spicy</p>
                 <div className="flex flex-wrap gap-2 mb-4">
                   {ROMANTIC_INTERESTS.map((interest) => (
-                    <button key={interest} data-testid={`button-interest-${interest.toLowerCase().replace(/\s/g, "-")}`} onClick={() => toggleInterest(interest)} className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${form.interests.includes(interest) ? "bg-gradient-to-r from-purple-600 to-amber-500 text-white shadow-sm" : "bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200"}`}>
+                    <button key={interest} data-testid={`button-interest-${interest.toLowerCase().replace(/\s/g, "-")}`} onClick={() => toggleInterest(interest)} className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${form.interests.includes(interest) ? "bg-gradient-to-r from-red-500 to-blue-500 text-white shadow-sm" : "bg-blue-900/20 text-blue-400 hover:bg-blue-900/30 border border-blue-800"}`}>
                       {interest}
                     </button>
                   ))}
@@ -383,7 +383,7 @@ export default function Profile() {
                     <p className="text-xs text-muted-foreground mb-1.5 font-medium uppercase tracking-wider">Custom</p>
                     <div className="flex flex-wrap gap-2 mb-4">
                       {form.interests.filter((i) => !INTERESTS.includes(i) && !ROMANTIC_INTERESTS.includes(i)).map((interest) => (
-                        <button key={interest} data-testid={`button-interest-custom-${interest.toLowerCase().replace(/\s/g, "-")}`} onClick={() => toggleInterest(interest)} className="px-4 py-2 rounded-full text-sm font-medium bg-purple-500 text-white shadow-sm flex items-center gap-1">
+                        <button key={interest} data-testid={`button-interest-custom-${interest.toLowerCase().replace(/\s/g, "-")}`} onClick={() => toggleInterest(interest)} className="px-4 py-2 rounded-full text-sm font-medium bg-blue-500 text-white shadow-sm flex items-center gap-1">
                           {interest} <X size={12} />
                         </button>
                       ))}
@@ -412,7 +412,7 @@ export default function Profile() {
                     data-testid="button-add-custom-interest"
                     variant="outline"
                     size="sm"
-                    className="h-10 px-4 rounded-xl border-purple-300 text-purple-700 hover:bg-purple-50"
+                    className="h-10 px-4 rounded-xl border-blue-800 text-blue-400 hover:bg-blue-900/30"
                     onClick={() => {
                       const input = document.querySelector('[data-testid="input-custom-interest"]') as HTMLInputElement;
                       if (input) {
@@ -429,12 +429,12 @@ export default function Profile() {
                 </div>
               </div>
 
-              <div className="bg-amber-50 rounded-2xl p-4 space-y-3 border border-amber-200">
+              <div className="bg-red-900/20 rounded-2xl p-4 space-y-3 border border-red-800">
                 <div className="flex items-center gap-2">
-                  <Lock size={16} className="text-amber-600" />
-                  <h4 className="font-bold text-sm text-amber-800">Why Are You Here? (30-Day Lock)</h4>
+                  <Lock size={16} className="text-red-400" />
+                  <h4 className="font-bold text-sm text-red-300">Why Are You Here? (30-Day Lock)</h4>
                 </div>
-                <p className="text-xs text-amber-700">Choose your intent. Once set, it's locked for 30 days. Breaking the lock reduces your visibility.</p>
+                <p className="text-xs text-red-400">Choose your intent. Once set, it's locked for 30 days. Breaking the lock reduces your visibility.</p>
                 <div className="grid grid-cols-2 gap-2">
                   {INTENT_OPTIONS.map((intent) => (
                     <button key={intent} data-testid={`button-intent-${intent.toLowerCase()}`} onClick={() => setForm((f) => ({ ...f, intent }))} className={`px-3 py-3 rounded-xl text-sm font-medium transition-all border ${form.intent === intent ? INTENT_COLORS[intent] + " shadow-sm" : "bg-card border-border text-muted-foreground hover:bg-muted"}`}>
@@ -443,7 +443,7 @@ export default function Profile() {
                   ))}
                 </div>
                 {session?.profile?.intent && session?.profile?.intentLockedAt && (
-                  <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-100 px-3 py-2 rounded-lg">
+                  <div className="flex items-center gap-2 text-xs text-red-400 bg-red-900/20 px-3 py-2 rounded-lg">
                     <Lock size={12} />
                     <span>Currently locked as: <strong>{session.profile.intent}</strong></span>
                   </div>
@@ -468,10 +468,10 @@ export default function Profile() {
 
           {(!activeSection || activeSection === "AI & Settings") && (
             <>
-              <div className="bg-purple-50 rounded-2xl p-4 space-y-4 border border-purple-200">
+              <div className="bg-blue-900/20 rounded-2xl p-4 space-y-4 border border-blue-800">
                 <div className="flex items-center gap-2">
-                  <Sparkles size={16} className="text-purple-600" />
-                  <h4 className="font-bold text-sm text-purple-800">AI Chat Assistant</h4>
+                  <Sparkles size={16} className="text-blue-400" />
+                  <h4 className="font-bold text-sm text-blue-300">AI Chat Assistant</h4>
                 </div>
                 <div className="flex items-center justify-between">
                   <div>
@@ -481,10 +481,10 @@ export default function Profile() {
                   <Switch data-testid="switch-ai-persona" checked={form.aiPersonaEnabled} onCheckedChange={(checked) => setForm((f) => ({ ...f, aiPersonaEnabled: checked }))} />
                 </div>
 
-                <div className="flex items-center justify-between pt-2 border-t border-purple-200">
+                <div className="flex items-center justify-between pt-2 border-t border-blue-800">
                   <div>
                     <h5 className="font-semibold text-sm flex items-center gap-1">
-                      <Bot size={14} className="text-purple-500" /> AI Proxy Mode
+                      <Bot size={14} className="text-blue-400" /> AI Proxy Mode
                     </h5>
                     <p className="text-xs text-muted-foreground">AI chats for you when you're offline</p>
                   </div>
@@ -492,7 +492,7 @@ export default function Profile() {
                 </div>
 
                 {(form.aiPersonaEnabled || form.aiProxyEnabled) && (
-                  <div className="space-y-3 pl-1 pt-2 border-t border-purple-100">
+                  <div className="space-y-3 pl-1 pt-2 border-t border-blue-800/50">
                     <div>
                       <label className="text-xs font-medium text-muted-foreground mb-1 block">Tone</label>
                       <select value={form.aiTone} onChange={(e) => setForm((f) => ({ ...f, aiTone: e.target.value }))} className="w-full h-10 rounded-lg border border-border px-3 bg-card text-foreground text-sm" data-testid="select-ai-tone">
@@ -532,12 +532,12 @@ export default function Profile() {
                 )}
               </div>
 
-              <div className="bg-purple-50 rounded-2xl p-4 space-y-3 border border-purple-200">
+              <div className="bg-blue-900/20 rounded-2xl p-4 space-y-3 border border-blue-800">
                 <div className="flex items-center gap-2">
-                  <HomeIcon size={16} className="text-purple-600" />
-                  <h4 className="font-bold text-sm text-purple-800">Family-Aware Dating Mode</h4>
+                  <HomeIcon size={16} className="text-blue-400" />
+                  <h4 className="font-bold text-sm text-blue-300">Family-Aware Dating Mode</h4>
                 </div>
-                <p className="text-xs text-purple-700">Clean language only. No innuendos. Conservative matching pool. Ideal for tier 2/3 cities.</p>
+                <p className="text-xs text-blue-400">Clean language only. No innuendos. Conservative matching pool. Ideal for tier 2/3 cities.</p>
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">Enable Family Mode</span>
                   <Switch data-testid="switch-family-mode" checked={form.familyMode} onCheckedChange={(checked) => setForm((f) => ({ ...f, familyMode: checked }))} />
@@ -626,14 +626,14 @@ export default function Profile() {
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-6">
             <div className="bg-card rounded-3xl p-6 max-w-sm w-full space-y-4">
               <div className="text-center">
-                <Lock size={32} className="mx-auto text-amber-500 mb-2" />
+                <Lock size={32} className="mx-auto text-red-500 mb-2" />
                 <h3 className="text-lg font-bold">Intent Lock Warning</h3>
                 <p className="text-sm text-muted-foreground mt-2">{intentWarning}</p>
                 <p className="text-xs text-red-500 mt-2">Breaking the lock will reduce your respect score (-10) and daily likes (-15).</p>
               </div>
               <div className="flex gap-3">
                 <Button variant="ghost" className="flex-1" onClick={() => setIntentWarning(null)}>Keep Current</Button>
-                <Button className="flex-1 bg-amber-500 hover:bg-amber-600 text-white" onClick={() => forceIntentMutation.mutate()} disabled={forceIntentMutation.isPending} data-testid="button-force-intent">
+                <Button className="flex-1 bg-red-500 hover:bg-red-600 text-white" onClick={() => forceIntentMutation.mutate()} disabled={forceIntentMutation.isPending} data-testid="button-force-intent">
                   {forceIntentMutation.isPending ? "Changing..." : "Change Anyway"}
                 </Button>
               </div>
@@ -649,7 +649,7 @@ export default function Profile() {
 
   const getScoreColor = (score: number) => {
     if (score >= 70) return "text-green-600 bg-green-50 border-green-100";
-    if (score >= 40) return "text-amber-600 bg-amber-50 border-amber-100";
+    if (score >= 40) return "text-red-600 bg-red-50 border-red-100";
     return "text-red-600 bg-red-50 border-red-100";
   };
 
@@ -710,14 +710,14 @@ export default function Profile() {
                 <span className="font-bold text-xl" data-testid="text-respect-score">{respectScore}</span>
                 <span className="text-[10px] uppercase font-bold tracking-wider opacity-60">Respect • {getScoreLabel(respectScore)}</span>
               </div>
-              <div className="flex flex-col items-center bg-purple-50 px-4 py-2 rounded-xl border border-purple-100">
-                <span className="text-purple-600 font-bold text-xl">{currentProfile.aiProxyEnabled ? "Proxy" : currentProfile.aiPersonaEnabled ? "On" : "Off"}</span>
-                <span className="text-purple-700/60 text-[10px] uppercase font-bold tracking-wider">AI Mode</span>
+              <div className="flex flex-col items-center bg-blue-900/20 px-4 py-2 rounded-xl border border-blue-800">
+                <span className="text-blue-400 font-bold text-xl">{currentProfile.aiProxyEnabled ? "Proxy" : currentProfile.aiPersonaEnabled ? "On" : "Off"}</span>
+                <span className="text-blue-400/60 text-[10px] uppercase font-bold tracking-wider">AI Mode</span>
               </div>
               {currentProfile.familyMode && (
-                <div className="flex flex-col items-center bg-purple-50 px-4 py-2 rounded-xl border border-purple-100">
-                  <HomeIcon size={20} className="text-purple-600" />
-                  <span className="text-purple-700/60 text-[10px] uppercase font-bold tracking-wider">Family</span>
+                <div className="flex flex-col items-center bg-blue-900/20 px-4 py-2 rounded-xl border border-blue-800">
+                  <HomeIcon size={20} className="text-blue-400" />
+                  <span className="text-blue-400/60 text-[10px] uppercase font-bold tracking-wider">Family</span>
                 </div>
               )}
               {currentProfile.photoVerifiedAt && (
@@ -842,7 +842,7 @@ export default function Profile() {
               </div>
               <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-muted border-b border-border" onClick={() => { setIsEditing(true); setActiveSection("AI & Settings"); }}>
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600"><Sparkles size={16} /></div>
+                  <div className="w-8 h-8 rounded-full bg-blue-900/30 flex items-center justify-center text-blue-400"><Sparkles size={16} /></div>
                   <div>
                     <h4 className="font-semibold text-sm">AI, Privacy & Preferences</h4>
                     <p className="text-xs text-muted-foreground">Proxy mode, family mode, festivals, safety</p>
@@ -930,10 +930,10 @@ function PhotoVerifyCard() {
         <div className="mb-3">
           <div className="flex items-center justify-between mb-1">
             <span className="text-xs font-medium text-muted-foreground">Authenticity Score</span>
-            <span className={`text-sm font-bold ${(score ?? 0) >= 70 ? "text-green-600" : (score ?? 0) >= 40 ? "text-amber-600" : "text-red-600"}`}>{score}/100</span>
+            <span className={`text-sm font-bold ${(score ?? 0) >= 70 ? "text-green-600" : (score ?? 0) >= 40 ? "text-red-600" : "text-red-600"}`}>{score}/100</span>
           </div>
           <div className="w-full bg-muted rounded-full h-2">
-            <div className={`h-2 rounded-full transition-all ${(score ?? 0) >= 70 ? "bg-green-500" : (score ?? 0) >= 40 ? "bg-amber-500" : "bg-red-500"}`} style={{ width: `${score}%` }} />
+            <div className={`h-2 rounded-full transition-all ${(score ?? 0) >= 70 ? "bg-green-500" : (score ?? 0) >= 40 ? "bg-red-500" : "bg-red-500"}`} style={{ width: `${score}%` }} />
           </div>
         </div>
       )}

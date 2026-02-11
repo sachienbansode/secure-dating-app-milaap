@@ -96,8 +96,8 @@ export default function WelcomeOverlay({ show, onDone, taglines }: WelcomeOverla
           onClick={dismiss}
           data-testid="welcome-overlay"
         >
-          <div className="absolute top-[-20%] left-[-15%] w-[500px] h-[500px] bg-yellow-400/15 rounded-full blur-3xl" />
-          <div className="absolute bottom-[-15%] right-[-10%] w-[600px] h-[600px] bg-purple-600/15 rounded-full blur-3xl" />
+          <div className="absolute top-[-20%] left-[-15%] w-[500px] h-[500px] bg-red-400/15 rounded-full blur-3xl" />
+          <div className="absolute bottom-[-15%] right-[-10%] w-[600px] h-[600px] bg-blue-600/15 rounded-full blur-3xl" />
 
           {[...Array(12)].map((_, i) => (
             <motion.div

@@ -35,7 +35,7 @@ interface DiscoverProfile {
 
 const CITIES = ["All", "Mumbai", "Pune", "Delhi", "Bangalore", "Hyderabad", "Chennai", "Kolkata", "Ahmedabad", "Jaipur", "Lucknow", "Chandigarh", "Kochi", "Goa"];
 const INTENT_ICONS: Record<string, string> = { Casual: "☕", Dating: "💕", Serious: "💎", Marriage: "💍" };
-const INTENT_COLORS: Record<string, string> = { Casual: "bg-blue-500/80", Dating: "bg-amber-500/80", Serious: "bg-purple-500/80", Marriage: "bg-yellow-500/80" };
+const INTENT_COLORS: Record<string, string> = { Casual: "bg-blue-500/80", Dating: "bg-red-500/80", Serious: "bg-blue-500/80", Marriage: "bg-blue-500/80" };
 
 export default function Home() {
   const [, setLocation] = useLocation();
@@ -244,7 +244,7 @@ function SwipeCard({ profile, isFront, expanded, onSwipe, onToggleExpand, appSet
 
   const getRespectColor = (score: number) => {
     if (score >= 70) return "bg-green-500";
-    if (score >= 40) return "bg-amber-500";
+    if (score >= 40) return "bg-red-500";
     return "bg-red-500";
   };
 
@@ -271,7 +271,7 @@ function SwipeCard({ profile, isFront, expanded, onSwipe, onToggleExpand, appSet
             </span>
           )}
           {profile.familyMode && (
-            <span className="px-2 py-1 rounded-full text-[10px] font-bold text-white bg-purple-500/80 backdrop-blur-sm">Family</span>
+            <span className="px-2 py-1 rounded-full text-[10px] font-bold text-white bg-blue-500/80 backdrop-blur-sm">Family</span>
           )}
           {profile.photoVerifiedAt && appSettings?.feature_photo_authenticity && (
             <span className="px-2 py-1 rounded-full text-[10px] font-bold text-white bg-blue-500/80 backdrop-blur-sm flex items-center gap-0.5" data-testid={`badge-verified-${profile.userId}`}>
@@ -329,15 +329,15 @@ function SwipeCard({ profile, isFront, expanded, onSwipe, onToggleExpand, appSet
               <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
                 {profile.bio && <p className="text-white/90 mb-3 font-light text-sm">{profile.bio}</p>}
                 {coupleProfilesEnabled && profile.gender === "Couple" && profile.partner2Name && (
-                  <div className="bg-purple-500/20 backdrop-blur-sm rounded-lg px-3 py-2 mb-3 border border-purple-400/20">
-                    <p className="text-[10px] uppercase tracking-wider text-purple-300 font-bold mb-1">Couple Details</p>
+                  <div className="bg-blue-500/20 backdrop-blur-sm rounded-lg px-3 py-2 mb-3 border border-blue-400/20">
+                    <p className="text-[10px] uppercase tracking-wider text-blue-300 font-bold mb-1">Couple Details</p>
                     <div className="flex items-center gap-3 text-xs text-white/90">
                       <span>{profile.name}, {profile.age}</span>
-                      <span className="text-purple-300">&</span>
+                      <span className="text-blue-300">&</span>
                       <span>{profile.partner2Name}, {profile.partner2Age}</span>
                     </div>
                     {profile.partner2Gender && (
-                      <p className="text-[10px] text-purple-200 mt-1">Partner 2: {profile.partner2Gender}</p>
+                      <p className="text-[10px] text-blue-200 mt-1">Partner 2: {profile.partner2Gender}</p>
                     )}
                   </div>
                 )}
@@ -381,8 +381,8 @@ function SwipeCard({ profile, isFront, expanded, onSwipe, onToggleExpand, appSet
             <Button data-testid="button-pass" size="icon" variant="outline" className="w-14 h-14 rounded-full bg-white/90 backdrop-blur border-red-200 shadow-lg hover:bg-red-50" onClick={() => onSwipe("pass")}>
               <X className="text-red-500" size={24} />
             </Button>
-            <Button data-testid="button-view-profile" size="icon" variant="outline" className="w-11 h-11 rounded-full bg-white/90 backdrop-blur border-purple-200 shadow-lg hover:bg-purple-50 self-center" onClick={(e) => { e.stopPropagation(); onToggleExpand(); }}>
-              <Eye className="text-purple-500" size={16} />
+            <Button data-testid="button-view-profile" size="icon" variant="outline" className="w-11 h-11 rounded-full bg-white/90 backdrop-blur border-blue-200 shadow-lg hover:bg-blue-50 self-center" onClick={(e) => { e.stopPropagation(); onToggleExpand(); }}>
+              <Eye className="text-blue-500" size={16} />
             </Button>
             <Button data-testid="button-superlike" size="icon" variant="outline" className="w-11 h-11 rounded-full bg-white/90 backdrop-blur border-blue-200 shadow-lg hover:bg-blue-50 self-center" onClick={() => onSwipe("superlike")}>
               <Star className="text-blue-500 fill-blue-500" size={16} />

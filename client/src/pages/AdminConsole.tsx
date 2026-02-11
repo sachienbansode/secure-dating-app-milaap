@@ -86,7 +86,7 @@ export default function AdminConsole() {
           { id: "Activity Logs", icon: Activity, color: "bg-slate-100 text-slate-600", desc: "View all user activity logs" },
           { id: "Terms & Conditions", icon: Shield, color: "bg-cyan-100 text-cyan-600", desc: "Edit T&C with versioning" },
           { id: "Feature Toggles", icon: Settings, color: "bg-indigo-100 text-indigo-600", desc: "Enable/disable app features" },
-          { id: "Welcome Taglines", icon: MessageSquareQuote, color: "bg-amber-100 text-amber-600", desc: "Manage login welcome messages" },
+          { id: "Welcome Taglines", icon: MessageSquareQuote, color: "bg-red-100 text-red-600", desc: "Manage login welcome messages" },
         ].map((item) => (
           <button
             key={item.id}
@@ -168,7 +168,7 @@ function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
       >
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-slate-700">
-            <Shield size={28} className="text-amber-400" />
+            <Shield size={28} className="text-red-400" />
           </div>
           <h1 className="text-2xl font-heading font-bold text-white">Admin Console</h1>
           <p className="text-slate-400 text-sm mt-1">Milaap Administration</p>
@@ -210,7 +210,7 @@ function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
               data-testid="button-admin-login"
               onClick={handleLogin}
               disabled={loading || !email.trim() || !password.trim()}
-              className="w-full h-12 rounded-xl font-bold bg-amber-500 hover:bg-amber-600 text-black"
+              className="w-full h-12 rounded-xl font-bold bg-red-500 hover:bg-red-600 text-white"
             >
               {loading ? "Verifying..." : "Login"} <ArrowRight className="ml-2 w-5 h-5" />
             </Button>
@@ -238,7 +238,7 @@ function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
                   maxLength={1}
                   value={otp[i] || ""}
                   autoFocus={i === 0}
-                  className="w-12 h-14 text-2xl text-center bg-slate-800 border-2 border-slate-600 rounded-xl text-white font-mono focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 transition-all"
+                  className="w-12 h-14 text-2xl text-center bg-slate-800 border-2 border-slate-600 rounded-xl text-white font-mono focus:outline-none focus:ring-2 focus:ring-red-500/40 focus:border-red-500 transition-all"
                   onChange={(e) => {
                     const val = e.target.value.replace(/\D/g, "");
                     if (val.length <= 1) {
@@ -277,7 +277,7 @@ function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
               data-testid="button-admin-verify-otp"
               onClick={handleVerifyOtp}
               disabled={loading || otp.length !== 6}
-              className="w-full h-12 rounded-xl font-bold bg-amber-500 hover:bg-amber-600 text-black"
+              className="w-full h-12 rounded-xl font-bold bg-red-500 hover:bg-red-600 text-white"
             >
               {loading ? "Verifying..." : "Verify & Login"} <ArrowRight className="ml-2 w-5 h-5" />
             </Button>
@@ -388,10 +388,10 @@ function ActivityLogsViewer() {
     const colors: Record<string, string> = {
       auth: "bg-blue-100 text-blue-700",
       profile: "bg-green-100 text-green-700",
-      match: "bg-purple-100 text-purple-700",
-      chat: "bg-purple-100 text-purple-700",
+      match: "bg-blue-900/30 text-blue-400",
+      chat: "bg-blue-900/30 text-blue-400",
       moderation: "bg-red-100 text-red-700",
-      admin: "bg-amber-100 text-amber-700",
+      admin: "bg-red-900/30 text-red-400",
       security: "bg-orange-100 text-orange-700",
       privacy: "bg-cyan-100 text-cyan-700",
     };
@@ -518,9 +518,9 @@ function AllProfilesViewer() {
   const getGenderColor = (gender: string) => {
     const colors: Record<string, string> = {
       Male: "bg-blue-100 text-blue-700",
-      Female: "bg-purple-100 text-purple-700",
-      Trans: "bg-purple-100 text-purple-700",
-      Couple: "bg-amber-100 text-amber-700",
+      Female: "bg-blue-900/30 text-blue-400",
+      Trans: "bg-blue-900/30 text-blue-400",
+      Couple: "bg-red-900/30 text-red-400",
     };
     return colors[gender] || "bg-gray-100 text-gray-700";
   };
@@ -781,16 +781,16 @@ function TaglineEditor() {
 
   return (
     <div className="space-y-4">
-      <div className="bg-amber-50 rounded-2xl p-4 border border-amber-200">
+      <div className="bg-red-900/20 rounded-2xl p-4 border border-red-800">
         <div className="flex items-center gap-2 mb-3">
-          <MessageSquareQuote size={16} className="text-amber-600" />
-          <h4 className="font-bold text-sm text-amber-800">Welcome Taglines</h4>
+          <MessageSquareQuote size={16} className="text-red-400" />
+          <h4 className="font-bold text-sm text-red-300">Welcome Taglines</h4>
         </div>
-        <p className="text-xs text-amber-700 mb-4">These taglines show randomly when users log in.</p>
+        <p className="text-xs text-red-400 mb-4">These taglines show randomly when users log in.</p>
 
         <div className="space-y-2 mb-4">
           {taglines.map((t, i) => (
-            <div key={i} className="flex items-center gap-2 bg-white rounded-xl px-4 py-3 border border-amber-100 group">
+            <div key={i} className="flex items-center gap-2 bg-white rounded-xl px-4 py-3 border border-red-800 group">
               <span className="text-sm flex-1 italic text-gray-700">"{t}"</span>
               <button onClick={() => setTaglines(taglines.filter((_, idx) => idx !== i))} className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity p-1">
                 <Trash2 size={14} />
@@ -807,14 +807,14 @@ function TaglineEditor() {
             className="flex-1 h-10 rounded-xl text-sm"
             onKeyDown={(e) => e.key === "Enter" && addTagline()}
           />
-          <Button variant="outline" size="sm" className="h-10 px-4 rounded-xl border-amber-300 text-amber-700 hover:bg-amber-100" onClick={addTagline}>
+          <Button variant="outline" size="sm" className="h-10 px-4 rounded-xl border-red-800 text-red-400 hover:bg-red-900/30" onClick={addTagline}>
             <Plus size={14} className="mr-1" /> Add
           </Button>
         </div>
       </div>
 
       <Button
-        className="w-full h-12 rounded-2xl font-bold bg-amber-500 hover:bg-amber-600 text-white"
+        className="w-full h-12 rounded-2xl font-bold bg-red-500 hover:bg-red-600 text-white"
         onClick={handleSave}
         disabled={saving || taglines.length === 0}
       >
