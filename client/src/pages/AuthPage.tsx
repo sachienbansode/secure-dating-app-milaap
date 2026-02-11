@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Mail, Phone, ArrowRight } from "lucide-react";
+import { Mail, Phone, ArrowRight, Shield } from "lucide-react";
 import { motion } from "framer-motion";
 import logo from "@/assets/logo.png";
 import { requestOtp, verifyOtp, getMe } from "@/lib/auth";
@@ -252,6 +252,14 @@ export default function AuthPage() {
           <p className="text-xs text-center mt-4 font-medium" style={{ color: "rgba(255,255,255,0.4)" }}>
             By continuing, you agree to our Terms & Privacy Policy.
           </p>
+          <button
+            data-testid="button-admin-portal"
+            onClick={() => setLocation("/admin")}
+            className="flex items-center justify-center gap-2 mt-3 mx-auto text-xs font-medium py-2 px-4 rounded-full transition-all"
+            style={{ color: "rgba(255,255,255,0.3)", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
+          >
+            <Shield size={12} /> Admin Portal
+          </button>
         </motion.div>
       </div>
     );
