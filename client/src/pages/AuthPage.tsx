@@ -296,16 +296,54 @@ export default function AuthPage() {
                   Demo OTP: <span className="font-bold">{otpHint}</span>
                 </div>
               )}
-              <Input
-                data-testid="input-otp"
-                value={otpValue}
-                onChange={(e) => setOtpValue(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                placeholder="000000"
-                className="h-16 text-3xl text-center bg-white border-2 border-gray-100 rounded-2xl tracking-[0.5em] focus-visible:ring-primary focus-visible:border-primary font-mono"
-                autoFocus
-                maxLength={6}
-                onKeyDown={(e) => e.key === "Enter" && handleVerifyOtp()}
-              />
+              <div className="flex gap-2 justify-center" data-testid="input-otp">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <input
+                    key={i}
+                    id={`otp-box-${i}`}
+                    data-testid={`input-otp-${i}`}
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    autoComplete="one-time-code"
+                    maxLength={1}
+                    value={otpValue[i] || ""}
+                    autoFocus={i === 0}
+                    className="w-12 h-14 text-2xl text-center bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary font-mono transition-all"
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, "");
+                      if (val.length <= 1) {
+                        const newOtp = otpValue.split("");
+                        newOtp[i] = val;
+                        const joined = newOtp.join("").slice(0, 6);
+                        setOtpValue(joined);
+                        if (val && i < 5) document.getElementById(`otp-box-${i + 1}`)?.focus();
+                      } else {
+                        const pasted = val.slice(0, 6);
+                        setOtpValue(pasted);
+                        const focusIdx = Math.min(pasted.length, 5);
+                        document.getElementById(`otp-box-${focusIdx}`)?.focus();
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Backspace" && !otpValue[i] && i > 0) {
+                        const newOtp = otpValue.split("");
+                        newOtp[i - 1] = "";
+                        setOtpValue(newOtp.join(""));
+                        document.getElementById(`otp-box-${i - 1}`)?.focus();
+                      }
+                      if (e.key === "Enter" && otpValue.length === 6) handleVerifyOtp();
+                    }}
+                    onPaste={(e) => {
+                      e.preventDefault();
+                      const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+                      setOtpValue(pasted);
+                      const focusIdx = Math.min(pasted.length, 5);
+                      document.getElementById(`otp-box-${focusIdx}`)?.focus();
+                    }}
+                  />
+                ))}
+              </div>
               <div className="flex items-start gap-3 bg-gray-50 rounded-xl p-3">
                 <input
                   type="checkbox"
