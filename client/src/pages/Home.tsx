@@ -235,6 +235,7 @@ function SwipeCard({ profile, isFront, expanded, onSwipe, onToggleExpand, appSet
   const photoUrl = profile.photos?.[0] || "/profiles/generic_indian_1.jpg";
   const respectScore = profile.respectScore ?? 85;
   const greenFlags = profile.greenFlagStories?.filter(s => s.answer) || [];
+  const coupleProfilesEnabled = appSettings?.feature_couple_profiles !== false;
 
   const handleDragEnd = (_: any, info: any) => {
     if (info.offset.x > 100) onSwipe("like");
