@@ -54,6 +54,7 @@ export function encryptProfile(profile: any) {
     ...profile,
     name: profile.name ? encrypt(profile.name) : profile.name,
     bio: profile.bio ? encrypt(profile.bio) : profile.bio,
+    partner2Name: profile.partner2Name ? encrypt(profile.partner2Name) : profile.partner2Name,
   };
 }
 
@@ -63,6 +64,7 @@ export function decryptProfile(profile: any) {
     ...profile,
     name: profile.name ? decrypt(profile.name) : profile.name,
     bio: profile.bio ? decrypt(profile.bio) : profile.bio,
+    partner2Name: profile.partner2Name ? decrypt(profile.partner2Name) : profile.partner2Name,
   };
 }
 

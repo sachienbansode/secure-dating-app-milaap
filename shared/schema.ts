@@ -56,6 +56,9 @@ export const profiles = pgTable("profiles", {
   hometownForFestivals: text("hometown_for_festivals"),
   greenFlagStories: jsonb("green_flag_stories").$type<{prompt: string; answer: string}[]>(),
   interestedIn: text("interested_in").array(),
+  partner2Name: text("partner2_name"),
+  partner2Age: integer("partner2_age"),
+  partner2Gender: text("partner2_gender"),
   dateReadiness: text("date_readiness").default("Chat-only"),
   photoAuthenticityScore: integer("photo_authenticity_score"),
   photoVerifiedAt: timestamp("photo_verified_at"),
@@ -265,6 +268,9 @@ export const updateProfileSchema = z.object({
   hometownForFestivals: z.string().optional(),
   greenFlagStories: z.array(greenFlagStorySchema).max(3).optional(),
   interestedIn: z.array(z.enum(["Male", "Female", "Trans", "Couple"])).optional(),
+  partner2Name: z.string().min(2).max(50).optional().nullable(),
+  partner2Age: z.number().min(18).max(100).optional().nullable(),
+  partner2Gender: z.enum(["Male", "Female", "Trans"]).optional().nullable(),
   dateReadiness: z.enum(["Chat-only", "Voice-ready", "Meet-ready"]).optional(),
 });
 

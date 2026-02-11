@@ -134,6 +134,7 @@ export class DatabaseStorage implements IStorage {
     const toUpdate = { ...data } as any;
     if (toUpdate.name) toUpdate.name = (await import("./encryption")).encrypt(toUpdate.name);
     if (toUpdate.bio) toUpdate.bio = (await import("./encryption")).encrypt(toUpdate.bio);
+    if (toUpdate.partner2Name) toUpdate.partner2Name = (await import("./encryption")).encrypt(toUpdate.partner2Name);
     toUpdate.updatedAt = new Date();
     
     const [updated] = await db.update(profiles).set(toUpdate).where(eq(profiles.userId, userId)).returning();
