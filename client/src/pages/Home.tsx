@@ -2,12 +2,74 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
-import { MapPin, Info, Heart, X, Star, SlidersHorizontal, ChevronDown, Shield, Lock, Leaf, PartyPopper, FlagIcon, ShieldCheck, MessageCircle, Mic, Users, Eye } from "lucide-react";
+import { MapPin, Info, Heart, X, Star, SlidersHorizontal, ChevronDown, Shield, Lock, Leaf, PartyPopper, FlagIcon, ShieldCheck, MessageCircle, Mic, Users, Eye, Clock, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { getMe } from "@/lib/auth";
 import { AdBanner, useAdFrequency } from "@/components/AdBanner";
+
+function CooldownMessage({ activeFilterCount, onClearFilters, onRefresh }: { activeFilterCount: number; onClearFilters: () => void; onRefresh: () => void }) {
+  const [timeLeft, setTimeLeft] = useState("");
+  const hasCooldown = !!localStorage.getItem("milaap_last_swipe_time");
+
+  useEffect(() => {
+    if (!hasCooldown) return;
+    const update = () => {
+      const lastSwipeTime = localStorage.getItem("milaap_last_swipe_time");
+      if (lastSwipeTime) {
+        const elapsed = Date.now() - parseInt(lastSwipeTime);
+        const remaining = 4 * 60 * 60 * 1000 - elapsed;
+        if (remaining > 0) {
+          const hrs = Math.floor(remaining / 3600000);
+          const mins = Math.floor((remaining % 3600000) / 60000);
+          const secs = Math.floor((remaining % 60000) / 1000);
+          setTimeLeft(`${hrs}h ${mins}m ${secs}s`);
+        } else {
+          setTimeLeft("");
+          localStorage.removeItem("milaap_last_swipe_time");
+        }
+      }
+    };
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, [hasCooldown]);
+
+  const isCooldownActive = hasCooldown && timeLeft !== "";
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center p-8 max-w-sm mx-auto">
+      <div className="w-24 h-24 bg-gradient-to-br from-red-500/20 to-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-5 border border-red-500/30">
+        {isCooldownActive ? <Clock className="text-red-400" size={40} /> : <Info className="text-muted-foreground" size={40} />}
+      </div>
+      <h3 className="text-xl font-heading font-bold mb-2 text-foreground" data-testid="text-no-profiles">
+        {isCooldownActive ? "You've seen all profiles!" : "No more profiles"}
+      </h3>
+      {isCooldownActive ? (
+        <>
+          <p className="text-muted-foreground text-sm mb-4">New profiles will appear after the cooldown period. Take a break and come back refreshed!</p>
+          <div className="bg-card border border-border rounded-2xl p-4 mb-5">
+            <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Come back in</p>
+            <p className="text-2xl font-heading font-bold text-brand-gradient" data-testid="text-cooldown-timer">{timeLeft}</p>
+          </div>
+        </>
+      ) : (
+        <p className="text-muted-foreground text-sm mb-5">
+          {activeFilterCount > 0 ? "Try changing your filters to see more profiles." : "Check back later for new matches in your area."}
+        </p>
+      )}
+      <div className="flex flex-col gap-3">
+        <Button data-testid="button-refresh" onClick={onRefresh} className="w-full bg-brand-gradient h-12 rounded-2xl font-bold gap-2">
+          <RefreshCw size={16} /> Refresh Profiles
+        </Button>
+        {activeFilterCount > 0 && (
+          <Button variant="outline" onClick={onClearFilters} className="w-full rounded-2xl" data-testid="button-clear-filters-empty">Clear Filters</Button>
+        )}
+      </div>
+    </motion.div>
+  );
+}
 
 interface DiscoverProfile {
   id: string;
@@ -100,6 +162,7 @@ export default function Home() {
       if (data.isMutualMatch) setMatchPopup(data.match.targetUserId);
       queryClient.invalidateQueries({ queryKey: ["/api/matches"] });
       recordSwipe();
+      localStorage.setItem("milaap_last_swipe_time", String(Date.now()));
     },
   });
 
@@ -203,15 +266,7 @@ export default function Home() {
                 );
               })
             ) : (
-              <div className="text-center p-8">
-                <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mx-auto mb-4"><Info className="text-muted-foreground" size={32} /></div>
-                <h3 className="text-lg font-bold mb-2" data-testid="text-no-profiles">No more profiles</h3>
-                <p className="text-muted-foreground text-sm mb-2">{activeFilterCount > 0 ? "Try changing your filters to see more profiles." : "Check back later for new matches in your area."}</p>
-                <div className="flex gap-3 justify-center mt-4">
-                  {activeFilterCount > 0 && <Button variant="outline" onClick={() => setFilters({ gender: "All", ageMin: 18, ageMax: 45, city: "All" })} data-testid="button-clear-filters-empty">Clear Filters</Button>}
-                  <Button data-testid="button-refresh" onClick={handleRefresh} variant="outline">Refresh Profiles</Button>
-                </div>
-              </div>
+              <CooldownMessage activeFilterCount={activeFilterCount} onClearFilters={() => setFilters({ gender: "All", ageMin: 18, ageMax: 45, city: "All" })} onRefresh={handleRefresh} />
             )}
           </AnimatePresence>
         )}

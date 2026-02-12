@@ -1,22 +1,69 @@
 import { useState } from "react";
 import { useLocation, useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { motion } from "framer-motion";
-import { ArrowLeft, MessageCircle, MapPin, Heart, Sparkles, Shield, CheckCircle, Mic, Users, Clock, Eye } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ArrowLeft, MessageCircle, MapPin, Heart, Sparkles, Shield, CheckCircle, Mic, Users, Clock, X, ChevronLeft, ChevronRight, Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getMe } from "@/lib/auth";
 
 const INTENT_ICONS: Record<string, string> = { Casual: "☕", Dating: "💕", Serious: "💎", Marriage: "💍" };
-const DATE_READINESS_LABELS: Record<string, { label: string; color: string }> = {
-  "Chat-only": { label: "Chat only", color: "text-blue-400" },
-  "Voice-ready": { label: "Voice ready", color: "text-green-400" },
-  "Meet-ready": { label: "Ready to meet", color: "text-purple-400" },
+const DATE_READINESS_LABELS: Record<string, { label: string; color: string; icon: string }> = {
+  "Chat-only": { label: "Chat only", color: "text-blue-400", icon: "💬" },
+  "Voice-ready": { label: "Voice ready", color: "text-green-400", icon: "🎙️" },
+  "Meet-ready": { label: "Ready to meet", color: "text-purple-400", icon: "🤝" },
 };
+
+function FullScreenPhoto({ photos, currentIndex, onClose, onNext, onPrev }: {
+  photos: string[]; currentIndex: number; onClose: () => void; onNext: () => void; onPrev: () => void;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black z-50 flex flex-col"
+      data-testid="fullscreen-photo-viewer"
+    >
+      <div className="flex items-center justify-between p-4 z-10">
+        <span className="text-white/70 text-sm font-medium">{currentIndex + 1} / {photos.length}</span>
+        <button onClick={onClose} className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center" data-testid="button-close-fullscreen">
+          <X size={20} className="text-white" />
+        </button>
+      </div>
+      <div className="flex-1 relative flex items-center justify-center">
+        <motion.img
+          key={currentIndex}
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          src={photos[currentIndex]}
+          alt="Profile photo"
+          className="max-w-full max-h-full object-contain"
+        />
+        {photos.length > 1 && (
+          <>
+            <button onClick={onPrev} className="absolute left-3 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 flex items-center justify-center" data-testid="button-fullscreen-prev">
+              <ChevronLeft size={24} className="text-white" />
+            </button>
+            <button onClick={onNext} className="absolute right-3 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 flex items-center justify-center" data-testid="button-fullscreen-next">
+              <ChevronRight size={24} className="text-white" />
+            </button>
+          </>
+        )}
+      </div>
+      <div className="flex justify-center gap-2 p-4">
+        {photos.map((_: string, i: number) => (
+          <div key={i} className={`w-2 h-2 rounded-full transition-all ${i === currentIndex ? "bg-white scale-125" : "bg-white/30"}`} />
+        ))}
+      </div>
+    </motion.div>
+  );
+}
 
 export default function ViewProfile() {
   const [, setLocation] = useLocation();
   const { userId } = useParams<{ userId: string }>();
   const [currentPhoto, setCurrentPhoto] = useState(0);
+  const [showFullScreen, setShowFullScreen] = useState(false);
 
   const { data: session } = useQuery({
     queryKey: ["/api/auth/me"],
@@ -62,7 +109,7 @@ export default function ViewProfile() {
     );
   }
 
-  const photos = profile.photos?.length ? profile.photos : ["/profiles/neutral1.jpg"];
+  const photos = profile.photos?.length ? profile.photos : ["/profiles/generic_indian_1.jpg"];
   const isCouple = profile.gender === "Couple";
   const displayName = isCouple && profile.partner2Name
     ? `${profile.name} & ${profile.partner2Name}`
@@ -73,164 +120,197 @@ export default function ViewProfile() {
 
   return (
     <div className="h-full flex flex-col bg-background">
-      <div className="relative w-full aspect-[3/4] max-h-[55vh] bg-black">
-        <motion.img
-          key={currentPhoto}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          src={photos[currentPhoto]}
-          alt={displayName}
-          className="w-full h-full object-cover"
-        />
-
-        <div className="absolute top-0 left-0 right-0 flex">
-          {photos.map((_: string, i: number) => (
-            <div key={i} className="flex-1 h-1 mx-0.5 mt-2 rounded-full overflow-hidden bg-white/30">
-              <div className={`h-full rounded-full transition-all ${i === currentPhoto ? "bg-white w-full" : "w-0"}`} />
-            </div>
-          ))}
-        </div>
-
-        {photos.length > 1 && (
-          <>
-            <button
-              className="absolute left-0 top-0 bottom-0 w-1/3 z-10"
-              onClick={() => setCurrentPhoto((p) => Math.max(0, p - 1))}
-              data-testid="button-photo-prev"
-            />
-            <button
-              className="absolute right-0 top-0 bottom-0 w-1/3 z-10"
-              onClick={() => setCurrentPhoto((p) => Math.min(photos.length - 1, p + 1))}
-              data-testid="button-photo-next"
-            />
-          </>
+      <AnimatePresence>
+        {showFullScreen && (
+          <FullScreenPhoto
+            photos={photos}
+            currentIndex={currentPhoto}
+            onClose={() => setShowFullScreen(false)}
+            onNext={() => setCurrentPhoto(p => (p + 1) % photos.length)}
+            onPrev={() => setCurrentPhoto(p => (p - 1 + photos.length) % photos.length)}
+          />
         )}
+      </AnimatePresence>
 
-        <button
-          onClick={() => window.history.back()}
-          className="absolute top-4 left-4 z-20 w-10 h-10 rounded-full flex items-center justify-center"
-          style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(8px)" }}
-          data-testid="button-back-profile"
-        >
-          <ArrowLeft size={20} className="text-white" />
-        </button>
+      <div className="flex-1 overflow-y-auto pb-24">
+        <div className="relative w-full aspect-square max-h-[40vh] bg-black">
+          <motion.img
+            key={currentPhoto}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            src={photos[currentPhoto]}
+            alt={displayName}
+            className="w-full h-full object-cover cursor-pointer"
+            onClick={() => setShowFullScreen(true)}
+          />
 
-        {profile.isOnline && (
-          <div className="absolute top-4 right-4 z-20 px-3 py-1 rounded-full text-xs font-medium text-green-400 flex items-center gap-1.5" style={{ background: "rgba(0,0,0,0.5)" }}>
-            <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" /> Online
-          </div>
-        )}
-
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-6 pt-20">
-          <h1 className="text-3xl font-heading font-bold text-white" data-testid="text-profile-name">{displayName}, {displayAge}</h1>
-          <div className="flex items-center gap-2 mt-1">
-            <MapPin size={14} className="text-white/70" />
-            <span className="text-white/70 text-sm">{profile.city}</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-5 space-y-5 pb-28">
-        {profile.intent && (
-          <div className="flex items-center gap-2">
-            <span className="text-lg">{INTENT_ICONS[profile.intent] || "💕"}</span>
-            <span className="text-sm font-medium text-foreground">Looking for {profile.intent}</span>
-          </div>
-        )}
-
-        {profile.dateReadiness && DATE_READINESS_LABELS[profile.dateReadiness] && (
-          <div className="flex items-center gap-2">
-            {profile.dateReadiness === "Chat-only" && <MessageCircle size={14} className="text-blue-400" />}
-            {profile.dateReadiness === "Voice-ready" && <Mic size={14} className="text-green-400" />}
-            {profile.dateReadiness === "Meet-ready" && <Users size={14} className="text-purple-400" />}
-            <span className={`text-sm font-medium ${DATE_READINESS_LABELS[profile.dateReadiness].color}`}>
-              {DATE_READINESS_LABELS[profile.dateReadiness].label}
-            </span>
-          </div>
-        )}
-
-        {profile.datingStyle && (
-          <div className="flex items-center gap-2 bg-purple-500/10 border border-purple-500/20 rounded-xl px-3 py-2">
-            <Sparkles size={14} className="text-purple-400" />
-            <span className="text-sm font-medium text-purple-300" data-testid="text-dating-style">{profile.datingStyle}</span>
-          </div>
-        )}
-
-        {profile.bio && (
-          <div className="bg-card rounded-2xl p-4 border border-border">
-            <h3 className="text-sm font-bold text-foreground mb-2">About</h3>
-            <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap" data-testid="text-profile-bio">{profile.bio}</p>
-          </div>
-        )}
-
-        {profile.interests?.length > 0 && (
-          <div className="bg-card rounded-2xl p-4 border border-border">
-            <h3 className="text-sm font-bold text-foreground mb-3">Interests</h3>
-            <div className="flex flex-wrap gap-2">
-              {profile.interests.map((interest: string) => (
-                <span key={interest} className="px-3 py-1.5 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20" data-testid={`tag-interest-${interest}`}>
-                  {interest}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {profile.respectScore != null && (
-          <div className="bg-card rounded-2xl p-4 border border-border">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Shield size={16} className="text-green-400" />
-                <h3 className="text-sm font-bold text-foreground">Respect Score</h3>
-              </div>
-              <span className="text-lg font-bold text-green-400" data-testid="text-respect-score">{profile.respectScore}</span>
-            </div>
-            <div className="mt-2 h-2 bg-muted rounded-full overflow-hidden">
-              <div className="h-full bg-green-500 rounded-full transition-all" style={{ width: `${profile.respectScore}%` }} />
-            </div>
-          </div>
-        )}
-
-        {profile.photoAuthenticityScore != null && profile.photoAuthenticityScore > 0 && (
-          <div className="bg-card rounded-2xl p-4 border border-border">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <CheckCircle size={16} className="text-blue-400" />
-                <h3 className="text-sm font-bold text-foreground">Photo Verified</h3>
-              </div>
-              <span className="text-sm font-bold text-blue-400">{profile.photoAuthenticityScore}%</span>
-            </div>
-          </div>
-        )}
-
-        {profile.greenFlagStories?.length > 0 && profile.greenFlagStories.some((s: any) => s.answer) && (
-          <div className="bg-card rounded-2xl p-4 border border-border space-y-3">
-            <div className="flex items-center gap-2">
-              <Sparkles size={16} className="text-yellow-400" />
-              <h3 className="text-sm font-bold text-foreground">Green Flags</h3>
-            </div>
-            {profile.greenFlagStories.filter((s: any) => s.answer).map((story: any, i: number) => (
-              <div key={i} className="bg-muted rounded-xl p-3">
-                <p className="text-xs font-medium text-primary mb-1">{story.prompt}</p>
-                <p className="text-sm text-foreground">{story.answer}</p>
+          <div className="absolute top-0 left-0 right-0 flex">
+            {photos.map((_: string, i: number) => (
+              <div key={i} className="flex-1 h-1 mx-0.5 mt-2 rounded-full overflow-hidden bg-white/30">
+                <div className={`h-full rounded-full transition-all ${i === currentPhoto ? "bg-white w-full" : "w-0"}`} />
               </div>
             ))}
           </div>
-        )}
 
-        {profile.familyMode && (
-          <div className="flex items-center gap-2 px-3 py-2 bg-green-900/20 rounded-xl border border-green-800">
-            <Heart size={14} className="text-green-400" />
-            <span className="text-xs font-medium text-green-400">Family-Aware Mode Enabled</span>
-          </div>
-        )}
+          {photos.length > 1 && (
+            <>
+              <button className="absolute left-0 top-0 bottom-0 w-1/3 z-10" onClick={() => setCurrentPhoto(p => Math.max(0, p - 1))} data-testid="button-photo-prev" />
+              <button className="absolute right-0 top-0 bottom-0 w-1/3 z-10" onClick={() => setCurrentPhoto(p => Math.min(photos.length - 1, p + 1))} data-testid="button-photo-next" />
+            </>
+          )}
 
-        {!profile.isOnline && profile.lastSeenAt && (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Clock size={12} />
-            Last seen {new Date(profile.lastSeenAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+          <button onClick={() => window.history.back()} className="absolute top-4 left-4 z-20 w-10 h-10 rounded-full flex items-center justify-center bg-black/50 backdrop-blur-sm" data-testid="button-back-profile">
+            <ArrowLeft size={20} className="text-white" />
+          </button>
+
+          <button onClick={() => setShowFullScreen(true)} className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full flex items-center justify-center bg-black/50 backdrop-blur-sm" data-testid="button-fullscreen-photo">
+            <Maximize2 size={18} className="text-white" />
+          </button>
+
+          {profile.isOnline && (
+            <div className="absolute bottom-4 right-4 z-20 px-3 py-1 rounded-full text-xs font-medium text-green-400 flex items-center gap-1.5 bg-black/50 backdrop-blur-sm">
+              <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" /> Online
+            </div>
+          )}
+        </div>
+
+        <div className="px-5 -mt-6 relative z-10">
+          <div className="bg-card rounded-2xl border border-border p-5 shadow-lg">
+            <div className="flex items-start justify-between mb-1">
+              <div>
+                <h1 className="text-2xl font-heading font-bold text-foreground" data-testid="text-profile-name">{displayName}, {displayAge}</h1>
+                <div className="flex items-center gap-1.5 mt-1">
+                  <MapPin size={13} className="text-muted-foreground" />
+                  <span className="text-muted-foreground text-sm">{profile.city}</span>
+                  <span className="text-muted-foreground text-xs mx-1">·</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">{profile.gender}</span>
+                </div>
+              </div>
+              {profile.respectScore != null && (
+                <div className="flex items-center gap-1.5 bg-green-500/10 px-2.5 py-1 rounded-full border border-green-500/20">
+                  <Shield size={13} className="text-green-400" />
+                  <span className="text-sm font-bold text-green-400" data-testid="text-respect-score">{profile.respectScore}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-wrap gap-2 mt-3">
+              {profile.intent && (
+                <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-red-500/10 text-red-400 border border-red-500/20">
+                  {INTENT_ICONS[profile.intent] || "💕"} {profile.intent}
+                </span>
+              )}
+              {profile.dateReadiness && DATE_READINESS_LABELS[profile.dateReadiness] && (
+                <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${DATE_READINESS_LABELS[profile.dateReadiness].color} bg-current/10 border border-current/20`} style={{ backgroundColor: `color-mix(in srgb, currentColor 10%, transparent)` }}>
+                  {DATE_READINESS_LABELS[profile.dateReadiness].icon} {DATE_READINESS_LABELS[profile.dateReadiness].label}
+                </span>
+              )}
+              {profile.datingStyle && (
+                <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                  <Sparkles size={10} className="inline mr-1" />{profile.datingStyle}
+                </span>
+              )}
+              {profile.familyMode && (
+                <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-green-500/10 text-green-400 border border-green-500/20">
+                  <Heart size={10} className="inline mr-1" />Family Mode
+                </span>
+              )}
+              {profile.photoVerifiedAt && (
+                <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                  <CheckCircle size={10} className="inline mr-1" />Verified {profile.photoAuthenticityScore ? `${profile.photoAuthenticityScore}%` : ""}
+                </span>
+              )}
+            </div>
           </div>
-        )}
+        </div>
+
+        <div className="px-5 mt-4 space-y-4">
+          {profile.bio && (
+            <div className="bg-card rounded-2xl p-4 border border-border">
+              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">About</h3>
+              <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap" data-testid="text-profile-bio">{profile.bio}</p>
+            </div>
+          )}
+
+          {profile.interests?.length > 0 && (
+            <div className="bg-card rounded-2xl p-4 border border-border">
+              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Interests</h3>
+              <div className="flex flex-wrap gap-2">
+                {profile.interests.map((interest: string) => (
+                  <span key={interest} className="px-3 py-1.5 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20" data-testid={`tag-interest-${interest}`}>
+                    {interest}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {isCouple && profile.partner2Name && (
+            <div className="bg-card rounded-2xl p-4 border border-blue-500/20">
+              <h3 className="text-xs font-bold text-blue-400 uppercase tracking-wider mb-3">Couple Details</h3>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-blue-500/5 rounded-xl p-3 border border-blue-500/10">
+                  <p className="text-xs text-muted-foreground mb-1">Partner 1</p>
+                  <p className="text-sm font-bold text-foreground">{profile.name}, {profile.age}</p>
+                  <p className="text-xs text-muted-foreground">{profile.gender !== "Couple" ? profile.gender : "—"}</p>
+                </div>
+                <div className="bg-blue-500/5 rounded-xl p-3 border border-blue-500/10">
+                  <p className="text-xs text-muted-foreground mb-1">Partner 2</p>
+                  <p className="text-sm font-bold text-foreground">{profile.partner2Name}, {profile.partner2Age}</p>
+                  <p className="text-xs text-muted-foreground">{profile.partner2Gender || "—"}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {profile.respectScore != null && (
+            <div className="bg-card rounded-2xl p-4 border border-border">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Shield size={14} className="text-green-400" />
+                  <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Respect Score</h3>
+                </div>
+                <span className="text-sm font-bold text-green-400">{profile.respectScore}/100</span>
+              </div>
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div className="h-full bg-gradient-to-r from-green-500 to-green-400 rounded-full transition-all" style={{ width: `${profile.respectScore}%` }} />
+              </div>
+            </div>
+          )}
+
+          {profile.greenFlagStories?.length > 0 && profile.greenFlagStories.some((s: any) => s.answer) && (
+            <div className="bg-card rounded-2xl p-4 border border-border space-y-3">
+              <div className="flex items-center gap-2">
+                <Sparkles size={14} className="text-yellow-400" />
+                <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Green Flags</h3>
+              </div>
+              {profile.greenFlagStories.filter((s: any) => s.answer).map((story: any, i: number) => (
+                <div key={i} className="bg-muted rounded-xl p-3">
+                  <p className="text-xs font-medium text-primary mb-1">"{story.prompt}"</p>
+                  <p className="text-sm text-foreground">{story.answer}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {profile.festivalPrefs && profile.festivalPrefs.length > 0 && (
+            <div className="bg-card rounded-2xl p-4 border border-border">
+              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Festival Preferences</h3>
+              <div className="flex flex-wrap gap-2">
+                {profile.festivalPrefs.map((f: string) => (
+                  <span key={f} className="px-3 py-1.5 rounded-full text-xs font-medium bg-orange-500/10 text-orange-400 border border-orange-500/20">🎉 {f}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {!profile.isOnline && profile.lastSeenAt && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground px-1">
+              <Clock size={12} />
+              Last seen {new Date(profile.lastSeenAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+            </div>
+          )}
+        </div>
       </div>
 
       {matchWithUser && (

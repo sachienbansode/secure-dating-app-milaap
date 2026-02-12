@@ -174,7 +174,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getDiscoverProfiles(userId: string, limit = 500, filters?: { gender?: string; ageMin?: number; ageMax?: number; city?: string; intent?: string; familyMode?: boolean }): Promise<Profile[]> {
-    const excludeIds: string[] = [userId];
+    const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000);
+    const recentSwipes = await db.select({ targetUserId: matches.targetUserId })
+      .from(matches)
+      .where(and(eq(matches.userId, userId), gt(matches.createdAt, fourHoursAgo)));
+    const recentlySwipedIds = recentSwipes.map(m => m.targetUserId);
+
+    const excludeIds: string[] = [userId, ...recentlySwipedIds];
 
     const blocked = await this.getBlockedUsers(userId);
     for (const b of blocked) excludeIds.push(b.blockedUserId);
