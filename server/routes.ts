@@ -1079,6 +1079,9 @@ export async function registerRoutes(
       const userId = req.session.userId!;
       const { matchId, isOneTimeView } = req.body;
 
+      const hasAttachAccess = await checkFeatureAccess(userId, "chat_attachments");
+      if (!hasAttachAccess) return res.status(403).json({ message: "This feature requires a premium membership", requiredFeature: "chat_attachments" });
+
       if (!matchId) {
         return res.status(400).json({ message: "matchId is required" });
       }
@@ -1605,6 +1608,9 @@ CRITICAL RULES:
 
   app.post("/api/ai/analyze-green-flags", requireAuth, async (req: Request, res: Response) => {
     try {
+      const gfAccess = await checkFeatureAccess(req.session.userId!, "green_flag_stories");
+      if (!gfAccess) return res.status(403).json({ message: "This feature requires a premium membership", requiredFeature: "green_flag_stories" });
+
       const { stories } = req.body;
       if (!stories || !Array.isArray(stories) || stories.length === 0) {
         return res.status(400).json({ message: "Stories required" });
@@ -1889,6 +1895,9 @@ CRITICAL RULES:
 
   app.post("/api/profile/date-readiness", requireAuth, async (req: Request, res: Response) => {
     try {
+      const drAccess = await checkFeatureAccess(req.session.userId!, "date_readiness");
+      if (!drAccess) return res.status(403).json({ message: "This feature requires a premium membership", requiredFeature: "date_readiness" });
+
       const { dateReadiness } = req.body;
       if (!["Chat-only", "Voice-ready", "Meet-ready"].includes(dateReadiness)) {
         return res.status(400).json({ message: "Invalid date readiness value" });

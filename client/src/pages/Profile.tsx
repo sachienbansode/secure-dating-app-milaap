@@ -138,6 +138,20 @@ export default function Profile() {
     enabled: !!session?.user,
   });
 
+  const { data: featureAccess } = useQuery<any>({
+    queryKey: ["/api/membership/feature-access"],
+    queryFn: async () => {
+      const res = await fetch("/api/membership/feature-access", { credentials: "include" });
+      if (!res.ok) return { features: [], tier: "basic" };
+      return res.json();
+    },
+    enabled: !!session?.user,
+  });
+
+  const hasFeature = (feature: string) => {
+    return (featureAccess?.features || []).includes(feature);
+  };
+
   const subscribeMutation = useMutation({
     mutationFn: async ({ tier }: { tier: string }) => {
       const res = await apiRequest("POST", "/api/membership/subscribe", { tier, billingCycle: "monthly" });
@@ -603,14 +617,15 @@ export default function Profile() {
                   <Switch data-testid="switch-ai-persona" checked={form.aiPersonaEnabled} onCheckedChange={(checked) => setForm((f) => ({ ...f, aiPersonaEnabled: checked }))} />
                 </div>
 
-                <div className="flex items-center justify-between pt-2 border-t border-blue-800">
+                <div className={`flex items-center justify-between pt-2 border-t border-blue-800 ${!hasFeature("ai_proxy_mode") ? "opacity-50" : ""}`}>
                   <div>
                     <h5 className="font-semibold text-sm flex items-center gap-1">
                       <Bot size={14} className="text-blue-400" /> AI Proxy Mode
+                      {!hasFeature("ai_proxy_mode") && <Lock size={12} className="text-amber-400 ml-1" />}
                     </h5>
-                    <p className="text-xs text-muted-foreground">AI chats for you when you're offline</p>
+                    <p className="text-xs text-muted-foreground">{!hasFeature("ai_proxy_mode") ? "Upgrade to Gold or higher to unlock" : "AI chats for you when you're offline"}</p>
                   </div>
-                  <Switch data-testid="switch-ai-proxy" checked={form.aiProxyEnabled} onCheckedChange={(checked) => setForm((f) => ({ ...f, aiProxyEnabled: checked }))} />
+                  <Switch data-testid="switch-ai-proxy" checked={form.aiProxyEnabled} onCheckedChange={(checked) => { if (hasFeature("ai_proxy_mode")) setForm((f) => ({ ...f, aiProxyEnabled: checked })); }} disabled={!hasFeature("ai_proxy_mode")} />
                 </div>
 
                 {(form.aiPersonaEnabled || form.aiProxyEnabled) && (
@@ -654,15 +669,15 @@ export default function Profile() {
                 )}
               </div>
 
-              <div className="bg-blue-900/20 rounded-2xl p-4 space-y-3 border border-blue-800">
+              <div className={`bg-blue-900/20 rounded-2xl p-4 space-y-3 border border-blue-800 ${!hasFeature("family_mode") ? "opacity-50" : ""}`}>
                 <div className="flex items-center gap-2">
                   <HomeIcon size={16} className="text-blue-400" />
-                  <h4 className="font-bold text-sm text-blue-300">Family-Aware Dating Mode</h4>
+                  <h4 className="font-bold text-sm text-blue-300">Family-Aware Dating Mode {!hasFeature("family_mode") && <Lock size={12} className="text-amber-400 inline ml-1" />}</h4>
                 </div>
-                <p className="text-xs text-blue-400">Clean language only. No innuendos. Conservative matching pool. Ideal for tier 2/3 cities.</p>
+                <p className="text-xs text-blue-400">{!hasFeature("family_mode") ? "Upgrade to Platinum to unlock" : "Clean language only. No innuendos. Conservative matching pool. Ideal for tier 2/3 cities."}</p>
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">Enable Family Mode</span>
-                  <Switch data-testid="switch-family-mode" checked={form.familyMode} onCheckedChange={(checked) => setForm((f) => ({ ...f, familyMode: checked }))} />
+                  <Switch data-testid="switch-family-mode" checked={form.familyMode} onCheckedChange={(checked) => { if (hasFeature("family_mode")) setForm((f) => ({ ...f, familyMode: checked })); }} disabled={!hasFeature("family_mode")} />
                 </div>
               </div>
 
@@ -710,14 +725,15 @@ export default function Profile() {
               )}
 
               <div className="bg-card rounded-2xl p-4 space-y-3 border border-border">
-                <div className="flex items-center justify-between">
+                <div className={`flex items-center justify-between ${!hasFeature("no_screenshot_mode") ? "opacity-50" : ""}`}>
                   <div>
                     <h4 className="font-semibold text-sm flex items-center gap-1">
                       <ShieldAlert size={14} className="text-red-500" /> No Screenshot Mode
+                      {!hasFeature("no_screenshot_mode") && <Lock size={12} className="text-amber-400 ml-1" />}
                     </h4>
-                    <p className="text-xs text-muted-foreground">Protect your chats from screenshots</p>
+                    <p className="text-xs text-muted-foreground">{!hasFeature("no_screenshot_mode") ? "Upgrade to Gold or higher to unlock" : "Protect your chats from screenshots"}</p>
                   </div>
-                  <Switch data-testid="switch-no-screenshot" checked={form.noScreenshotMode} onCheckedChange={(checked) => setForm((f) => ({ ...f, noScreenshotMode: checked }))} />
+                  <Switch data-testid="switch-no-screenshot" checked={form.noScreenshotMode} onCheckedChange={(checked) => { if (hasFeature("no_screenshot_mode")) setForm((f) => ({ ...f, noScreenshotMode: checked })); }} disabled={!hasFeature("no_screenshot_mode")} />
                 </div>
                 <div className="flex items-center justify-between">
                   <div>
