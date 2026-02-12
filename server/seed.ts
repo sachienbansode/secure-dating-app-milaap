@@ -219,12 +219,18 @@ async function seed() {
         partner2Gender = getRandom(genderOptions);
       }
 
+      const hasAiProxy = Math.random() > 0.7;
+      const membershipTier = hasAiProxy ? "gold" : getRandom(["basic", "basic", "silver", "gold"]);
+      const membershipExpiresAt = membershipTier !== "basic" ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) : undefined;
+
       const [user] = await db
         .insert(users)
         .values({
           phone: `+91${Math.floor(7000000000 + Math.random() * 3000000000)}`,
           isVerified: true,
           respectScore,
+          membershipTier,
+          ...(membershipExpiresAt && { membershipExpiresAt }),
         })
         .returning();
 
@@ -242,7 +248,7 @@ async function seed() {
         aiPersonaEnabled: Math.random() > 0.5,
         aiTone: getRandom(["Friendly", "Witty", "Polite", "Flirty"]),
         aiLanguage: getRandom(["English", "Hindi", "Hinglish"]),
-        aiProxyEnabled: Math.random() > 0.7,
+        aiProxyEnabled: hasAiProxy,
         aiChatPace: getRandom(["Slow", "Normal", "Fast"]),
         intent,
         intentLockedAt: new Date(),
