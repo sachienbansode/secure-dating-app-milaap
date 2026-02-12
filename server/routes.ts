@@ -106,6 +106,18 @@ async function requireAdmin(req: Request, res: Response, next: Function) {
   next();
 }
 
+async function checkFeatureAccess(userId: string, feature: string): Promise<boolean> {
+  const user = await storage.getUser(userId);
+  if (!user) return false;
+  let tier = user.membershipTier || "basic";
+  if (tier !== "basic" && user.membershipExpiresAt && new Date(user.membershipExpiresAt) < new Date()) {
+    tier = "basic";
+  }
+  const plan = await storage.getMembershipPlan(tier);
+  if (!plan || !plan.features) return false;
+  return (plan.features as string[]).includes(feature);
+}
+
 function getClientIp(req: Request): string {
   return (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.ip || "unknown";
 }
@@ -292,6 +304,12 @@ export async function registerRoutes(
       if (!user) return res.status(404).json({ message: "User not found" });
 
       const profile = await storage.getProfile(user.id);
+      let effectiveTier = user.membershipTier || "basic";
+      if (effectiveTier !== "basic" && user.membershipExpiresAt && new Date(user.membershipExpiresAt) < new Date()) {
+        effectiveTier = "basic";
+        await storage.updateUser(user.id, { membershipTier: "basic", membershipExpiresAt: null as any });
+      }
+
       return res.json({
         user: {
           id: user.id,
@@ -305,6 +323,8 @@ export async function registerRoutes(
           lastSeenAt: user.lastSeenAt,
           termsAcceptedAt: user.termsAcceptedAt,
           termsAcceptedVersion: user.termsAcceptedVersion,
+          membershipTier: effectiveTier,
+          membershipExpiresAt: user.membershipExpiresAt,
         },
         profile: profile || null,
       });
@@ -551,6 +571,15 @@ export async function registerRoutes(
               });
             }
           }
+        }
+      }
+
+      if (parsed.data.aiProxyEnabled !== undefined) {
+        if (parsed.data.aiProxyEnabled && (!existing || !existing.aiProxyEnabled)) {
+          profileData.botModeActivatedAt = new Date();
+          await storage.setUserOnlineStatus(userId, true);
+        } else if (!parsed.data.aiProxyEnabled && existing?.aiProxyEnabled) {
+          profileData.botModeActivatedAt = null;
         }
       }
 
@@ -1145,6 +1174,10 @@ export async function registerRoutes(
   app.post("/api/screenshot-alert", requireAuth, async (req: Request, res: Response) => {
     try {
       const userId = req.session.userId!;
+
+      const hasAccess = await checkFeatureAccess(userId, "no_screenshot_mode");
+      if (!hasAccess) return res.status(403).json({ message: "This feature requires a premium membership", requiredFeature: "no_screenshot_mode" });
+
       const { matchId } = req.body;
 
       const match = await storage.getMatchById(matchId);
@@ -1297,6 +1330,10 @@ Their interests: ${(otherProfile?.interests || []).join(", ")}`;
   app.post("/api/ai/proxy-reply", requireAuth, async (req: Request, res: Response) => {
     try {
       const userId = req.session.userId!;
+
+      const hasAccess = await checkFeatureAccess(userId, "ai_proxy_mode");
+      if (!hasAccess) return res.status(403).json({ message: "This feature requires a premium membership", requiredFeature: "ai_proxy_mode" });
+
       const { matchId } = req.body;
 
       const myProfile = await storage.getProfile(userId);
@@ -1876,12 +1913,16 @@ ${myProfile.name}'s bio: ${myProfile.bio || "Not set"}`;
 
   app.post("/api/photo/verify", requireAuth, async (req: Request, res: Response) => {
     try {
+      const userId = req.session.userId!;
+
+      const hasAccess = await checkFeatureAccess(userId, "photo_authenticity");
+      if (!hasAccess) return res.status(403).json({ message: "This feature requires a premium membership", requiredFeature: "photo_authenticity" });
+
       const photoAuthEnabled = await storage.getAppSetting("feature_photo_authenticity");
       if (photoAuthEnabled !== "true") {
         return res.json({ enabled: false, message: "Photo authenticity feature is disabled" });
       }
 
-      const userId = req.session.userId!;
       const profile = await storage.getProfile(userId);
       if (!profile || !profile.photos || profile.photos.length === 0) {
         return res.status(400).json({ message: "No photos to verify" });
@@ -1947,6 +1988,7 @@ ${myProfile.name}'s bio: ${myProfile.bio || "Not set"}`;
       const coupleProfiles = await storage.getAppSetting("feature_couple_profiles");
       const attachments = await storage.getAppSetting("feature_attachments");
       const attachmentExtensions = await storage.getAppSetting("attachment_extensions");
+      const botModeMaxHours = await storage.getAppSetting("bot_mode_max_hours");
 
       return res.json({
         welcome_taglines: parsedTaglines,
@@ -1959,6 +2001,7 @@ ${myProfile.name}'s bio: ${myProfile.bio || "Not set"}`;
         feature_couple_profiles: coupleProfiles !== null ? coupleProfiles === "true" : true,
         feature_attachments: attachments !== null ? attachments === "true" : true,
         attachment_extensions: attachmentExtensions || ".jpg,.jpeg,.png,.webp,.gif,.mp4,.mov,.avi,.mkv",
+        bot_mode_max_hours: botModeMaxHours ? parseInt(botModeMaxHours) : 12,
       });
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
@@ -2106,6 +2149,10 @@ ${myProfile.name}'s bio: ${myProfile.bio || "Not set"}`;
   app.post("/api/contact-share", requireAuth, async (req: Request, res: Response) => {
     try {
       const userId = req.session.userId!;
+
+      const hasAccess = await checkFeatureAccess(userId, "contact_sharing");
+      if (!hasAccess) return res.status(403).json({ message: "This feature requires a premium membership", requiredFeature: "contact_sharing" });
+
       const { matchId, sharePhone, shareEmail } = req.body;
 
       if (!matchId) return res.status(400).json({ message: "matchId is required" });
@@ -2207,6 +2254,10 @@ ${myProfile.name}'s bio: ${myProfile.bio || "Not set"}`;
   app.post("/api/location-share", requireAuth, async (req: Request, res: Response) => {
     try {
       const userId = req.session.userId!;
+
+      const hasAccess = await checkFeatureAccess(userId, "location_sharing");
+      if (!hasAccess) return res.status(403).json({ message: "This feature requires a premium membership", requiredFeature: "location_sharing" });
+
       const { matchId, latitude, longitude, isLive } = req.body;
 
       if (!matchId || !latitude || !longitude) {
@@ -2314,6 +2365,282 @@ ${myProfile.name}'s bio: ${myProfile.bio || "Not set"}`;
       return res.status(500).json({ message: err.message });
     }
   });
+
+  // ==================== MEMBERSHIP PLANS ====================
+
+  app.get("/api/membership/plans", async (_req: Request, res: Response) => {
+    try {
+      let plans = await storage.getMembershipPlans();
+      if (plans.length === 0) {
+        const defaultPlans = [
+          { tier: "basic", name: "Basic", description: "Free plan with essential features", priceMonthly: "0", priceYearly: "0", durationDays: 0, dailyLikesLimit: 25, superLikesPerDay: 1, showAds: true, isActive: true, sortOrder: 0, color: "#6b7280", features: ["chat_attachments", "contact_sharing"] },
+          { tier: "silver", name: "Silver", description: "Enhanced dating experience with more likes and fewer ads", priceMonthly: "299", priceYearly: "2999", durationDays: 30, dailyLikesLimit: 50, superLikesPerDay: 3, showAds: true, isActive: true, sortOrder: 1, color: "#9ca3af", features: ["chat_attachments", "contact_sharing", "location_sharing", "read_receipts", "date_readiness", "green_flag_stories"] },
+          { tier: "gold", name: "Gold", description: "Premium features including AI and advanced matching", priceMonthly: "599", priceYearly: "5999", durationDays: 30, dailyLikesLimit: 100, superLikesPerDay: 5, showAds: false, isActive: true, sortOrder: 2, color: "#f59e0b", features: ["chat_attachments", "contact_sharing", "location_sharing", "read_receipts", "date_readiness", "green_flag_stories", "ai_proxy_mode", "no_screenshot_mode", "photo_authenticity", "festival_boosts", "super_likes", "advanced_filters", "see_who_liked"] },
+          { tier: "platinum", name: "Platinum", description: "Ultimate experience with all features and unlimited likes", priceMonthly: "999", priceYearly: "9999", durationDays: 30, dailyLikesLimit: 9999, superLikesPerDay: 10, showAds: false, isActive: true, sortOrder: 3, color: "#8b5cf6", features: ["chat_attachments", "contact_sharing", "location_sharing", "read_receipts", "date_readiness", "green_flag_stories", "ai_proxy_mode", "no_screenshot_mode", "photo_authenticity", "festival_boosts", "super_likes", "unlimited_likes", "advanced_filters", "see_who_liked", "profile_boost", "family_mode"] },
+        ];
+        for (const p of defaultPlans) {
+          await storage.createMembershipPlan(p as any);
+        }
+        plans = await storage.getMembershipPlans();
+      }
+      return res.json({ plans });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/admin/membership/plans", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const { tier, name, description, priceMonthly, priceYearly, durationDays, dailyLikesLimit, superLikesPerDay, showAds, isActive, sortOrder, color, features } = req.body;
+      if (!tier || !name) return res.status(400).json({ message: "tier and name required" });
+      const existing = await storage.getMembershipPlan(tier);
+      if (existing) return res.status(400).json({ message: "Plan with this tier already exists" });
+      const plan = await storage.createMembershipPlan({ tier, name, description, priceMonthly: priceMonthly || "0", priceYearly: priceYearly || "0", durationDays: durationDays || 30, dailyLikesLimit: dailyLikesLimit || 50, superLikesPerDay: superLikesPerDay || 1, showAds: showAds !== false, isActive: isActive !== false, sortOrder: sortOrder || 0, color: color || "#6b7280", features: features || [] });
+      return res.json({ plan });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.put("/api/admin/membership/plans/:id", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const plan = await storage.updateMembershipPlan(req.params.id, req.body);
+      if (!plan) return res.status(404).json({ message: "Plan not found" });
+      return res.json({ plan });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.delete("/api/admin/membership/plans/:id", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      await storage.deleteMembershipPlan(req.params.id);
+      return res.json({ success: true });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ==================== MEMBERSHIP SUBSCRIPTION ====================
+
+  app.get("/api/membership/my", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      const tier = user.membershipTier || "basic";
+      const plan = await storage.getMembershipPlan(tier);
+      const isExpired = user.membershipExpiresAt && new Date(user.membershipExpiresAt) < new Date();
+      const effectiveTier = (tier !== "basic" && isExpired) ? "basic" : tier;
+      const effectivePlan = effectiveTier !== tier ? await storage.getMembershipPlan("basic") : plan;
+      return res.json({
+        tier: effectiveTier,
+        plan: effectivePlan,
+        expiresAt: user.membershipExpiresAt,
+        startedAt: user.membershipStartedAt,
+        isExpired: !!isExpired,
+      });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/membership/subscribe", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const { tier, billingCycle } = req.body;
+      if (!tier) return res.status(400).json({ message: "tier required" });
+      const plan = await storage.getMembershipPlan(tier);
+      if (!plan || !plan.isActive) return res.status(404).json({ message: "Plan not found or inactive" });
+      const price = billingCycle === "yearly" ? parseFloat(plan.priceYearly || "0") : parseFloat(plan.priceMonthly || "0");
+      const days = billingCycle === "yearly" ? 365 : (plan.durationDays || 30);
+      const now = new Date();
+      const expiresAt = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+      await storage.createMembershipTransaction({
+        userId,
+        planTier: tier,
+        amount: String(price),
+        currency: "INR",
+        durationDays: days,
+        status: "completed",
+        paymentMethod: "simulated",
+        startsAt: now,
+        expiresAt,
+      });
+      await storage.updateUser(userId, {
+        membershipTier: tier,
+        membershipExpiresAt: expiresAt,
+        membershipStartedAt: now,
+        dailyLikesLimit: plan.dailyLikesLimit || 50,
+      });
+      await logActivity(userId, "membership_subscribed", "account", { tier, price, days }, req);
+      return res.json({ success: true, tier, expiresAt });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/admin/membership/assign", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const { userId, tier, durationDays } = req.body;
+      if (!userId || !tier) return res.status(400).json({ message: "userId and tier required" });
+      const plan = await storage.getMembershipPlan(tier);
+      if (!plan) return res.status(404).json({ message: "Plan not found" });
+      const days = durationDays || plan.durationDays || 30;
+      const now = new Date();
+      const expiresAt = tier === "basic" ? null : new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+      await storage.updateUser(userId, {
+        membershipTier: tier,
+        membershipExpiresAt: expiresAt as any,
+        membershipStartedAt: now,
+        dailyLikesLimit: plan.dailyLikesLimit || 50,
+      });
+      await logActivity(req.session.adminUserId!, "membership_assigned", "admin", { userId, tier, days }, req);
+      return res.json({ success: true });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ==================== FEATURE ACCESS CHECK ====================
+
+  app.get("/api/membership/feature-access", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      let tier = user.membershipTier || "basic";
+      if (tier !== "basic" && user.membershipExpiresAt && new Date(user.membershipExpiresAt) < new Date()) {
+        tier = "basic";
+      }
+      const plan = await storage.getMembershipPlan(tier);
+      const features = plan?.features || [];
+      const showAds = plan?.showAds !== false;
+      return res.json({ tier, features, showAds, plan });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ==================== AD SETTINGS ====================
+
+  app.get("/api/ad-settings", async (_req: Request, res: Response) => {
+    try {
+      const adEnabled = await storage.getAppSetting("ads_enabled");
+      const adFrequency = await storage.getAppSetting("ads_frequency");
+      const adPlacement = await storage.getAppSetting("ads_placement");
+      const adPublisherId = await storage.getAppSetting("ads_publisher_id");
+      const adSlotId = await storage.getAppSetting("ads_slot_id");
+      const adBannerSlotId = await storage.getAppSetting("ads_banner_slot_id");
+      const adInterstitialFreq = await storage.getAppSetting("ads_interstitial_frequency");
+      return res.json({
+        enabled: adEnabled !== null ? adEnabled === "true" : true,
+        frequency: adFrequency ? parseInt(adFrequency) : 5,
+        placement: adPlacement || "discover,matches,profile",
+        publisherId: adPublisherId || "",
+        slotId: adSlotId || "",
+        bannerSlotId: adBannerSlotId || "",
+        interstitialFrequency: adInterstitialFreq ? parseInt(adInterstitialFreq) : 10,
+      });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/admin/ad-settings", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const { enabled, frequency, placement, publisherId, slotId, bannerSlotId, interstitialFrequency } = req.body;
+      if (enabled !== undefined) await storage.setAppSetting("ads_enabled", String(enabled));
+      if (frequency !== undefined) await storage.setAppSetting("ads_frequency", String(frequency));
+      if (placement !== undefined) await storage.setAppSetting("ads_placement", placement);
+      if (publisherId !== undefined) await storage.setAppSetting("ads_publisher_id", publisherId);
+      if (slotId !== undefined) await storage.setAppSetting("ads_slot_id", slotId);
+      if (bannerSlotId !== undefined) await storage.setAppSetting("ads_banner_slot_id", bannerSlotId);
+      if (interstitialFrequency !== undefined) await storage.setAppSetting("ads_interstitial_frequency", String(interstitialFrequency));
+      await logActivity(req.session.adminUserId!, "ad_settings_updated", "admin", req.body, req);
+      return res.json({ success: true });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ==================== BOT MODE AUTO-OFFLINE ====================
+
+  app.get("/api/admin/bot-mode-settings", requireAdmin, async (_req: Request, res: Response) => {
+    try {
+      const maxHours = await storage.getAppSetting("bot_mode_max_hours");
+      return res.json({ maxHours: maxHours ? parseInt(maxHours) : 12 });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/admin/bot-mode-settings", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const { maxHours } = req.body;
+      if (maxHours !== undefined) {
+        await storage.setAppSetting("bot_mode_max_hours", String(maxHours));
+      }
+      await logActivity(req.session.adminUserId!, "bot_mode_settings_updated", "admin", { maxHours }, req);
+      return res.json({ success: true });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/bot-mode/check-expired", async (_req: Request, res: Response) => {
+    try {
+      const maxHoursStr = await storage.getAppSetting("bot_mode_max_hours");
+      const maxHours = maxHoursStr ? parseInt(maxHoursStr) : 12;
+      const expiredProfiles = await storage.getExpiredBotModeUsers(maxHours);
+      let deactivated = 0;
+      for (const profile of expiredProfiles) {
+        await storage.updateProfile(profile.userId, { aiProxyEnabled: false, botModeActivatedAt: null as any });
+        await storage.setUserOnlineStatus(profile.userId, false);
+        deactivated++;
+      }
+      return res.json({ deactivated, maxHours });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ==================== MEMBERSHIP REVENUE ====================
+
+  app.get("/api/admin/membership/revenue", requireAdmin, async (_req: Request, res: Response) => {
+    try {
+      const revenue = await storage.getMembershipRevenue();
+      return res.json(revenue);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/admin/membership/transactions", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const userId = req.query.userId as string | undefined;
+      const transactions = await storage.getMembershipTransactions(userId);
+      return res.json({ transactions });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ==================== BOT MODE TIMER (periodic check) ====================
+
+  setInterval(async () => {
+    try {
+      const maxHoursStr = await storage.getAppSetting("bot_mode_max_hours");
+      const maxHours = maxHoursStr ? parseInt(maxHoursStr) : 12;
+      const expiredProfiles = await storage.getExpiredBotModeUsers(maxHours);
+      for (const profile of expiredProfiles) {
+        await storage.updateProfile(profile.userId, { aiProxyEnabled: false, botModeActivatedAt: null as any });
+        await storage.setUserOnlineStatus(profile.userId, false);
+      }
+    } catch (err) {
+      console.error("Bot mode auto-offline check error:", err);
+    }
+  }, 5 * 60 * 1000);
 
   return httpServer;
 }

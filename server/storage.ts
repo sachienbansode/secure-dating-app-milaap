@@ -4,6 +4,7 @@ import {
   users, profiles, matches, messages, reports, screenshotAlerts, appSettings,
   chatCooldowns, phoneUnlockRequests, blockedUsers, activityLogs,
   adminUsers, userSessions, contactShares, locationShares,
+  membershipPlans, membershipTransactions,
   type User, type InsertUser,
   type Profile, type InsertProfile,
   type Match, type InsertMatch,
@@ -19,6 +20,8 @@ import {
   type ActivityLog, type InsertActivityLog,
   type AdminUser, type InsertAdminUser,
   type UserSession, type InsertUserSession,
+  type MembershipPlan, type InsertMembershipPlan,
+  type MembershipTransaction, type InsertMembershipTransaction,
 } from "@shared/schema";
 import { encryptProfile, decryptProfile, encryptMessage, decryptMessage } from "./encryption";
 
@@ -98,6 +101,16 @@ export interface IStorage {
   getActiveLocationShares(matchId: string): Promise<LocationShare[]>;
   getLocationShare(id: string): Promise<LocationShare | undefined>;
   deleteLocationShare(id: string): Promise<void>;
+
+  getMembershipPlans(): Promise<MembershipPlan[]>;
+  getMembershipPlan(tier: string): Promise<MembershipPlan | undefined>;
+  createMembershipPlan(plan: InsertMembershipPlan): Promise<MembershipPlan>;
+  updateMembershipPlan(id: string, data: Partial<MembershipPlan>): Promise<MembershipPlan | undefined>;
+  deleteMembershipPlan(id: string): Promise<void>;
+  createMembershipTransaction(txn: InsertMembershipTransaction): Promise<MembershipTransaction>;
+  getMembershipTransactions(userId?: string, limit?: number): Promise<MembershipTransaction[]>;
+  getExpiredBotModeUsers(maxHours: number): Promise<Profile[]>;
+  getMembershipRevenue(): Promise<{ total: number; monthly: number; byTier: Record<string, number> }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -620,6 +633,71 @@ export class DatabaseStorage implements IStorage {
 
   async deleteLocationShare(id: string): Promise<void> {
     await db.delete(locationShares).where(eq(locationShares.id, id));
+  }
+
+  async getMembershipPlans(): Promise<MembershipPlan[]> {
+    return db.select().from(membershipPlans).orderBy(membershipPlans.sortOrder);
+  }
+
+  async getMembershipPlan(tier: string): Promise<MembershipPlan | undefined> {
+    const [plan] = await db.select().from(membershipPlans).where(eq(membershipPlans.tier, tier));
+    return plan;
+  }
+
+  async createMembershipPlan(plan: InsertMembershipPlan): Promise<MembershipPlan> {
+    const [created] = await db.insert(membershipPlans).values(plan).returning();
+    return created;
+  }
+
+  async updateMembershipPlan(id: string, data: Partial<MembershipPlan>): Promise<MembershipPlan | undefined> {
+    const [updated] = await db.update(membershipPlans).set({ ...data, updatedAt: new Date() }).where(eq(membershipPlans.id, id)).returning();
+    return updated;
+  }
+
+  async deleteMembershipPlan(id: string): Promise<void> {
+    await db.delete(membershipPlans).where(eq(membershipPlans.id, id));
+  }
+
+  async createMembershipTransaction(txn: InsertMembershipTransaction): Promise<MembershipTransaction> {
+    const [created] = await db.insert(membershipTransactions).values(txn).returning();
+    return created;
+  }
+
+  async getMembershipTransactions(userId?: string, limit = 50): Promise<MembershipTransaction[]> {
+    if (userId) {
+      return db.select().from(membershipTransactions)
+        .where(eq(membershipTransactions.userId, userId))
+        .orderBy(desc(membershipTransactions.createdAt))
+        .limit(limit);
+    }
+    return db.select().from(membershipTransactions)
+      .orderBy(desc(membershipTransactions.createdAt))
+      .limit(limit);
+  }
+
+  async getExpiredBotModeUsers(maxHours: number): Promise<Profile[]> {
+    const cutoff = new Date(Date.now() - maxHours * 60 * 60 * 1000);
+    const result = await db.select().from(profiles)
+      .where(and(
+        eq(profiles.aiProxyEnabled, true),
+        sql`${profiles.botModeActivatedAt} IS NOT NULL`,
+        sql`${profiles.botModeActivatedAt} < ${cutoff}`
+      ));
+    return result;
+  }
+
+  async getMembershipRevenue(): Promise<{ total: number; monthly: number; byTier: Record<string, number> }> {
+    const allTxns = await db.select().from(membershipTransactions)
+      .where(eq(membershipTransactions.status, "completed"));
+    const total = allTxns.reduce((sum, t) => sum + parseFloat(t.amount || "0"), 0);
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const monthlyTxns = allTxns.filter(t => t.createdAt && new Date(t.createdAt) > thirtyDaysAgo);
+    const monthly = monthlyTxns.reduce((sum, t) => sum + parseFloat(t.amount || "0"), 0);
+    const byTier: Record<string, number> = {};
+    for (const t of allTxns) {
+      byTier[t.planTier] = (byTier[t.planTier] || 0) + parseFloat(t.amount || "0");
+    }
+    return { total, monthly, byTier };
   }
 }
 

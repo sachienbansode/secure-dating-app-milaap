@@ -7,7 +7,7 @@ import {
   Mail, ArrowRight, LogOut, Users, MessageSquareQuote,
   Settings, Shield, Clock, ShieldAlert, ShieldCheck,
   Lock, EyeOff, Trash2, Plus, ChevronRight, ArrowLeft,
-  Activity, Heart, Paperclip,
+  Activity, Heart, Paperclip, Crown, DollarSign, Bot, Megaphone,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import type { AuthResponse } from "@/lib/auth";
@@ -58,6 +58,10 @@ export default function AdminConsole() {
           {activeSection === "Terms & Conditions" && <TermsEditor />}
           {activeSection === "Feature Toggles" && <FeatureToggles />}
           {activeSection === "Welcome Taglines" && <TaglineEditor />}
+          {activeSection === "Membership Plans" && <MembershipPlansEditor />}
+          {activeSection === "Ad Settings" && <AdSettingsEditor />}
+          {activeSection === "Bot Mode Settings" && <BotModeSettings />}
+          {activeSection === "Membership Revenue" && <MembershipRevenue />}
         </div>
       </div>
     );
@@ -87,6 +91,10 @@ export default function AdminConsole() {
           { id: "Terms & Conditions", icon: Shield, color: "bg-cyan-100 text-cyan-600", desc: "Edit T&C with versioning" },
           { id: "Feature Toggles", icon: Settings, color: "bg-indigo-100 text-indigo-600", desc: "Enable/disable app features" },
           { id: "Welcome Taglines", icon: MessageSquareQuote, color: "bg-red-100 text-red-600", desc: "Manage login welcome messages" },
+          { id: "Membership Plans", icon: Crown, color: "bg-amber-100 text-amber-600", desc: "Manage membership tiers & pricing" },
+          { id: "Ad Settings", icon: Megaphone, color: "bg-green-100 text-green-600", desc: "Configure Google Ads settings" },
+          { id: "Bot Mode Settings", icon: Bot, color: "bg-purple-100 text-purple-600", desc: "Configure bot mode auto-offline" },
+          { id: "Membership Revenue", icon: DollarSign, color: "bg-emerald-100 text-emerald-600", desc: "View revenue & transactions" },
         ].map((item) => (
           <button
             key={item.id}
@@ -865,6 +873,995 @@ function TaglineEditor() {
       >
         {saving ? "Saving..." : saved ? "Saved!" : "Save Taglines"}
       </Button>
+    </div>
+  );
+}
+
+const PREMIUM_FEATURES = [
+  { key: "ai_proxy_mode", label: "AI Proxy Mode" },
+  { key: "no_screenshot_mode", label: "No Screenshot Mode" },
+  { key: "photo_authenticity", label: "Photo Authenticity" },
+  { key: "green_flag_stories", label: "Green Flag Stories" },
+  { key: "festival_boosts", label: "Festival Boosts" },
+  { key: "family_mode", label: "Family Mode" },
+  { key: "date_readiness", label: "Date Readiness" },
+  { key: "chat_attachments", label: "Chat Attachments" },
+  { key: "contact_sharing", label: "Contact Sharing" },
+  { key: "location_sharing", label: "Location Sharing" },
+  { key: "super_likes", label: "Super Likes" },
+  { key: "unlimited_likes", label: "Unlimited Likes" },
+  { key: "see_who_liked", label: "See Who Liked" },
+  { key: "profile_boost", label: "Profile Boost" },
+  { key: "read_receipts", label: "Read Receipts" },
+  { key: "advanced_filters", label: "Advanced Filters" },
+];
+
+function MembershipPlansEditor() {
+  const [plans, setPlans] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [savingId, setSavingId] = useState<number | null>(null);
+  const [savedId, setSavedId] = useState<number | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [newPlan, setNewPlan] = useState({
+    tier: "basic",
+    name: "",
+    description: "",
+    priceMonthly: 0,
+    priceYearly: 0,
+    durationDays: 30,
+    dailyLikesLimit: 10,
+    superLikesPerDay: 0,
+    showAds: true,
+    isActive: true,
+    sortOrder: 0,
+    color: "#6366f1",
+    features: [] as string[],
+  });
+
+  useEffect(() => {
+    fetch("/api/membership/plans", { credentials: "include" })
+      .then((r) => r.json())
+      .then((data) => {
+        setPlans(Array.isArray(data) ? data : data.plans || []);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
+
+  const updatePlanField = (id: number, field: string, value: any) => {
+    setPlans((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, [field]: value } : p))
+    );
+  };
+
+  const toggleFeature = (id: number, feature: string) => {
+    setPlans((prev) =>
+      prev.map((p) => {
+        if (p.id !== id) return p;
+        const features = p.features || [];
+        return {
+          ...p,
+          features: features.includes(feature)
+            ? features.filter((f: string) => f !== feature)
+            : [...features, feature],
+        };
+      })
+    );
+  };
+
+  const handleSave = async (plan: any) => {
+    setSavingId(plan.id);
+    setSavedId(null);
+    try {
+      const { id, createdAt, updatedAt, ...body } = plan;
+      const res = await fetch(`/api/admin/membership/plans/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error("Failed to save");
+      setSavedId(plan.id);
+      setTimeout(() => setSavedId(null), 2000);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  const handleCreate = async () => {
+    setCreating(true);
+    try {
+      const res = await fetch("/api/admin/membership/plans", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(newPlan),
+      });
+      if (!res.ok) throw new Error("Failed to create");
+      const created = await res.json();
+      setPlans((prev) => [...prev, created]);
+      setNewPlan({
+        tier: "basic",
+        name: "",
+        description: "",
+        priceMonthly: 0,
+        priceYearly: 0,
+        durationDays: 30,
+        dailyLikesLimit: 10,
+        superLikesPerDay: 0,
+        showAds: true,
+        isActive: true,
+        sortOrder: 0,
+        color: "#6366f1",
+        features: [],
+      });
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm("Delete this plan?")) return;
+    try {
+      await fetch(`/api/admin/membership/plans/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      setPlans((prev) => prev.filter((p) => p.id !== id));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  if (loading)
+    return (
+      <div className="text-center py-8 text-slate-400">Loading plans...</div>
+    );
+
+  return (
+    <div className="space-y-4">
+      {plans.map((plan) => (
+        <div
+          key={plan.id}
+          className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden"
+          data-testid={`plan-card-${plan.id}`}
+        >
+          <button
+            className="w-full p-4 flex items-center gap-3 text-left hover:bg-slate-50 transition-colors"
+            onClick={() =>
+              setExpandedId(expandedId === plan.id ? null : plan.id)
+            }
+            data-testid={`plan-toggle-${plan.id}`}
+          >
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center"
+              style={{ backgroundColor: plan.color || "#6366f1" }}
+            >
+              <Crown size={20} className="text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <h3 className="font-semibold text-sm text-slate-800">
+                  {plan.name || plan.tier}
+                </h3>
+                {!plan.isActive && (
+                  <span className="px-1.5 py-0.5 bg-red-100 text-red-600 rounded-full text-[9px] font-bold">
+                    INACTIVE
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-500">
+                ₹{plan.priceMonthly}/mo · ₹{plan.priceYearly}/yr ·{" "}
+                {(plan.features || []).length} features
+              </p>
+            </div>
+            <ChevronRight
+              size={18}
+              className={`text-slate-300 transition-transform ${expandedId === plan.id ? "rotate-90" : ""}`}
+            />
+          </button>
+
+          {expandedId === plan.id && (
+            <div className="px-4 pb-4 space-y-3 border-t border-slate-100 pt-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">
+                    Tier
+                  </label>
+                  <select
+                    value={plan.tier}
+                    onChange={(e) =>
+                      updatePlanField(plan.id, "tier", e.target.value)
+                    }
+                    className="w-full h-10 rounded-xl border border-slate-200 px-3 text-sm bg-white"
+                    data-testid={`plan-tier-${plan.id}`}
+                  >
+                    <option value="basic">Basic</option>
+                    <option value="silver">Silver</option>
+                    <option value="gold">Gold</option>
+                    <option value="platinum">Platinum</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">
+                    Name
+                  </label>
+                  <Input
+                    value={plan.name || ""}
+                    onChange={(e) =>
+                      updatePlanField(plan.id, "name", e.target.value)
+                    }
+                    className="h-10 rounded-xl text-sm"
+                    data-testid={`plan-name-${plan.id}`}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">
+                  Description
+                </label>
+                <Input
+                  value={plan.description || ""}
+                  onChange={(e) =>
+                    updatePlanField(plan.id, "description", e.target.value)
+                  }
+                  className="h-10 rounded-xl text-sm"
+                  data-testid={`plan-desc-${plan.id}`}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">
+                    Price Monthly (₹)
+                  </label>
+                  <Input
+                    type="number"
+                    value={plan.priceMonthly ?? 0}
+                    onChange={(e) =>
+                      updatePlanField(
+                        plan.id,
+                        "priceMonthly",
+                        Number(e.target.value)
+                      )
+                    }
+                    className="h-10 rounded-xl text-sm"
+                    data-testid={`plan-price-monthly-${plan.id}`}
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">
+                    Price Yearly (₹)
+                  </label>
+                  <Input
+                    type="number"
+                    value={plan.priceYearly ?? 0}
+                    onChange={(e) =>
+                      updatePlanField(
+                        plan.id,
+                        "priceYearly",
+                        Number(e.target.value)
+                      )
+                    }
+                    className="h-10 rounded-xl text-sm"
+                    data-testid={`plan-price-yearly-${plan.id}`}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">
+                    Duration (days)
+                  </label>
+                  <Input
+                    type="number"
+                    value={plan.durationDays ?? 30}
+                    onChange={(e) =>
+                      updatePlanField(
+                        plan.id,
+                        "durationDays",
+                        Number(e.target.value)
+                      )
+                    }
+                    className="h-10 rounded-xl text-sm"
+                    data-testid={`plan-duration-${plan.id}`}
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">
+                    Daily Likes
+                  </label>
+                  <Input
+                    type="number"
+                    value={plan.dailyLikesLimit ?? 10}
+                    onChange={(e) =>
+                      updatePlanField(
+                        plan.id,
+                        "dailyLikesLimit",
+                        Number(e.target.value)
+                      )
+                    }
+                    className="h-10 rounded-xl text-sm"
+                    data-testid={`plan-likes-${plan.id}`}
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">
+                    Super Likes/Day
+                  </label>
+                  <Input
+                    type="number"
+                    value={plan.superLikesPerDay ?? 0}
+                    onChange={(e) =>
+                      updatePlanField(
+                        plan.id,
+                        "superLikesPerDay",
+                        Number(e.target.value)
+                      )
+                    }
+                    className="h-10 rounded-xl text-sm"
+                    data-testid={`plan-superlikes-${plan.id}`}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">
+                    Sort Order
+                  </label>
+                  <Input
+                    type="number"
+                    value={plan.sortOrder ?? 0}
+                    onChange={(e) =>
+                      updatePlanField(
+                        plan.id,
+                        "sortOrder",
+                        Number(e.target.value)
+                      )
+                    }
+                    className="h-10 rounded-xl text-sm"
+                    data-testid={`plan-sort-${plan.id}`}
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">
+                    Color
+                  </label>
+                  <div className="flex gap-2 items-center">
+                    <input
+                      type="color"
+                      value={plan.color || "#6366f1"}
+                      onChange={(e) =>
+                        updatePlanField(plan.id, "color", e.target.value)
+                      }
+                      className="w-10 h-10 rounded-lg border border-slate-200 cursor-pointer"
+                      data-testid={`plan-color-${plan.id}`}
+                    />
+                    <Input
+                      value={plan.color || "#6366f1"}
+                      onChange={(e) =>
+                        updatePlanField(plan.id, "color", e.target.value)
+                      }
+                      className="h-10 rounded-xl text-sm flex-1"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={plan.showAds !== false}
+                    onCheckedChange={(checked) =>
+                      updatePlanField(plan.id, "showAds", checked)
+                    }
+                    data-testid={`plan-showads-${plan.id}`}
+                  />
+                  <span className="text-sm text-slate-700">Show Ads</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={plan.isActive !== false}
+                    onCheckedChange={(checked) =>
+                      updatePlanField(plan.id, "isActive", checked)
+                    }
+                    data-testid={`plan-active-${plan.id}`}
+                  />
+                  <span className="text-sm text-slate-700">Active</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase mb-2 block">
+                  Features
+                </label>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {PREMIUM_FEATURES.map((f) => (
+                    <label
+                      key={f.key}
+                      className="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-2 cursor-pointer hover:bg-slate-100 transition-colors"
+                      data-testid={`plan-feature-${plan.id}-${f.key}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={(plan.features || []).includes(f.key)}
+                        onChange={() => toggleFeature(plan.id, f.key)}
+                        className="rounded border-slate-300"
+                      />
+                      <span className="text-xs text-slate-700">{f.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <Button
+                  onClick={() => handleSave(plan)}
+                  disabled={savingId === plan.id}
+                  className="flex-1 h-10 rounded-xl font-bold bg-amber-600 hover:bg-amber-700 text-white"
+                  data-testid={`plan-save-${plan.id}`}
+                >
+                  {savingId === plan.id
+                    ? "Saving..."
+                    : savedId === plan.id
+                      ? "Saved!"
+                      : "Save Plan"}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => handleDelete(plan.id)}
+                  className="h-10 rounded-xl border-red-200 text-red-500 hover:bg-red-50"
+                  data-testid={`plan-delete-${plan.id}`}
+                >
+                  <Trash2 size={14} />
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+
+      <div className="bg-amber-50 rounded-2xl p-4 border border-amber-200">
+        <div className="flex items-center gap-2 mb-3">
+          <Plus size={16} className="text-amber-600" />
+          <h4 className="font-bold text-sm text-amber-800">Create New Plan</h4>
+        </div>
+        <div className="grid grid-cols-2 gap-3 mb-3">
+          <div>
+            <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">
+              Tier
+            </label>
+            <select
+              value={newPlan.tier}
+              onChange={(e) =>
+                setNewPlan((p) => ({ ...p, tier: e.target.value }))
+              }
+              className="w-full h-10 rounded-xl border border-amber-200 px-3 text-sm bg-white"
+              data-testid="new-plan-tier"
+            >
+              <option value="basic">Basic</option>
+              <option value="silver">Silver</option>
+              <option value="gold">Gold</option>
+              <option value="platinum">Platinum</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">
+              Name
+            </label>
+            <Input
+              value={newPlan.name}
+              onChange={(e) =>
+                setNewPlan((p) => ({ ...p, name: e.target.value }))
+              }
+              placeholder="Plan name"
+              className="h-10 rounded-xl text-sm"
+              data-testid="new-plan-name"
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3 mb-3">
+          <div>
+            <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">
+              Price Monthly (₹)
+            </label>
+            <Input
+              type="number"
+              value={newPlan.priceMonthly}
+              onChange={(e) =>
+                setNewPlan((p) => ({
+                  ...p,
+                  priceMonthly: Number(e.target.value),
+                }))
+              }
+              className="h-10 rounded-xl text-sm"
+              data-testid="new-plan-price-monthly"
+            />
+          </div>
+          <div>
+            <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">
+              Price Yearly (₹)
+            </label>
+            <Input
+              type="number"
+              value={newPlan.priceYearly}
+              onChange={(e) =>
+                setNewPlan((p) => ({
+                  ...p,
+                  priceYearly: Number(e.target.value),
+                }))
+              }
+              className="h-10 rounded-xl text-sm"
+              data-testid="new-plan-price-yearly"
+            />
+          </div>
+        </div>
+        <Button
+          onClick={handleCreate}
+          disabled={creating || !newPlan.name.trim()}
+          className="w-full h-10 rounded-xl font-bold bg-amber-600 hover:bg-amber-700 text-white"
+          data-testid="button-create-plan"
+        >
+          {creating ? "Creating..." : "Create Plan"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function AdSettingsEditor() {
+  const [settings, setSettings] = useState<any>({
+    enabled: false,
+    publisherId: "",
+    slotId: "",
+    bannerSlotId: "",
+    frequency: 5,
+    interstitialFrequency: 10,
+    placements: { discover: true, matches: false, profile: false },
+  });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/ad-settings", { credentials: "include" })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data && typeof data === "object") setSettings(data);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setSaved(false);
+    try {
+      const res = await fetch("/api/admin/ad-settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(settings),
+      });
+      if (!res.ok) throw new Error("Failed to save");
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading)
+    return (
+      <div className="text-center py-8 text-slate-400">Loading...</div>
+    );
+
+  const placements = settings.placements || {
+    discover: true,
+    matches: false,
+    profile: false,
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-green-50 rounded-2xl p-4 border border-green-200">
+        <div className="flex items-center gap-2 mb-3">
+          <Megaphone size={16} className="text-green-600" />
+          <h4 className="font-bold text-sm text-green-800">
+            Google Ads Configuration
+          </h4>
+        </div>
+        <p className="text-xs text-green-700 mb-4">
+          Configure ad display settings for free-tier users.
+        </p>
+
+        <div className="space-y-3">
+          <div className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 border border-green-100">
+            <div className="flex-1">
+              <h5 className="font-semibold text-sm">Ads Enabled</h5>
+              <p className="text-[10px] text-slate-500">
+                Toggle ads on/off globally
+              </p>
+            </div>
+            <Switch
+              checked={settings.enabled}
+              onCheckedChange={(checked) =>
+                setSettings((s: any) => ({ ...s, enabled: checked }))
+              }
+              data-testid="toggle-ads-enabled"
+            />
+          </div>
+
+          <div>
+            <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">
+              Publisher ID
+            </label>
+            <Input
+              value={settings.publisherId || ""}
+              onChange={(e) =>
+                setSettings((s: any) => ({ ...s, publisherId: e.target.value }))
+              }
+              placeholder="ca-pub-xxxxxxxxxxxxxxxx"
+              className="h-10 rounded-xl text-sm"
+              data-testid="input-ad-publisher-id"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">
+                Slot ID
+              </label>
+              <Input
+                value={settings.slotId || ""}
+                onChange={(e) =>
+                  setSettings((s: any) => ({ ...s, slotId: e.target.value }))
+                }
+                placeholder="xxxxxxxxxx"
+                className="h-10 rounded-xl text-sm"
+                data-testid="input-ad-slot-id"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">
+                Banner Slot ID
+              </label>
+              <Input
+                value={settings.bannerSlotId || ""}
+                onChange={(e) =>
+                  setSettings((s: any) => ({
+                    ...s,
+                    bannerSlotId: e.target.value,
+                  }))
+                }
+                placeholder="xxxxxxxxxx"
+                className="h-10 rounded-xl text-sm"
+                data-testid="input-ad-banner-slot-id"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">
+                Ad Frequency (every N swipes)
+              </label>
+              <Input
+                type="number"
+                value={settings.frequency ?? 5}
+                onChange={(e) =>
+                  setSettings((s: any) => ({
+                    ...s,
+                    frequency: Number(e.target.value),
+                  }))
+                }
+                className="h-10 rounded-xl text-sm"
+                data-testid="input-ad-frequency"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">
+                Interstitial Frequency
+              </label>
+              <Input
+                type="number"
+                value={settings.interstitialFrequency ?? 10}
+                onChange={(e) =>
+                  setSettings((s: any) => ({
+                    ...s,
+                    interstitialFrequency: Number(e.target.value),
+                  }))
+                }
+                className="h-10 rounded-xl text-sm"
+                data-testid="input-ad-interstitial-frequency"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[10px] font-bold text-slate-500 uppercase mb-2 block">
+              Ad Placements
+            </label>
+            <div className="space-y-1.5">
+              {(["discover", "matches", "profile"] as const).map((placement) => (
+                <label
+                  key={placement}
+                  className="flex items-center gap-2 bg-white rounded-lg px-3 py-2 cursor-pointer hover:bg-green-50 transition-colors border border-green-100"
+                  data-testid={`ad-placement-${placement}`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={placements[placement] || false}
+                    onChange={(e) =>
+                      setSettings((s: any) => ({
+                        ...s,
+                        placements: {
+                          ...s.placements,
+                          [placement]: e.target.checked,
+                        },
+                      }))
+                    }
+                    className="rounded border-slate-300"
+                  />
+                  <span className="text-sm text-slate-700 capitalize">
+                    {placement}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <Button
+        onClick={handleSave}
+        disabled={saving}
+        className="w-full h-12 rounded-2xl font-bold bg-green-600 hover:bg-green-700 text-white"
+        data-testid="button-save-ad-settings"
+      >
+        {saving ? "Saving..." : saved ? "Saved!" : "Save Ad Settings"}
+      </Button>
+    </div>
+  );
+}
+
+function BotModeSettings() {
+  const [maxHours, setMaxHours] = useState(12);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/admin/bot-mode-settings", { credentials: "include" })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.maxHours !== undefined) setMaxHours(data.maxHours);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setSaved(false);
+    try {
+      const res = await fetch("/api/admin/bot-mode-settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ maxHours }),
+      });
+      if (!res.ok) throw new Error("Failed to save");
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading)
+    return (
+      <div className="text-center py-8 text-slate-400">Loading...</div>
+    );
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-purple-50 rounded-2xl p-4 border border-purple-200">
+        <div className="flex items-center gap-2 mb-3">
+          <Bot size={16} className="text-purple-600" />
+          <h4 className="font-bold text-sm text-purple-800">
+            Bot Mode Auto-Offline
+          </h4>
+        </div>
+        <p className="text-xs text-purple-700 mb-4">
+          Users in bot mode will automatically go offline after this many hours
+          of inactivity. This prevents bot profiles from appearing online
+          indefinitely and ensures a more authentic experience for other users.
+        </p>
+
+        <div className="bg-white rounded-xl px-4 py-3 border border-purple-100">
+          <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">
+            Max Hours Before Auto-Offline
+          </label>
+          <Input
+            type="number"
+            value={maxHours}
+            onChange={(e) => setMaxHours(Number(e.target.value))}
+            min={1}
+            max={168}
+            className="h-10 rounded-xl text-sm"
+            data-testid="input-bot-max-hours"
+          />
+          <p className="text-[10px] text-slate-400 mt-1">
+            Default: 12 hours. Range: 1-168 hours (1 week).
+          </p>
+        </div>
+      </div>
+
+      <Button
+        onClick={handleSave}
+        disabled={saving}
+        className="w-full h-12 rounded-2xl font-bold bg-purple-600 hover:bg-purple-700 text-white"
+        data-testid="button-save-bot-settings"
+      >
+        {saving ? "Saving..." : saved ? "Saved!" : "Save Bot Mode Settings"}
+      </Button>
+    </div>
+  );
+}
+
+function MembershipRevenue() {
+  const [revenue, setRevenue] = useState<any>(null);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [loadingRevenue, setLoadingRevenue] = useState(true);
+  const [loadingTx, setLoadingTx] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/admin/membership/revenue", { credentials: "include" })
+      .then((r) => r.json())
+      .then((data) => {
+        setRevenue(data);
+        setLoadingRevenue(false);
+      })
+      .catch(() => setLoadingRevenue(false));
+
+    fetch("/api/admin/membership/transactions", { credentials: "include" })
+      .then((r) => r.json())
+      .then((data) => {
+        setTransactions(Array.isArray(data) ? data : data.transactions || []);
+        setLoadingTx(false);
+      })
+      .catch(() => setLoadingTx(false));
+  }, []);
+
+  const formatCurrency = (amount: number) =>
+    `₹${(amount || 0).toLocaleString("en-IN")}`;
+
+  const formatDate = (date: string) => {
+    if (!date) return "—";
+    return new Date(date).toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
+  return (
+    <div className="space-y-4">
+      {loadingRevenue ? (
+        <div className="text-center py-8 text-slate-400">
+          Loading revenue...
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-emerald-50 rounded-2xl p-4 border border-emerald-200">
+              <p className="text-[10px] font-bold text-emerald-600 uppercase">
+                Total Revenue
+              </p>
+              <p
+                className="text-xl font-bold text-emerald-800 mt-1"
+                data-testid="text-total-revenue"
+              >
+                {formatCurrency(revenue?.totalRevenue || 0)}
+              </p>
+            </div>
+            <div className="bg-blue-50 rounded-2xl p-4 border border-blue-200">
+              <p className="text-[10px] font-bold text-blue-600 uppercase">
+                Monthly Revenue
+              </p>
+              <p
+                className="text-xl font-bold text-blue-800 mt-1"
+                data-testid="text-monthly-revenue"
+              >
+                {formatCurrency(revenue?.monthlyRevenue || 0)}
+              </p>
+            </div>
+          </div>
+
+          {revenue?.revenueByTier &&
+            Object.keys(revenue.revenueByTier).length > 0 && (
+              <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
+                <h4 className="font-bold text-sm text-slate-800 mb-3">
+                  Revenue by Tier
+                </h4>
+                <div className="space-y-2">
+                  {Object.entries(revenue.revenueByTier).map(
+                    ([tier, amount]: [string, any]) => (
+                      <div
+                        key={tier}
+                        className="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-2.5"
+                        data-testid={`revenue-tier-${tier}`}
+                      >
+                        <span className="text-sm font-medium text-slate-700 capitalize">
+                          {tier}
+                        </span>
+                        <span className="text-sm font-bold text-slate-800">
+                          {formatCurrency(Number(amount))}
+                        </span>
+                      </div>
+                    )
+                  )}
+                </div>
+              </div>
+            )}
+        </>
+      )}
+
+      <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
+        <h4 className="font-bold text-sm text-slate-800 mb-3">
+          Recent Transactions
+        </h4>
+        {loadingTx ? (
+          <div className="text-center py-4 text-slate-400 text-sm">
+            Loading transactions...
+          </div>
+        ) : transactions.length === 0 ? (
+          <div className="text-center py-4 text-slate-400 text-sm">
+            No transactions found
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {transactions.map((tx: any, idx: number) => (
+              <div
+                key={tx.id || idx}
+                className="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-3 border border-slate-100"
+                data-testid={`transaction-${tx.id || idx}`}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-sm text-slate-800 truncate">
+                      {tx.userName || tx.userId || "User"}
+                    </span>
+                    <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-[9px] font-bold uppercase">
+                      {tx.tier || tx.planName || "—"}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    {formatDate(tx.createdAt || tx.date)} ·{" "}
+                    {tx.type || tx.billingCycle || "purchase"}
+                  </p>
+                </div>
+                <span className="font-bold text-sm text-emerald-700">
+                  {formatCurrency(tx.amount)}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

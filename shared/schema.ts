@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, timestamp, jsonb, numeric } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -26,6 +26,9 @@ export const users = pgTable("users", {
   chatBanned: boolean("chat_banned").default(false),
   termsAcceptedAt: timestamp("terms_accepted_at"),
   termsAcceptedVersion: integer("terms_accepted_version"),
+  membershipTier: text("membership_tier").default("basic"),
+  membershipExpiresAt: timestamp("membership_expires_at"),
+  membershipStartedAt: timestamp("membership_started_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -45,6 +48,7 @@ export const profiles = pgTable("profiles", {
   aiTone: text("ai_tone").default("Friendly"),
   aiLanguage: text("ai_language").default("English"),
   aiProxyEnabled: boolean("ai_proxy_enabled").default(false),
+  botModeActivatedAt: timestamp("bot_mode_activated_at"),
   aiChatPace: text("ai_chat_pace").default("Normal"),
   aiBoundaries: text("ai_boundaries").array(),
   intent: text("intent"),
@@ -213,6 +217,39 @@ export const activityLogs = pgTable("activity_logs", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const membershipPlans = pgTable("membership_plans", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tier: text("tier").notNull().unique(),
+  name: text("name").notNull(),
+  description: text("description"),
+  priceMonthly: numeric("price_monthly").default("0"),
+  priceYearly: numeric("price_yearly").default("0"),
+  durationDays: integer("duration_days").default(30),
+  dailyLikesLimit: integer("daily_likes_limit").default(50),
+  superLikesPerDay: integer("super_likes_per_day").default(1),
+  showAds: boolean("show_ads").default(true),
+  isActive: boolean("is_active").default(true),
+  sortOrder: integer("sort_order").default(0),
+  color: text("color").default("#6b7280"),
+  features: jsonb("features").$type<string[]>(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const membershipTransactions = pgTable("membership_transactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  planTier: text("plan_tier").notNull(),
+  amount: numeric("amount").notNull(),
+  currency: text("currency").default("INR"),
+  durationDays: integer("duration_days").notNull(),
+  status: text("status").default("completed"),
+  paymentMethod: text("payment_method").default("simulated"),
+  startsAt: timestamp("starts_at").defaultNow(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertProfileSchema = createInsertSchema(profiles).omit({ id: true, updatedAt: true });
 export const insertMatchSchema = createInsertSchema(matches).omit({ id: true, createdAt: true });
@@ -228,6 +265,8 @@ export const insertLocationShareSchema = createInsertSchema(locationShares).omit
 export const insertActivityLogSchema = createInsertSchema(activityLogs).omit({ id: true, createdAt: true });
 export const insertAdminUserSchema = createInsertSchema(adminUsers).omit({ id: true, createdAt: true });
 export const insertUserSessionSchema = createInsertSchema(userSessions).omit({ id: true, createdAt: true });
+export const insertMembershipPlanSchema = createInsertSchema(membershipPlans).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertMembershipTransactionSchema = createInsertSchema(membershipTransactions).omit({ id: true, createdAt: true });
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -259,6 +298,32 @@ export type AdminUser = typeof adminUsers.$inferSelect;
 export type InsertAdminUser = z.infer<typeof insertAdminUserSchema>;
 export type UserSession = typeof userSessions.$inferSelect;
 export type InsertUserSession = z.infer<typeof insertUserSessionSchema>;
+export type MembershipPlan = typeof membershipPlans.$inferSelect;
+export type InsertMembershipPlan = z.infer<typeof insertMembershipPlanSchema>;
+export type MembershipTransaction = typeof membershipTransactions.$inferSelect;
+export type InsertMembershipTransaction = z.infer<typeof insertMembershipTransactionSchema>;
+
+export const MEMBERSHIP_TIERS = ["basic", "silver", "gold", "platinum"] as const;
+export type MembershipTier = typeof MEMBERSHIP_TIERS[number];
+
+export const PREMIUM_FEATURES = [
+  "ai_proxy_mode",
+  "no_screenshot_mode",
+  "photo_authenticity",
+  "green_flag_stories",
+  "festival_boosts",
+  "family_mode",
+  "date_readiness",
+  "chat_attachments",
+  "contact_sharing",
+  "location_sharing",
+  "super_likes",
+  "unlimited_likes",
+  "see_who_liked",
+  "profile_boost",
+  "read_receipts",
+  "advanced_filters",
+] as const;
 
 export const loginSchema = z.object({
   phone: z.string().optional(),

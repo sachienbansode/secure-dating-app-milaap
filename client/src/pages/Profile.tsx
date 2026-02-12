@@ -4,12 +4,13 @@ import { BottomNav } from "@/components/layout/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Settings, Edit, Shield, ChevronRight, Bell, Sparkles, LogOut, Save, ArrowLeft, Camera, X, Plus, Loader2, Lock, Heart, Leaf, PartyPopper, Flag as FlagIcon, Bot, ShieldAlert, Home as HomeIcon, Eye, EyeOff, MessageSquareQuote, Trash2, MessageCircle, Mic, Users, CheckCircle, Phone, Ban, Clock, ShieldCheck } from "lucide-react";
+import { Settings, Edit, Shield, ChevronRight, Bell, Sparkles, LogOut, Save, ArrowLeft, Camera, X, Plus, Loader2, Lock, Heart, Leaf, PartyPopper, Flag as FlagIcon, Bot, ShieldAlert, Home as HomeIcon, Eye, EyeOff, MessageSquareQuote, Trash2, MessageCircle, Mic, Users, CheckCircle, Phone, Ban, Clock, ShieldCheck, Crown } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { getMe, logout, type AuthResponse } from "@/lib/auth";
 import LocationSearch from "@/components/LocationSearch";
+import { AdBanner } from "@/components/AdBanner";
 
 const CITIES = ["Mumbai", "Pune", "Delhi", "Bangalore", "Hyderabad", "Chennai", "Kolkata", "Ahmedabad", "Jaipur", "Lucknow", "Chandigarh", "Kochi", "Goa"];
 const INTERESTS = ["Bollywood", "Cricket", "Chai", "Street Food", "Yoga", "Tech", "Art", "Music", "Travel", "Reading", "Cooking", "Dancing", "Photography", "Fitness", "Meditation", "Gaming", "Fashion", "Startups", "Biriyani", "Hiking"];
@@ -114,6 +115,36 @@ export default function Profile() {
   const { data: appSettings } = useQuery<any>({
     queryKey: ["/api/app-settings"],
     enabled: !!session?.user,
+  });
+
+  const { data: myMembership } = useQuery<any>({
+    queryKey: ["/api/membership/my"],
+    queryFn: async () => {
+      const res = await fetch("/api/membership/my", { credentials: "include" });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!session?.user,
+  });
+
+  const { data: membershipPlans = [] } = useQuery<any[]>({
+    queryKey: ["/api/membership/plans"],
+    queryFn: async () => {
+      const res = await fetch("/api/membership/plans");
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!session?.user,
+  });
+
+  const subscribeMutation = useMutation({
+    mutationFn: async ({ tier }: { tier: string }) => {
+      const res = await apiRequest("POST", "/api/membership/subscribe", { tier, billingCycle: "monthly" });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/membership/my"] });
+    },
   });
 
   const saveMutation = useMutation({
@@ -765,7 +796,14 @@ export default function Profile() {
                 <Edit size={16} className="text-primary" />
               </div>
             </div>
-            <h2 className="text-2xl font-heading font-bold text-foreground" data-testid="text-profile-name">{currentProfile.name}, {currentProfile.age}</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-2xl font-heading font-bold text-foreground" data-testid="text-profile-name">{currentProfile.name}, {currentProfile.age}</h2>
+              {myMembership?.tier && myMembership.tier !== "basic" && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold text-white flex items-center gap-1" style={{ backgroundColor: myMembership.tier === "platinum" ? "#8B5CF6" : myMembership.tier === "gold" ? "#F59E0B" : "#6B7280" }} data-testid="badge-membership">
+                  <Crown size={10} /> {myMembership.tier.charAt(0).toUpperCase() + myMembership.tier.slice(1)}
+                </span>
+              )}
+            </div>
             <p className="text-muted-foreground text-sm mb-1">{currentProfile.gender} • {currentProfile.city}</p>
 
             {currentProfile.intent && (
@@ -950,7 +988,79 @@ export default function Profile() {
             </section>
           )}
 
-          
+          <section>
+            <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3 px-1">My Membership</h3>
+            <div className="bg-card rounded-2xl shadow-sm border border-border p-4 space-y-4">
+              {myMembership ? (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: myMembership.tier === "platinum" ? "#8B5CF6" : myMembership.tier === "gold" ? "#F59E0B" : myMembership.tier === "silver" ? "#6B7280" : "#3B82F6" }}>
+                      <Crown size={20} className="text-white" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-sm" data-testid="text-membership-tier">{myMembership.tier?.charAt(0).toUpperCase() + myMembership.tier?.slice(1)} Plan</h4>
+                      {myMembership.expiresAt && (
+                        <p className="text-xs text-muted-foreground" data-testid="text-membership-expiry">
+                          Expires: {new Date(myMembership.expiresAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-blue-900/30 flex items-center justify-center">
+                    <Crown size={20} className="text-blue-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm">Free Plan</h4>
+                    <p className="text-xs text-muted-foreground">Upgrade to unlock premium features</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-3">
+                {membershipPlans.map((plan: any) => {
+                  const isCurrent = myMembership?.tier === plan.tier;
+                  const planColor = plan.color || (plan.tier === "platinum" ? "#8B5CF6" : plan.tier === "gold" ? "#F59E0B" : plan.tier === "silver" ? "#6B7280" : "#3B82F6");
+                  return (
+                    <div
+                      key={plan.tier}
+                      className={`rounded-xl p-3 border ${isCurrent ? "ring-2" : "border-border"}`}
+                      style={{ borderColor: isCurrent ? planColor : undefined, boxShadow: isCurrent ? `0 0 0 2px ${planColor}` : undefined }}
+                      data-testid={`card-plan-${plan.tier}`}
+                    >
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: planColor }} />
+                        <h5 className="font-bold text-xs">{plan.tier?.charAt(0).toUpperCase() + plan.tier?.slice(1)}</h5>
+                      </div>
+                      <p className="text-sm font-bold" style={{ color: planColor }} data-testid={`text-price-${plan.tier}`}>
+                        {parseFloat(plan.priceMonthly || "0") === 0 ? "Free" : `Rs. ${plan.priceMonthly}/month`}
+                      </p>
+                      {plan.features && (
+                        <ul className="text-[10px] text-muted-foreground mt-1 space-y-0.5">
+                          {(Array.isArray(plan.features) ? plan.features : []).slice(0, 3).map((f: string, i: number) => (
+                            <li key={i}>• {f}</li>
+                          ))}
+                        </ul>
+                      )}
+                      <button
+                        data-testid={`button-subscribe-${plan.tier}`}
+                        disabled={isCurrent || subscribeMutation.isPending}
+                        onClick={() => subscribeMutation.mutate({ tier: plan.tier })}
+                        className={`w-full mt-2 py-1.5 rounded-lg text-xs font-bold transition-all ${isCurrent ? "bg-muted text-muted-foreground cursor-default" : "text-white hover:opacity-90"}`}
+                        style={{ backgroundColor: isCurrent ? undefined : planColor }}
+                      >
+                        {isCurrent ? "Current" : subscribeMutation.isPending ? "..." : "Subscribe"}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+
+          <AdBanner placement="profile" className="my-3" />
 
           <section>
             <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3 px-1">Account</h3>

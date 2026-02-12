@@ -6,6 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { getMe } from "@/lib/auth";
 import { useState, useEffect } from "react";
+import { AdBanner } from "@/components/AdBanner";
 
 interface MatchWithProfile {
   id: string;
@@ -183,12 +184,17 @@ export default function Matches() {
             )}
 
             <div className="px-3 pt-2 pb-2">
+              <AdBanner placement="matches" className="my-3 mx-3" />
               <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 px-3">
                 {tab === "archived" ? "Archived Chats" : "Conversations"}
               </h3>
               <div>
-                {filteredMatches.map((match) => (
-                  <div key={match.id} className="flex items-center gap-3 px-3 py-3 hover:bg-muted rounded-xl transition-colors relative" data-testid={`row-chat-${match.id}`}>
+                {filteredMatches.map((match, matchIndex) => (
+                  <div key={match.id}>
+                  {matchIndex > 0 && matchIndex % 5 === 0 && (
+                    <AdBanner placement="matches" className="my-2 mx-3" />
+                  )}
+                  <div className="flex items-center gap-3 px-3 py-3 hover:bg-muted rounded-xl transition-colors relative" data-testid={`row-chat-${match.id}`}>
                     <Link href={`/chat/${match.id}`} className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer">
                       <div className="relative shrink-0">
                         <img
@@ -258,6 +264,7 @@ export default function Matches() {
                         </div>
                       )}
                     </div>
+                  </div>
                   </div>
                 ))}
               </div>

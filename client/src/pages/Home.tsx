@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { getMe } from "@/lib/auth";
+import { AdBanner, useAdFrequency } from "@/components/AdBanner";
 
 interface DiscoverProfile {
   id: string;
@@ -44,6 +45,16 @@ export default function Home() {
   const [matchPopup, setMatchPopup] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [expandedCard, setExpandedCard] = useState(false);
+  const { showAd, recordSwipe, dismissAd } = useAdFrequency("discover");
+  const [canCloseAd, setCanCloseAd] = useState(false);
+
+  useEffect(() => {
+    if (showAd) {
+      setCanCloseAd(false);
+      const timer = setTimeout(() => setCanCloseAd(true), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showAd]);
 
   const [filters, setFilters] = useState({
     gender: "All" as "All" | "Male" | "Female" | "Trans" | "Couple",
@@ -87,6 +98,7 @@ export default function Home() {
     onSuccess: (data) => {
       if (data.isMutualMatch) setMatchPopup(data.match.targetUserId);
       queryClient.invalidateQueries({ queryKey: ["/api/matches"] });
+      recordSwipe();
     },
   });
 
@@ -204,6 +216,26 @@ export default function Home() {
         )}
       </div>
 
+      {showAd && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-6" data-testid="ad-interstitial-overlay">
+          <div className="relative bg-card rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-border">
+            <p className="text-[10px] text-slate-500 uppercase tracking-wider font-medium text-center mb-3">Sponsored</p>
+            <AdBanner placement="discover" className="mb-4" />
+            {canCloseAd ? (
+              <button
+                data-testid="button-close-ad"
+                onClick={() => { dismissAd(); setCanCloseAd(false); }}
+                className="absolute top-3 right-3 w-8 h-8 rounded-full bg-slate-700 hover:bg-slate-600 flex items-center justify-center text-white"
+              >
+                <X size={16} />
+              </button>
+            ) : (
+              <p className="text-xs text-muted-foreground text-center">Ad closes in a moment...</p>
+            )}
+          </div>
+        </div>
+      )}
+
       {matchPopup && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-8" onClick={() => setMatchPopup(null)}>
           <motion.div initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-card rounded-3xl p-8 text-center max-w-sm w-full shadow-2xl">
@@ -217,6 +249,8 @@ export default function Home() {
           </motion.div>
         </div>
       )}
+
+      <AdBanner placement="discover" className="mt-3 mx-4" />
 
       <BottomNav />
     </div>
