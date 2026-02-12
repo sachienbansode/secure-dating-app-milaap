@@ -4,7 +4,7 @@ import {
   users, profiles, matches, messages, reports, screenshotAlerts, appSettings,
   chatCooldowns, phoneUnlockRequests, blockedUsers, activityLogs,
   adminUsers, userSessions, contactShares, locationShares,
-  membershipPlans, membershipTransactions,
+  membershipPlans, membershipTransactions, quizResponses,
   type User, type InsertUser,
   type Profile, type InsertProfile,
   type Match, type InsertMatch,
@@ -22,6 +22,7 @@ import {
   type UserSession, type InsertUserSession,
   type MembershipPlan, type InsertMembershipPlan,
   type MembershipTransaction, type InsertMembershipTransaction,
+  type QuizResponse, type InsertQuizResponse,
 } from "@shared/schema";
 import { encryptProfile, decryptProfile, encryptMessage, decryptMessage } from "./encryption";
 
@@ -111,6 +112,10 @@ export interface IStorage {
   getMembershipTransactions(userId?: string, limit?: number): Promise<MembershipTransaction[]>;
   getExpiredBotModeUsers(maxHours: number): Promise<Profile[]>;
   getMembershipRevenue(): Promise<{ total: number; monthly: number; byTier: Record<string, number> }>;
+
+  saveQuizResponses(userId: string, responses: InsertQuizResponse[]): Promise<QuizResponse[]>;
+  getQuizResponses(userId: string): Promise<QuizResponse[]>;
+  deleteQuizResponses(userId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -698,6 +703,24 @@ export class DatabaseStorage implements IStorage {
       byTier[t.planTier] = (byTier[t.planTier] || 0) + parseFloat(t.amount || "0");
     }
     return { total, monthly, byTier };
+  }
+
+  async saveQuizResponses(userId: string, responses: InsertQuizResponse[]): Promise<QuizResponse[]> {
+    await db.delete(quizResponses).where(eq(quizResponses.userId, userId));
+    const saved: QuizResponse[] = [];
+    for (const r of responses) {
+      const [created] = await db.insert(quizResponses).values({ ...r, userId }).returning();
+      saved.push(created);
+    }
+    return saved;
+  }
+
+  async getQuizResponses(userId: string): Promise<QuizResponse[]> {
+    return db.select().from(quizResponses).where(eq(quizResponses.userId, userId));
+  }
+
+  async deleteQuizResponses(userId: string): Promise<void> {
+    await db.delete(quizResponses).where(eq(quizResponses.userId, userId));
   }
 }
 

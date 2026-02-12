@@ -32,6 +32,7 @@ interface DiscoverProfile {
   partner2Name?: string | null;
   partner2Age?: number | null;
   partner2Gender?: string | null;
+  datingStyle?: string | null;
 }
 
 const CITIES = ["All", "Mumbai", "Pune", "Delhi", "Bangalore", "Hyderabad", "Chennai", "Kolkata", "Ahmedabad", "Jaipur", "Lucknow", "Chandigarh", "Kochi", "Goa"];
@@ -317,6 +318,11 @@ function SwipeCard({ profile, isFront, expanded, onSwipe, onToggleExpand, appSet
             <span className="px-2 py-1 rounded-full text-[10px] font-bold text-white bg-teal-500/80 backdrop-blur-sm flex items-center gap-0.5" data-testid={`badge-readiness-${profile.userId}`}>
               {profile.dateReadiness === "Chat-only" ? <MessageCircle size={10} /> : profile.dateReadiness === "Voice-ready" ? <Mic size={10} /> : <Users size={10} />}
               {profile.dateReadiness}
+            </span>
+          )}
+          {profile.datingStyle && (
+            <span className="px-2 py-1 rounded-full text-[10px] font-bold text-white bg-purple-500/80 backdrop-blur-sm flex items-center gap-0.5" data-testid={`badge-dating-style-${profile.userId}`}>
+              <Star size={10} /> {profile.datingStyle.replace("The ", "")}
             </span>
           )}
         </div>

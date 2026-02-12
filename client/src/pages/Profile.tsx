@@ -891,6 +891,27 @@ export default function Profile() {
           </div>
         )}
 
+        <div className="px-6 pt-4">
+          <button
+            onClick={() => setLocation("/quiz")}
+            className="w-full bg-gradient-to-r from-purple-600/20 to-blue-600/20 border border-purple-500/30 rounded-2xl p-4 flex items-center gap-3 hover:from-purple-600/30 hover:to-blue-600/30 transition-all"
+            data-testid="button-quiz-card"
+          >
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center shrink-0">
+              <Sparkles size={20} className="text-white" />
+            </div>
+            <div className="flex-1 text-left">
+              <h3 className="font-bold text-sm text-foreground">
+                {currentProfile.datingStyle ? `Your Style: ${currentProfile.datingStyle}` : "Discover Your Dating Style"}
+              </h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {currentProfile.datingStyle ? "Retake quiz or view your results" : "Take a fun quiz to find your type!"}
+              </p>
+            </div>
+            <ChevronRight size={18} className="text-muted-foreground" />
+          </button>
+        </div>
+
         {currentProfile.bio && (
           <div className="px-6 pt-4">
             <p className="text-sm text-muted-foreground bg-card p-4 rounded-2xl border border-border">{currentProfile.bio}</p>

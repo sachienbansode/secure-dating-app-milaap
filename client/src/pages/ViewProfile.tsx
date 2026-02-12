@@ -149,6 +149,13 @@ export default function ViewProfile() {
           </div>
         )}
 
+        {profile.datingStyle && (
+          <div className="flex items-center gap-2 bg-purple-500/10 border border-purple-500/20 rounded-xl px-3 py-2">
+            <Sparkles size={14} className="text-purple-400" />
+            <span className="text-sm font-medium text-purple-300" data-testid="text-dating-style">{profile.datingStyle}</span>
+          </div>
+        )}
+
         {profile.bio && (
           <div className="bg-card rounded-2xl p-4 border border-border">
             <h3 className="text-sm font-bold text-foreground mb-2">About</h3>

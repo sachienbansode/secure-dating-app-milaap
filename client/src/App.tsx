@@ -12,6 +12,7 @@ import Chat from "@/pages/Chat";
 import Profile from "@/pages/Profile";
 import AdminConsole from "@/pages/AdminConsole";
 import ViewProfile from "@/pages/ViewProfile";
+import Quiz from "@/pages/Quiz";
 import { Download, X } from "lucide-react";
 
 function Router() {
@@ -24,6 +25,7 @@ function Router() {
       <Route path="/chat/:id" component={Chat} />
       <Route path="/profile" component={Profile} />
       <Route path="/view-profile/:userId" component={ViewProfile} />
+      <Route path="/quiz" component={Quiz} />
       <Route path="/admin" component={AdminConsole} />
       <Route component={NotFound} />
     </Switch>

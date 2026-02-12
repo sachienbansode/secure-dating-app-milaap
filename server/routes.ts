@@ -2515,6 +2515,313 @@ CRITICAL RULES:
     }
   });
 
+  // ==================== INTERACTIVE DATING QUIZ ====================
+
+  const QUIZ_QUESTIONS = [
+    {
+      id: "q1", category: "personality",
+      question: "It's a Saturday evening. What's your ideal plan?",
+      options: [
+        { text: "Candlelit dinner with someone special", traits: { romance: 3, family: 1 } },
+        { text: "Exploring a new hiking trail or travel spot", traits: { adventure: 3, freedom: 1 } },
+        { text: "Cozy evening with a great book or documentary", traits: { intellect: 3, romance: 1 } },
+        { text: "Family dinner or game night with loved ones", traits: { family: 3, romance: 1 } },
+      ],
+    },
+    {
+      id: "q2", category: "communication",
+      question: "How do you express affection to someone you like?",
+      options: [
+        { text: "Handwritten notes, surprise gifts, and thoughtful gestures", traits: { romance: 3, family: 1 } },
+        { text: "Planning exciting dates and new experiences together", traits: { adventure: 3, freedom: 1 } },
+        { text: "Deep meaningful conversations late into the night", traits: { intellect: 3, romance: 1 } },
+        { text: "Introducing them to your family and close friends", traits: { family: 3, ambition: 1 } },
+      ],
+    },
+    {
+      id: "q3", category: "values",
+      question: "What matters most to you in a relationship?",
+      options: [
+        { text: "Emotional connection and being truly understood", traits: { romance: 3, intellect: 1 } },
+        { text: "Shared adventures and never getting bored", traits: { adventure: 3, freedom: 1 } },
+        { text: "Intellectual stimulation and growing together", traits: { intellect: 3, ambition: 1 } },
+        { text: "Family values, stability, and building a future", traits: { family: 3, romance: 1 } },
+      ],
+    },
+    {
+      id: "q4", category: "lifestyle",
+      question: "Your dream vacation would be...",
+      options: [
+        { text: "Paris - the city of love, with someone special", traits: { romance: 3, adventure: 1 } },
+        { text: "Backpacking through Ladakh or Southeast Asia", traits: { adventure: 3, freedom: 2 } },
+        { text: "A cultural tour - museums, history, local art", traits: { intellect: 3, adventure: 1 } },
+        { text: "A family trip to a peaceful temple town or hill station", traits: { family: 3, romance: 1 } },
+      ],
+    },
+    {
+      id: "q5", category: "personality",
+      question: "Pick the Bollywood couple that represents your love goals:",
+      options: [
+        { text: "Shah Rukh & Kajol (DDLJ) - timeless romance", traits: { romance: 3, family: 2 } },
+        { text: "Ranbir & Deepika (YJHD) - spontaneous & free-spirited", traits: { adventure: 2, freedom: 3 } },
+        { text: "Farhan & Vidya (ZNMD) - thoughtful & grounded", traits: { intellect: 3, family: 1 } },
+        { text: "Ranveer & Deepika (Ram-Leela) - passionate & intense", traits: { romance: 2, adventure: 2, freedom: 1 } },
+      ],
+    },
+    {
+      id: "q6", category: "food",
+      question: "Your ideal first date food spot?",
+      options: [
+        { text: "A rooftop restaurant with candles and live music", traits: { romance: 3, ambition: 1 } },
+        { text: "Street food walk - pani puri, chaat, and chai", traits: { adventure: 2, freedom: 2 } },
+        { text: "A quiet café where you can talk for hours", traits: { intellect: 3, romance: 1 } },
+        { text: "Home-cooked meal - nothing beats ghar ka khana", traits: { family: 3, romance: 1 } },
+      ],
+    },
+    {
+      id: "q7", category: "conflict",
+      question: "When you have a disagreement, you...",
+      options: [
+        { text: "Write a heartfelt message to express your feelings", traits: { romance: 3, intellect: 1 } },
+        { text: "Suggest a walk or drive to cool off together", traits: { adventure: 2, freedom: 2 } },
+        { text: "Want to talk it through logically and find a solution", traits: { intellect: 3, ambition: 1 } },
+        { text: "Seek advice from trusted family or friends", traits: { family: 3, romance: 1 } },
+      ],
+    },
+    {
+      id: "q8", category: "future",
+      question: "Where do you see yourself in 5 years?",
+      options: [
+        { text: "In a loving relationship, building a beautiful life", traits: { romance: 3, family: 1 } },
+        { text: "Traveling the world with my partner", traits: { adventure: 3, freedom: 2 } },
+        { text: "Leading in my career while maintaining work-life balance", traits: { ambition: 3, intellect: 1 } },
+        { text: "Settled with family, kids, and a beautiful home", traits: { family: 3, ambition: 1 } },
+      ],
+    },
+    {
+      id: "q9", category: "social",
+      question: "At a party, you're most likely to...",
+      options: [
+        { text: "Find one person and have a deep conversation", traits: { romance: 2, intellect: 2 } },
+        { text: "Be on the dance floor or organizing games", traits: { adventure: 2, freedom: 2 } },
+        { text: "Discuss interesting ideas with a small group", traits: { intellect: 3, ambition: 1 } },
+        { text: "Make sure everyone's comfortable and having fun", traits: { family: 2, romance: 2 } },
+      ],
+    },
+    {
+      id: "q10", category: "love_language",
+      question: "Your love language is...",
+      options: [
+        { text: "Words of affirmation - tell me you love me", traits: { romance: 3, intellect: 1 } },
+        { text: "Quality time - let's make memories together", traits: { adventure: 2, romance: 2 } },
+        { text: "Acts of service - I'll show you through actions", traits: { family: 2, ambition: 2 } },
+        { text: "Physical touch - hugs fix everything", traits: { romance: 2, freedom: 1, family: 1 } },
+      ],
+    },
+    {
+      id: "q11", category: "dealbreaker",
+      question: "What's a dealbreaker for you?",
+      options: [
+        { text: "Someone who isn't emotionally available", traits: { romance: 3, family: 1 } },
+        { text: "Someone who's stuck in a routine and never tries new things", traits: { adventure: 3, freedom: 1 } },
+        { text: "Someone who doesn't value personal growth", traits: { intellect: 2, ambition: 2 } },
+        { text: "Someone who doesn't respect family values", traits: { family: 3, romance: 1 } },
+      ],
+    },
+    {
+      id: "q12", category: "weekend",
+      question: "How would you spend a rainy monsoon evening?",
+      options: [
+        { text: "Chai and pakoras with someone special, watching the rain", traits: { romance: 3, family: 1 } },
+        { text: "Dancing in the rain or going for a drive", traits: { adventure: 2, freedom: 3 } },
+        { text: "Reading, journaling, or watching a thought-provoking film", traits: { intellect: 3, freedom: 1 } },
+        { text: "Calling family for a warm chat over chai", traits: { family: 3, romance: 1 } },
+      ],
+    },
+    {
+      id: "q13", category: "goals",
+      question: "What drives you the most?",
+      options: [
+        { text: "Finding and nurturing deep, meaningful love", traits: { romance: 3, family: 1 } },
+        { text: "Experiencing everything life has to offer", traits: { adventure: 2, freedom: 3 } },
+        { text: "Making a difference through my work and ideas", traits: { ambition: 3, intellect: 2 } },
+        { text: "Creating a happy, supportive family", traits: { family: 3, ambition: 1 } },
+      ],
+    },
+    {
+      id: "q14", category: "gift",
+      question: "The perfect gift you'd give your partner?",
+      options: [
+        { text: "A scrapbook of all your memories together", traits: { romance: 3, family: 1 } },
+        { text: "Surprise trip tickets to somewhere exciting", traits: { adventure: 3, freedom: 1 } },
+        { text: "A book or course on something they're passionate about", traits: { intellect: 3, ambition: 1 } },
+        { text: "Something their family would love too", traits: { family: 3, romance: 1 } },
+      ],
+    },
+    {
+      id: "q15", category: "music",
+      question: "Pick a song vibe for your love story:",
+      options: [
+        { text: "\"Tum Hi Ho\" - all-consuming, devoted love", traits: { romance: 3, family: 1 } },
+        { text: "\"Ilahi\" - wanderlust and freedom", traits: { adventure: 2, freedom: 3 } },
+        { text: "\"Kun Faya Kun\" - soulful and deep connection", traits: { intellect: 3, romance: 1 } },
+        { text: "\"London Thumakda\" - fun, family celebrations", traits: { family: 2, freedom: 1, adventure: 1 } },
+      ],
+    },
+  ];
+
+  function computeDatingStyle(responses: { questionId: string; selectedOption: number }[]): { style: string; traits: Record<string, number> } {
+    const traits: Record<string, number> = { romance: 0, adventure: 0, intellect: 0, family: 0, freedom: 0, ambition: 0 };
+    for (const resp of responses) {
+      const question = QUIZ_QUESTIONS.find(q => q.id === resp.questionId);
+      if (!question || resp.selectedOption < 0 || resp.selectedOption >= question.options.length) continue;
+      const optionTraits = question.options[resp.selectedOption].traits;
+      for (const [trait, score] of Object.entries(optionTraits)) {
+        traits[trait] = (traits[trait] || 0) + score;
+      }
+    }
+    const maxTrait = Object.entries(traits).sort((a, b) => b[1] - a[1])[0][0];
+    const styleMap: Record<string, string> = {
+      romance: "The Romantic",
+      adventure: "The Adventurer",
+      intellect: "The Intellectual",
+      family: "The Family-First",
+      freedom: "The Free Spirit",
+      ambition: "The Ambitious Go-Getter",
+    };
+    return { style: styleMap[maxTrait] || "The Romantic", traits };
+  }
+
+  app.get("/api/quiz/questions", requireAuth, async (_req: Request, res: Response) => {
+    return res.json({ questions: QUIZ_QUESTIONS });
+  });
+
+  app.post("/api/quiz/submit", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const { responses } = req.body;
+      if (!responses || !Array.isArray(responses) || responses.length < 10) {
+        return res.status(400).json({ message: "Please answer at least 10 questions" });
+      }
+
+      await storage.saveQuizResponses(userId, responses.map((r: any) => ({
+        userId,
+        questionId: r.questionId,
+        selectedOption: r.selectedOption,
+      })));
+
+      const result = computeDatingStyle(responses);
+      await storage.updateProfile(userId, {
+        datingStyle: result.style,
+        datingStyleTraits: result.traits,
+        quizCompletedAt: new Date(),
+      } as any);
+
+      return res.json({ style: result.style, traits: result.traits });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/quiz/results/:userId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const profile = await storage.getProfile(req.params.userId as string);
+      if (!profile || !profile.datingStyle) {
+        return res.json({ completed: false });
+      }
+      return res.json({
+        completed: true,
+        style: profile.datingStyle,
+        traits: profile.datingStyleTraits,
+        completedAt: profile.quizCompletedAt,
+      });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/quiz/my-results", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const profile = await storage.getProfile(userId);
+      if (!profile || !profile.datingStyle) {
+        return res.json({ completed: false });
+      }
+      return res.json({
+        completed: true,
+        style: profile.datingStyle,
+        traits: profile.datingStyleTraits,
+        completedAt: profile.quizCompletedAt,
+      });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/compatibility/:targetUserId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const targetUserId = req.params.targetUserId as string;
+
+      const myProfile = await storage.getProfile(userId);
+      const theirProfile = await storage.getProfile(targetUserId);
+
+      if (!myProfile?.datingStyle || !theirProfile?.datingStyle) {
+        return res.json({ compatible: false, message: "Both users need to complete the quiz" });
+      }
+
+      const { DATING_STYLE_COMPATIBILITY } = await import("@shared/schema");
+      const baseScore = DATING_STYLE_COMPATIBILITY[myProfile.datingStyle]?.[theirProfile.datingStyle] || 50;
+
+      let bonus = 0;
+      if (myProfile.datingStyleTraits && theirProfile.datingStyleTraits) {
+        const myTraits = myProfile.datingStyleTraits as Record<string, number>;
+        const theirTraits = theirProfile.datingStyleTraits as Record<string, number>;
+        const allKeys = new Set([...Object.keys(myTraits), ...Object.keys(theirTraits)]);
+        let dotProduct = 0, magA = 0, magB = 0;
+        for (const key of allKeys) {
+          const a = myTraits[key] || 0;
+          const b = theirTraits[key] || 0;
+          dotProduct += a * b;
+          magA += a * a;
+          magB += b * b;
+        }
+        const cosineSim = magA > 0 && magB > 0 ? dotProduct / (Math.sqrt(magA) * Math.sqrt(magB)) : 0;
+        bonus = Math.round(cosineSim * 10);
+      }
+
+      const score = Math.min(99, Math.max(20, baseScore + bonus));
+
+      return res.json({
+        compatible: true,
+        score,
+        myStyle: myProfile.datingStyle,
+        theirStyle: theirProfile.datingStyle,
+        message: score >= 85 ? "Amazing match! You two are highly compatible" :
+                 score >= 70 ? "Great potential! You complement each other well" :
+                 score >= 55 ? "Interesting pairing with room to grow together" :
+                 "Different styles can create exciting dynamics!",
+      });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/quiz/retake", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      await storage.deleteQuizResponses(userId);
+      await storage.updateProfile(userId, {
+        datingStyle: null,
+        datingStyleTraits: null,
+        quizCompletedAt: null,
+      } as any);
+      return res.json({ success: true });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
   // ==================== MEMBERSHIP PLANS ====================
 
   app.get("/api/membership/plans", async (_req: Request, res: Response) => {

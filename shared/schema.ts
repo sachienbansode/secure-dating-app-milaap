@@ -66,6 +66,9 @@ export const profiles = pgTable("profiles", {
   dateReadiness: text("date_readiness").default("Chat-only"),
   photoAuthenticityScore: integer("photo_authenticity_score"),
   photoVerifiedAt: timestamp("photo_verified_at"),
+  datingStyle: text("dating_style"),
+  datingStyleTraits: jsonb("dating_style_traits").$type<Record<string, number>>(),
+  quizCompletedAt: timestamp("quiz_completed_at"),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
@@ -302,6 +305,40 @@ export type MembershipPlan = typeof membershipPlans.$inferSelect;
 export type InsertMembershipPlan = z.infer<typeof insertMembershipPlanSchema>;
 export type MembershipTransaction = typeof membershipTransactions.$inferSelect;
 export type InsertMembershipTransaction = z.infer<typeof insertMembershipTransactionSchema>;
+
+export const quizResponses = pgTable("quiz_responses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  questionId: text("question_id").notNull(),
+  selectedOption: integer("selected_option").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertQuizResponseSchema = createInsertSchema(quizResponses).omit({ id: true, createdAt: true });
+export type QuizResponse = typeof quizResponses.$inferSelect;
+export type InsertQuizResponse = z.infer<typeof insertQuizResponseSchema>;
+
+export const DATING_STYLES = [
+  "The Romantic",
+  "The Adventurer",
+  "The Intellectual",
+  "The Family-First",
+  "The Free Spirit",
+  "The Ambitious Go-Getter",
+] as const;
+
+export type DatingStyle = typeof DATING_STYLES[number];
+
+export const DATING_STYLE_TRAITS = ["romance", "adventure", "intellect", "family", "freedom", "ambition"] as const;
+
+export const DATING_STYLE_COMPATIBILITY: Record<string, Record<string, number>> = {
+  "The Romantic": { "The Romantic": 95, "The Adventurer": 75, "The Intellectual": 80, "The Family-First": 90, "The Free Spirit": 60, "The Ambitious Go-Getter": 70 },
+  "The Adventurer": { "The Romantic": 75, "The Adventurer": 90, "The Intellectual": 70, "The Family-First": 55, "The Free Spirit": 95, "The Ambitious Go-Getter": 80 },
+  "The Intellectual": { "The Romantic": 80, "The Adventurer": 70, "The Intellectual": 90, "The Family-First": 75, "The Free Spirit": 65, "The Ambitious Go-Getter": 95 },
+  "The Family-First": { "The Romantic": 90, "The Adventurer": 55, "The Intellectual": 75, "The Family-First": 95, "The Free Spirit": 40, "The Ambitious Go-Getter": 70 },
+  "The Free Spirit": { "The Romantic": 60, "The Adventurer": 95, "The Intellectual": 65, "The Family-First": 40, "The Free Spirit": 85, "The Ambitious Go-Getter": 60 },
+  "The Ambitious Go-Getter": { "The Romantic": 70, "The Adventurer": 80, "The Intellectual": 95, "The Family-First": 70, "The Free Spirit": 60, "The Ambitious Go-Getter": 90 },
+};
 
 export const MEMBERSHIP_TIERS = ["basic", "silver", "gold", "platinum"] as const;
 export type MembershipTier = typeof MEMBERSHIP_TIERS[number];
