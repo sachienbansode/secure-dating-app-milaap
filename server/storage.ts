@@ -596,10 +596,21 @@ export class DatabaseStorage implements IStorage {
     const allShares = await db.select().from(locationShares)
       .where(eq(locationShares.matchId, matchId))
       .orderBy(desc(locationShares.createdAt));
-    return allShares.filter(s => {
-      if (s.isLive && s.expiresAt && new Date(s.expiresAt) < now) return false;
-      return true;
-    });
+    const active: LocationShare[] = [];
+    const expiredIds: string[] = [];
+    for (const s of allShares) {
+      if (s.isLive && s.expiresAt && new Date(s.expiresAt) < now) {
+        expiredIds.push(s.id);
+      } else {
+        active.push(s);
+      }
+    }
+    if (expiredIds.length > 0) {
+      for (const id of expiredIds) {
+        await db.delete(locationShares).where(eq(locationShares.id, id));
+      }
+    }
+    return active;
   }
 
   async getLocationShare(id: string): Promise<LocationShare | undefined> {

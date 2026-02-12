@@ -4,6 +4,11 @@
 Milaap is a mobile-first dating application designed for the Indian market featuring OTP-based authentication, AES-256-GCM data encryption at rest, AI-assisted messaging via OpenAI, photo uploads, respect-based matchmaking, and 12 advanced cultural features.
 
 ## Recent Changes
+- 2026-02-12: Added contact sharing in chat - users can independently share mobile and/or email with match partner via chat menu
+- 2026-02-12: Added location sharing in chat - share current location (one-time) or live location (1 hour, updates every 30s), with Google Maps links
+- 2026-02-12: Added full profile view page at /view-profile/:userId with photo gallery, back navigation, and chat button
+- 2026-02-12: Eye button on discover cards now navigates to full profile view page
+- 2026-02-12: Added contact info fields (phone + email) for new user registration
 - 2026-02-11: Added chat attachments feature - send pictures/videos (max 5MB), one-time view option, admin-configurable extensions and toggle
 - 2026-02-11: Revamped color theme to Red, Blue & Black dark theme (vivid red primary, electric blue accent, dark blue-black backgrounds)
 - 2026-02-11: Added chat archive and delete (soft delete) - data retained in DB for audit logs
@@ -79,6 +84,8 @@ Milaap is a mobile-first dating application designed for the Indian market featu
 - **chat_cooldowns**: Per-user cooldown tracking with violation counts
 - **phone_unlock_requests**: Mutual consent phone number sharing with 24h cool-off
 - **blocked_users**: User blocking records
+- **contact_shares**: Per-match contact sharing (phone/email independently, sharerUserId, targetUserId)
+- **location_shares**: Location sharing (current or live with 1hr TTL, lat/lng, auto-cleanup of expired)
 
 ### API Endpoints (New)
 - `POST /api/profile/force-intent` - Break intent lock with penalties

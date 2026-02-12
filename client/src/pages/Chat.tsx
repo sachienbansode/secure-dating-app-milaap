@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRoute, Link, useLocation } from "wouter";
-import { ArrowLeft, Send, Sparkles, MoreVertical, ShieldCheck, Phone, Video, Paperclip, CheckCheck, Flag, Loader2, Bot, ShieldAlert, Camera, Ban, Unlock, Clock, MessageCircle, Mic, Users, Archive, Trash2, Image, X, Eye, EyeOff, Play } from "lucide-react";
+import { ArrowLeft, Send, Sparkles, MoreVertical, ShieldCheck, Phone, Video, Paperclip, CheckCheck, Flag, Loader2, Bot, ShieldAlert, Camera, Ban, Unlock, Clock, MessageCircle, Mic, Users, Archive, Trash2, Image, X, Eye, EyeOff, Play, Mail, MapPin, Navigation, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -52,6 +52,13 @@ export default function Chat() {
   const [isOneTimeView, setIsOneTimeView] = useState(false);
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
   const [viewOnceMedia, setViewOnceMedia] = useState<{ url: string; type: string } | null>(null);
+  const [showContactShare, setShowContactShare] = useState(false);
+  const [sharePhone, setSharePhone] = useState(false);
+  const [shareEmail, setShareEmail] = useState(false);
+  const [showLocationShare, setShowLocationShare] = useState(false);
+  const [sharingLiveLocation, setSharingLiveLocation] = useState(false);
+  const [liveLocationId, setLiveLocationId] = useState<string | null>(null);
+  const liveLocationIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -93,6 +100,18 @@ export default function Chat() {
   const { data: cooldownStatus } = useQuery<any>({
     queryKey: [`/api/chat/cooldown-status/${matchId}`],
     enabled: !!matchId && !!session?.user && appSettings?.feature_chat_cooldown,
+    refetchInterval: 5000,
+  });
+
+  const { data: contactShareStatus } = useQuery<any>({
+    queryKey: [`/api/contact-share/${matchId}`],
+    enabled: !!matchId && !!session?.user,
+    refetchInterval: 10000,
+  });
+
+  const { data: locationShareData } = useQuery<any>({
+    queryKey: [`/api/location-share/${matchId}`],
+    enabled: !!matchId && !!session?.user,
     refetchInterval: 5000,
   });
 
@@ -221,6 +240,70 @@ export default function Chat() {
     },
   });
 
+  const contactShareMutation = useMutation({
+    mutationFn: async (data: { sharePhone: boolean; shareEmail: boolean }) => {
+      const res = await apiRequest("POST", "/api/contact-share", { matchId, ...data });
+      return res.json();
+    },
+    onSuccess: () => {
+      setShowContactShare(false);
+      queryClient.invalidateQueries({ queryKey: [`/api/contact-share/${matchId}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/messages/${matchId}`] });
+    },
+  });
+
+  const contactShareUpdateMutation = useMutation({
+    mutationFn: async (data: { sharePhone: boolean; shareEmail: boolean }) => {
+      const res = await apiRequest("POST", "/api/contact-share/update", { matchId, ...data });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/contact-share/${matchId}`] });
+    },
+  });
+
+  const locationShareMutation = useMutation({
+    mutationFn: async (data: { latitude: number; longitude: number; isLive: boolean }) => {
+      const res = await apiRequest("POST", "/api/location-share", { matchId, ...data });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setShowLocationShare(false);
+      if (data.location?.isLive) {
+        setSharingLiveLocation(true);
+        setLiveLocationId(data.location.id);
+      }
+      queryClient.invalidateQueries({ queryKey: [`/api/location-share/${matchId}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/messages/${matchId}`] });
+    },
+  });
+
+  const locationUpdateMutation = useMutation({
+    mutationFn: async (data: { locationShareId: string; latitude: number; longitude: number }) => {
+      const res = await apiRequest("POST", "/api/location-share/update", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/location-share/${matchId}`] });
+    },
+  });
+
+  const stopLocationMutation = useMutation({
+    mutationFn: async (locationShareId: string) => {
+      const res = await apiRequest("POST", "/api/location-share/stop", { locationShareId });
+      return res.json();
+    },
+    onSuccess: () => {
+      setSharingLiveLocation(false);
+      setLiveLocationId(null);
+      if (liveLocationIntervalRef.current) {
+        clearInterval(liveLocationIntervalRef.current);
+        liveLocationIntervalRef.current = null;
+      }
+      queryClient.invalidateQueries({ queryKey: [`/api/location-share/${matchId}`] });
+    },
+  });
+
   useEffect(() => {
     if (noScreenshotActive) {
       const handleKeyDown = (e: KeyboardEvent) => {
@@ -272,6 +355,84 @@ export default function Chat() {
 
   const isChatCooledDown = cooldownStatus?.cooldown || cooldownStatus?.banned;
   const isChatBanned = cooldownStatus?.banned;
+
+  useEffect(() => {
+    if (contactShareStatus?.myShare) {
+      setSharePhone(!!contactShareStatus.myShare.sharePhone);
+      setShareEmail(!!contactShareStatus.myShare.shareEmail);
+    }
+  }, [contactShareStatus?.myShare]);
+
+  useEffect(() => {
+    return () => {
+      if (liveLocationIntervalRef.current) {
+        clearInterval(liveLocationIntervalRef.current);
+      }
+    };
+  }, []);
+
+  const handleShareCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        locationShareMutation.mutate({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          isLive: false,
+        });
+      },
+      () => alert("Unable to get your location. Please enable location access."),
+      { enableHighAccuracy: true }
+    );
+  };
+
+  const handleShareLiveLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        locationShareMutation.mutate({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          isLive: true,
+        });
+      },
+      () => alert("Unable to get your location. Please enable location access."),
+      { enableHighAccuracy: true }
+    );
+  };
+
+  useEffect(() => {
+    if (sharingLiveLocation && liveLocationId) {
+      liveLocationIntervalRef.current = setInterval(() => {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            locationUpdateMutation.mutate({
+              locationShareId: liveLocationId,
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+            });
+          },
+          () => {},
+          { enableHighAccuracy: true }
+        );
+      }, 30000);
+    }
+    return () => {
+      if (liveLocationIntervalRef.current) {
+        clearInterval(liveLocationIntervalRef.current);
+        liveLocationIntervalRef.current = null;
+      }
+    };
+  }, [sharingLiveLocation, liveLocationId]);
+
+  const theirLocations = locationShareData?.locations?.filter((l: any) => l.sharerUserId !== session?.user?.id) || [];
+  const myLiveLocations = locationShareData?.locations?.filter((l: any) => l.sharerUserId === session?.user?.id && l.isLive) || [];
 
   const handleSend = () => {
     if (!input.trim() || !matchId || isChatCooledDown) return;
@@ -438,6 +599,12 @@ export default function Chat() {
                   <Unlock size={14} /> Request Contact Sharing
                 </button>
               )}
+              <button className="w-full text-left px-4 py-3 text-sm text-blue-400 hover:bg-blue-900/20 flex items-center gap-2 border-t border-border" onClick={() => { setShowContactShare(true); setShowMenu(false); }} data-testid="button-contact-share">
+                <Share2 size={14} /> Share Contact Info
+              </button>
+              <button className="w-full text-left px-4 py-3 text-sm text-green-400 hover:bg-green-900/20 flex items-center gap-2 border-t border-border" onClick={() => { setShowLocationShare(true); setShowMenu(false); }} data-testid="button-location-share">
+                <MapPin size={14} /> Share Location
+              </button>
               <button className="w-full text-left px-4 py-3 text-sm text-blue-400 hover:bg-blue-900/20 flex items-center gap-2 border-t border-border" onClick={() => { archiveMutation.mutate(); setShowMenu(false); }} data-testid="button-archive-chat">
                 <Archive size={14} /> Archive Chat
               </button>
@@ -483,6 +650,73 @@ export default function Chat() {
         <div className="bg-green-900/20 px-4 py-2 flex items-center gap-2 text-xs text-green-400 border-b border-green-900/30">
           <Unlock size={14} />
           <span className="font-medium">Contact sharing unlocked! You can now share phone numbers.</span>
+        </div>
+      )}
+
+      {contactShareStatus?.theirSharedData && (contactShareStatus.theirSharedData.phone || contactShareStatus.theirSharedData.email) && (
+        <div className="bg-blue-900/20 px-4 py-3 border-b border-blue-900/30 space-y-1.5" data-testid="shared-contact-card">
+          <div className="flex items-center gap-2 text-xs font-bold text-blue-300">
+            <Share2 size={12} />
+            {profile?.name}'s shared contact info
+          </div>
+          {contactShareStatus.theirSharedData.phone && (
+            <div className="flex items-center gap-2">
+              <Phone size={12} className="text-green-400" />
+              <a href={`tel:${contactShareStatus.theirSharedData.phone}`} className="text-xs text-green-400 font-medium hover:underline" data-testid="text-shared-phone">{contactShareStatus.theirSharedData.phone}</a>
+            </div>
+          )}
+          {contactShareStatus.theirSharedData.email && (
+            <div className="flex items-center gap-2">
+              <Mail size={12} className="text-blue-400" />
+              <a href={`mailto:${contactShareStatus.theirSharedData.email}`} className="text-xs text-blue-400 font-medium hover:underline" data-testid="text-shared-email">{contactShareStatus.theirSharedData.email}</a>
+            </div>
+          )}
+        </div>
+      )}
+
+      {theirLocations.length > 0 && (
+        <div className="bg-green-900/20 px-4 py-3 border-b border-green-900/30 space-y-2" data-testid="shared-location-card">
+          <div className="flex items-center gap-2 text-xs font-bold text-green-300">
+            <MapPin size={12} />
+            {profile?.name}'s shared location
+          </div>
+          {theirLocations.map((loc: any) => {
+            const isExpired = loc.isLive && loc.expiresAt && new Date(loc.expiresAt) < new Date();
+            if (isExpired) return null;
+            const mapsUrl = `https://www.google.com/maps?q=${loc.latitude},${loc.longitude}`;
+            const minutesLeft = loc.isLive && loc.expiresAt ? Math.max(0, Math.round((new Date(loc.expiresAt).getTime() - Date.now()) / 60000)) : null;
+            return (
+              <div key={loc.id} className="flex items-center gap-2">
+                <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs text-green-400 font-medium hover:underline" data-testid={`link-location-${loc.id}`}>
+                  <Navigation size={10} />
+                  View on Maps
+                </a>
+                {loc.isLive && (
+                  <span className="flex items-center gap-1 text-[10px] text-green-300 bg-green-900/30 px-2 py-0.5 rounded-full">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                    Live {minutesLeft !== null ? `(${minutesLeft}m left)` : ""}
+                  </span>
+                )}
+                {!loc.isLive && (
+                  <span className="text-[10px] text-muted-foreground">Current location</span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {(sharingLiveLocation || myLiveLocations.length > 0) && (
+        <div className="bg-green-900/10 px-4 py-2 flex items-center gap-2 text-xs text-green-400 border-b border-green-900/20">
+          <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+          <span className="font-medium flex-1">You are sharing live location</span>
+          <button
+            className="bg-red-500/20 text-red-400 px-3 py-1 rounded-full text-[10px] font-bold hover:bg-red-500/30"
+            onClick={() => { const id = liveLocationId || myLiveLocations[0]?.id; if (id) stopLocationMutation.mutate(id); }}
+            data-testid="button-stop-live-location"
+          >
+            Stop
+          </button>
         </div>
       )}
 
@@ -785,6 +1019,132 @@ export default function Chat() {
             ) : (
               <video src={viewOnceMedia.url} controls autoPlay className="max-w-full max-h-full" />
             )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showContactShare && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center" onClick={(e) => { if (e.target === e.currentTarget) setShowContactShare(false); }}>
+            <motion.div initial={{ y: 300 }} animate={{ y: 0 }} exit={{ y: 300 }} className="bg-card w-full max-w-lg rounded-t-3xl p-6 space-y-4">
+              <h3 className="text-lg font-heading font-bold text-center text-foreground">Share Contact Info</h3>
+              <p className="text-sm text-muted-foreground text-center">Choose what you want to share with {profile?.name}</p>
+
+              <div className="space-y-3">
+                <button
+                  onClick={() => setSharePhone(!sharePhone)}
+                  className={`w-full flex items-center gap-3 px-4 py-4 rounded-xl border transition-all ${sharePhone ? "bg-green-900/20 border-green-700 text-green-400" : "bg-muted border-border text-foreground hover:bg-muted/80"}`}
+                  data-testid="toggle-share-phone"
+                >
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${sharePhone ? "bg-green-900/30" : "bg-muted"}`}>
+                    <Phone size={18} className={sharePhone ? "text-green-400" : "text-muted-foreground"} />
+                  </div>
+                  <div className="flex-1 text-left">
+                    <p className="text-sm font-bold">Mobile Number</p>
+                    <p className="text-xs text-muted-foreground">{session?.user?.phone || "Not set"}</p>
+                  </div>
+                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${sharePhone ? "border-green-400 bg-green-400" : "border-muted-foreground"}`}>
+                    {sharePhone && <CheckCheck size={14} className="text-white" />}
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => setShareEmail(!shareEmail)}
+                  className={`w-full flex items-center gap-3 px-4 py-4 rounded-xl border transition-all ${shareEmail ? "bg-blue-900/20 border-blue-700 text-blue-400" : "bg-muted border-border text-foreground hover:bg-muted/80"}`}
+                  data-testid="toggle-share-email"
+                >
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${shareEmail ? "bg-blue-900/30" : "bg-muted"}`}>
+                    <Mail size={18} className={shareEmail ? "text-blue-400" : "text-muted-foreground"} />
+                  </div>
+                  <div className="flex-1 text-left">
+                    <p className="text-sm font-bold">Email Address</p>
+                    <p className="text-xs text-muted-foreground">{session?.user?.email || "Not set"}</p>
+                  </div>
+                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${shareEmail ? "border-blue-400 bg-blue-400" : "border-muted-foreground"}`}>
+                    {shareEmail && <CheckCheck size={14} className="text-white" />}
+                  </div>
+                </button>
+              </div>
+
+              {contactShareStatus?.myShare && (
+                <p className="text-xs text-muted-foreground text-center">You are currently sharing: {[contactShareStatus.myShare.sharePhone && "Mobile", contactShareStatus.myShare.shareEmail && "Email"].filter(Boolean).join(", ") || "Nothing"}</p>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <Button variant="ghost" className="flex-1 rounded-xl" onClick={() => setShowContactShare(false)}>Cancel</Button>
+                <Button
+                  className="flex-1 rounded-xl bg-blue-600 hover:bg-blue-700 text-white"
+                  onClick={() => {
+                    if (contactShareStatus?.myShare) {
+                      contactShareUpdateMutation.mutate({ sharePhone, shareEmail });
+                    } else {
+                      contactShareMutation.mutate({ sharePhone, shareEmail });
+                    }
+                    setShowContactShare(false);
+                  }}
+                  disabled={!sharePhone && !shareEmail}
+                  data-testid="button-confirm-contact-share"
+                >
+                  {contactShareStatus?.myShare ? "Update Sharing" : "Share Now"}
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showLocationShare && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center" onClick={(e) => { if (e.target === e.currentTarget) setShowLocationShare(false); }}>
+            <motion.div initial={{ y: 300 }} animate={{ y: 0 }} exit={{ y: 300 }} className="bg-card w-full max-w-lg rounded-t-3xl p-6 space-y-4">
+              <h3 className="text-lg font-heading font-bold text-center text-foreground">Share Location</h3>
+              <p className="text-sm text-muted-foreground text-center">Share your location with {profile?.name}</p>
+
+              <div className="space-y-3">
+                <button
+                  onClick={() => { handleShareCurrentLocation(); }}
+                  className="w-full flex items-center gap-3 px-4 py-4 rounded-xl border border-border bg-muted hover:bg-muted/80 transition-all"
+                  disabled={locationShareMutation.isPending}
+                  data-testid="button-share-current-location"
+                >
+                  <div className="w-10 h-10 rounded-full bg-blue-900/30 flex items-center justify-center">
+                    <MapPin size={18} className="text-blue-400" />
+                  </div>
+                  <div className="flex-1 text-left">
+                    <p className="text-sm font-bold text-foreground">Current Location</p>
+                    <p className="text-xs text-muted-foreground">Share your location once</p>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => { handleShareLiveLocation(); }}
+                  className="w-full flex items-center gap-3 px-4 py-4 rounded-xl border border-border bg-muted hover:bg-muted/80 transition-all"
+                  disabled={locationShareMutation.isPending || sharingLiveLocation}
+                  data-testid="button-share-live-location"
+                >
+                  <div className="w-10 h-10 rounded-full bg-green-900/30 flex items-center justify-center">
+                    <Navigation size={18} className="text-green-400" />
+                  </div>
+                  <div className="flex-1 text-left">
+                    <p className="text-sm font-bold text-foreground">Live Location</p>
+                    <p className="text-xs text-muted-foreground">Share for 1 hour (updates every 30 sec)</p>
+                  </div>
+                  {sharingLiveLocation && (
+                    <span className="text-[10px] text-green-400 bg-green-900/20 px-2 py-1 rounded-full font-medium">Active</span>
+                  )}
+                </button>
+              </div>
+
+              {locationShareMutation.isPending && (
+                <div className="flex items-center justify-center gap-2 text-sm text-blue-400">
+                  <Loader2 size={16} className="animate-spin" /> Getting your location...
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <Button variant="ghost" className="flex-1 rounded-xl" onClick={() => setShowLocationShare(false)}>Close</Button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
