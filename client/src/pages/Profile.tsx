@@ -132,7 +132,8 @@ export default function Profile() {
     queryFn: async () => {
       const res = await fetch("/api/membership/plans");
       if (!res.ok) return [];
-      return res.json();
+      const data = await res.json();
+      return Array.isArray(data) ? data : (data.plans || []);
     },
     enabled: !!session?.user,
   });
