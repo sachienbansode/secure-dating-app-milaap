@@ -192,8 +192,10 @@ export class DatabaseStorage implements IStorage {
 
     const conditions: any[] = [
       eq(profiles.isVisible, true),
-      notInArray(profiles.userId, finalExcluded),
     ];
+    if (finalExcluded.length > 0) {
+      conditions.push(notInArray(profiles.userId, finalExcluded));
+    }
 
     if (filters?.gender && filters.gender !== "All") {
       conditions.push(eq(profiles.gender, filters.gender));

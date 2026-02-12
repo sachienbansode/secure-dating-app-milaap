@@ -719,7 +719,7 @@ export async function registerRoutes(
   app.get("/api/discover", requireAuth, async (req: Request, res: Response) => {
     try {
       const userId = req.session.userId!;
-      const limit = parseInt(req.query.limit as string) || 20;
+      const limit = parseInt(req.query.limit as string) || 500;
       const myProfile = await storage.getProfile(userId);
       const filters = {
         gender: req.query.gender as string | undefined,
