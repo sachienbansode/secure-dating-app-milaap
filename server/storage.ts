@@ -173,22 +173,17 @@ export class DatabaseStorage implements IStorage {
     return updated ? decryptProfile(updated) : undefined;
   }
 
-  async getDiscoverProfiles(userId: string, limit = 20, filters?: { gender?: string; ageMin?: number; ageMax?: number; city?: string; intent?: string; familyMode?: boolean }): Promise<Profile[]> {
-    const swipedMatches = await db.select({ targetUserId: matches.targetUserId })
-      .from(matches)
-      .where(eq(matches.userId, userId));
-    
-    const swipedIds = swipedMatches.map(m => m.targetUserId);
-    swipedIds.push(userId);
+  async getDiscoverProfiles(userId: string, limit = 500, filters?: { gender?: string; ageMin?: number; ageMax?: number; city?: string; intent?: string; familyMode?: boolean }): Promise<Profile[]> {
+    const excludeIds: string[] = [userId];
 
     const blocked = await this.getBlockedUsers(userId);
-    const blockedIds = blocked.map(b => b.blockedUserId);
-    const allExcluded = [...new Set([...swipedIds, ...blockedIds])];
+    for (const b of blocked) excludeIds.push(b.blockedUserId);
 
     const deactivatedUsers = await db.select({ id: users.id }).from(users)
       .where(or(eq(users.isDeactivated, true), eq(users.isBanned, true)));
-    const deactivatedIds = deactivatedUsers.map(u => u.id);
-    const finalExcluded = [...new Set([...allExcluded, ...deactivatedIds])];
+    for (const u of deactivatedUsers) excludeIds.push(u.id);
+
+    const finalExcluded = [...new Set(excludeIds)];
 
     const conditions: any[] = [
       eq(profiles.isVisible, true),

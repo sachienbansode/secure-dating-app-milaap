@@ -792,7 +792,7 @@ export async function registerRoutes(
 
       const existing = await storage.getMatch(userId, targetUserId);
       if (existing) {
-        return res.status(409).json({ message: "Already swiped on this user" });
+        return res.json({ match: existing, isMutualMatch: existing.isMutual || false, alreadySwiped: true });
       }
 
       if (action === "like" || action === "superlike") {
