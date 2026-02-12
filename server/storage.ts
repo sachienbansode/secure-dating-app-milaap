@@ -3,7 +3,7 @@ import { eq, and, ne, notInArray, inArray, desc, sql, or, gt } from "drizzle-orm
 import {
   users, profiles, matches, messages, reports, screenshotAlerts, appSettings,
   chatCooldowns, phoneUnlockRequests, blockedUsers, activityLogs,
-  adminUsers, userSessions,
+  adminUsers, userSessions, contactShares, locationShares,
   type User, type InsertUser,
   type Profile, type InsertProfile,
   type Match, type InsertMatch,
@@ -14,6 +14,8 @@ import {
   type ChatCooldown, type InsertChatCooldown,
   type PhoneUnlockRequest, type InsertPhoneUnlockRequest,
   type BlockedUser, type InsertBlockedUser,
+  type ContactShare, type InsertContactShare,
+  type LocationShare, type InsertLocationShare,
   type ActivityLog, type InsertActivityLog,
   type AdminUser, type InsertAdminUser,
   type UserSession, type InsertUserSession,
@@ -86,6 +88,16 @@ export interface IStorage {
   invalidateSession(sessionToken: string): Promise<void>;
   updateSessionActivity(sessionToken: string): Promise<void>;
   getActiveSessions(userId: string, userType: string): Promise<UserSession[]>;
+
+  upsertContactShare(data: InsertContactShare): Promise<ContactShare>;
+  getContactShare(matchId: string, sharerUserId: string): Promise<ContactShare | undefined>;
+  getContactSharesForMatch(matchId: string): Promise<ContactShare[]>;
+
+  createLocationShare(data: InsertLocationShare): Promise<LocationShare>;
+  updateLocationShare(id: string, data: Partial<LocationShare>): Promise<LocationShare | undefined>;
+  getActiveLocationShares(matchId: string): Promise<LocationShare[]>;
+  getLocationShare(id: string): Promise<LocationShare | undefined>;
+  deleteLocationShare(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -544,6 +556,59 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(userSessions)
       .where(and(eq(userSessions.userId, userId), eq(userSessions.userType, userType), eq(userSessions.isActive, true)))
       .orderBy(desc(userSessions.createdAt));
+  }
+
+  async upsertContactShare(data: InsertContactShare): Promise<ContactShare> {
+    const existing = await this.getContactShare(data.matchId, data.sharerUserId);
+    if (existing) {
+      const [updated] = await db.update(contactShares)
+        .set({ sharePhone: data.sharePhone, shareEmail: data.shareEmail, updatedAt: new Date() })
+        .where(eq(contactShares.id, existing.id))
+        .returning();
+      return updated;
+    }
+    const [created] = await db.insert(contactShares).values(data).returning();
+    return created;
+  }
+
+  async getContactShare(matchId: string, sharerUserId: string): Promise<ContactShare | undefined> {
+    const [share] = await db.select().from(contactShares)
+      .where(and(eq(contactShares.matchId, matchId), eq(contactShares.sharerUserId, sharerUserId)));
+    return share;
+  }
+
+  async getContactSharesForMatch(matchId: string): Promise<ContactShare[]> {
+    return db.select().from(contactShares).where(eq(contactShares.matchId, matchId));
+  }
+
+  async createLocationShare(data: InsertLocationShare): Promise<LocationShare> {
+    const [created] = await db.insert(locationShares).values(data).returning();
+    return created;
+  }
+
+  async updateLocationShare(id: string, data: Partial<LocationShare>): Promise<LocationShare | undefined> {
+    const [updated] = await db.update(locationShares).set(data).where(eq(locationShares.id, id)).returning();
+    return updated;
+  }
+
+  async getActiveLocationShares(matchId: string): Promise<LocationShare[]> {
+    const now = new Date();
+    const allShares = await db.select().from(locationShares)
+      .where(eq(locationShares.matchId, matchId))
+      .orderBy(desc(locationShares.createdAt));
+    return allShares.filter(s => {
+      if (s.isLive && s.expiresAt && new Date(s.expiresAt) < now) return false;
+      return true;
+    });
+  }
+
+  async getLocationShare(id: string): Promise<LocationShare | undefined> {
+    const [share] = await db.select().from(locationShares).where(eq(locationShares.id, id));
+    return share;
+  }
+
+  async deleteLocationShare(id: string): Promise<void> {
+    await db.delete(locationShares).where(eq(locationShares.id, id));
   }
 }
 
