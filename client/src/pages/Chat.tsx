@@ -340,6 +340,21 @@ export default function Chat() {
 
   useEffect(() => { scrollToBottom(); }, [messages, aiMode]);
 
+  useEffect(() => {
+    if (contactShareStatus?.myShare) {
+      setSharePhone(!!contactShareStatus.myShare.sharePhone);
+      setShareEmail(!!contactShareStatus.myShare.shareEmail);
+    }
+  }, [contactShareStatus?.myShare]);
+
+  useEffect(() => {
+    return () => {
+      if (liveLocationIntervalRef.current) {
+        clearInterval(liveLocationIntervalRef.current);
+      }
+    };
+  }, []);
+
   if (checkingSession || !session?.user) {
     return <div className="h-full flex items-center justify-center"><div className="animate-pulse text-muted-foreground">Loading...</div></div>;
   }
@@ -355,21 +370,6 @@ export default function Chat() {
 
   const isChatCooledDown = cooldownStatus?.cooldown || cooldownStatus?.banned;
   const isChatBanned = cooldownStatus?.banned;
-
-  useEffect(() => {
-    if (contactShareStatus?.myShare) {
-      setSharePhone(!!contactShareStatus.myShare.sharePhone);
-      setShareEmail(!!contactShareStatus.myShare.shareEmail);
-    }
-  }, [contactShareStatus?.myShare]);
-
-  useEffect(() => {
-    return () => {
-      if (liveLocationIntervalRef.current) {
-        clearInterval(liveLocationIntervalRef.current);
-      }
-    };
-  }, []);
 
   const handleShareCurrentLocation = () => {
     if (!navigator.geolocation) {
