@@ -152,6 +152,30 @@ export const blockedUsers = pgTable("blocked_users", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const contactShares = pgTable("contact_shares", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  matchId: varchar("match_id").notNull().references(() => matches.id),
+  sharerUserId: varchar("sharer_user_id").notNull().references(() => users.id),
+  targetUserId: varchar("target_user_id").notNull().references(() => users.id),
+  sharePhone: boolean("share_phone").default(false),
+  shareEmail: boolean("share_email").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const locationShares = pgTable("location_shares", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  matchId: varchar("match_id").notNull().references(() => matches.id),
+  sharerUserId: varchar("sharer_user_id").notNull().references(() => users.id),
+  targetUserId: varchar("target_user_id").notNull().references(() => users.id),
+  latitude: text("latitude").notNull(),
+  longitude: text("longitude").notNull(),
+  isLive: boolean("is_live").default(false),
+  expiresAt: timestamp("expires_at"),
+  lastUpdatedAt: timestamp("last_updated_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const adminUsers = pgTable("admin_users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: text("email").notNull().unique(),
@@ -199,6 +223,8 @@ export const insertAppSettingSchema = createInsertSchema(appSettings).omit({ id:
 export const insertChatCooldownSchema = createInsertSchema(chatCooldowns).omit({ id: true, createdAt: true });
 export const insertPhoneUnlockRequestSchema = createInsertSchema(phoneUnlockRequests).omit({ id: true });
 export const insertBlockedUserSchema = createInsertSchema(blockedUsers).omit({ id: true, createdAt: true });
+export const insertContactShareSchema = createInsertSchema(contactShares).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertLocationShareSchema = createInsertSchema(locationShares).omit({ id: true, createdAt: true });
 export const insertActivityLogSchema = createInsertSchema(activityLogs).omit({ id: true, createdAt: true });
 export const insertAdminUserSchema = createInsertSchema(adminUsers).omit({ id: true, createdAt: true });
 export const insertUserSessionSchema = createInsertSchema(userSessions).omit({ id: true, createdAt: true });
@@ -223,6 +249,10 @@ export type PhoneUnlockRequest = typeof phoneUnlockRequests.$inferSelect;
 export type InsertPhoneUnlockRequest = z.infer<typeof insertPhoneUnlockRequestSchema>;
 export type BlockedUser = typeof blockedUsers.$inferSelect;
 export type InsertBlockedUser = z.infer<typeof insertBlockedUserSchema>;
+export type ContactShare = typeof contactShares.$inferSelect;
+export type InsertContactShare = z.infer<typeof insertContactShareSchema>;
+export type LocationShare = typeof locationShares.$inferSelect;
+export type InsertLocationShare = z.infer<typeof insertLocationShareSchema>;
 export type ActivityLog = typeof activityLogs.$inferSelect;
 export type InsertActivityLog = z.infer<typeof insertActivityLogSchema>;
 export type AdminUser = typeof adminUsers.$inferSelect;
