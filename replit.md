@@ -4,6 +4,7 @@
 Milaap is a mobile-first dating application designed for the Indian market featuring OTP-based authentication, AES-256-GCM data encryption at rest, AI-assisted messaging via OpenAI, photo uploads, respect-based matchmaking, and 12 advanced cultural features.
 
 ## Recent Changes
+- 2026-02-12: Enhanced AI bot proxy with 5 conversation stages (opening→getting_to_know→building_connection→deepening_bond→ready_for_next_step), auto-replies when recipient is offline with 3-8s delay, phone unlock awareness, date planning guidance, Indian cultural conversation techniques
 - 2026-02-12: Added 4-tier membership system (Basic/Silver/Gold/Platinum) with pricing, expiry, feature gating, and revenue tracking
 - 2026-02-12: Added Google AdSense integration with admin-configurable ad frequency, placement, and per-membership ad toggle
 - 2026-02-12: Added bot mode auto-offline - users in AI proxy mode auto-deactivate after configurable max hours (default 12)

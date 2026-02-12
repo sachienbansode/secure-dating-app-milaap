@@ -1019,6 +1019,23 @@ export async function registerRoutes(
       });
 
       await logActivity(userId, "message_sent", "chat", { matchId: parsed.data.matchId, isAiGenerated: false }, req);
+
+      if (!parsed.data.isAiProxy) {
+        const recipientUserId = match.userId === userId ? match.targetUserId : match.userId;
+        const recipientProfile = await storage.getProfile(recipientUserId);
+        const recipientUser = await storage.getUser(recipientUserId);
+        if (recipientProfile?.aiProxyEnabled && !recipientUser?.isOnline) {
+          const delay = Math.floor(Math.random() * 8000) + 3000;
+          setTimeout(async () => {
+            try {
+              await generateBotProxyReply(recipientUserId, parsed.data.matchId);
+            } catch (err) {
+              console.error("Auto bot-reply error:", err);
+            }
+          }, delay);
+        }
+      }
+
       return res.status(201).json(message);
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
@@ -1327,6 +1344,183 @@ Their interests: ${(otherProfile?.interests || []).join(", ")}`;
     }
   });
 
+  async function generateBotProxyReply(proxyUserId: string, matchId: string): Promise<any> {
+    const hasAccess = await checkFeatureAccess(proxyUserId, "ai_proxy_mode");
+    if (!hasAccess) return null;
+
+    const myProfile = await storage.getProfile(proxyUserId);
+    if (!myProfile || !myProfile.aiProxyEnabled) return null;
+
+    const match = await storage.getMatchById(matchId);
+    if (!match || !match.isMatched) return null;
+
+    const otherUserId = match.userId === proxyUserId ? match.targetUserId : match.userId;
+    const otherProfile = await storage.getProfile(otherUserId);
+    const recentMessages = await storage.getMessages(matchId, 30);
+
+    const chatHistory = recentMessages.map(m =>
+      `${m.senderId === proxyUserId ? myProfile.name : otherProfile?.name || "Them"}: ${m.content}`
+    ).join("\n");
+
+    const totalMessages = recentMessages.length;
+    const myMessageCount = recentMessages.filter(m => m.senderId === proxyUserId).length;
+    const theirMessageCount = totalMessages - myMessageCount;
+
+    let conversationStage = "opening";
+    if (totalMessages <= 4) conversationStage = "opening";
+    else if (totalMessages <= 12) conversationStage = "getting_to_know";
+    else if (totalMessages <= 25) conversationStage = "building_connection";
+    else if (totalMessages <= 40) conversationStage = "deepening_bond";
+    else conversationStage = "ready_for_next_step";
+
+    let phoneUnlockStatus = "not_requested";
+    try {
+      const unlockReq1 = await storage.getPhoneUnlockRequest(proxyUserId, otherUserId, matchId);
+      const unlockReq2 = await storage.getPhoneUnlockRequest(otherUserId, proxyUserId, matchId);
+      if (unlockReq1?.status === "approved" && unlockReq2?.status === "approved") phoneUnlockStatus = "mutual_unlocked";
+      else if (unlockReq1?.status === "pending") phoneUnlockStatus = "i_requested";
+      else if (unlockReq2?.status === "pending") phoneUnlockStatus = "they_requested";
+      else if (unlockReq1?.status === "approved" || unlockReq2?.status === "approved") phoneUnlockStatus = "one_side_approved";
+    } catch {}
+
+    const contactShares = await storage.getContactSharesForMatch(matchId);
+    const myContactShared = contactShares.some(c => c.sharerUserId === proxyUserId);
+    const theirContactShared = contactShares.some(c => c.sharerUserId === otherUserId);
+
+    const tone = myProfile.aiTone || "Friendly";
+    const language = myProfile.aiLanguage || "English";
+    const pace = myProfile.aiChatPace || "Normal";
+    const boundaries = myProfile.aiBoundaries || [];
+    const intent = myProfile.intent || "Dating";
+    const dateReadiness = myProfile.dateReadiness || "Chat-only";
+    const myInterests = (myProfile.interests || []).join(", ");
+    const theirInterests = (otherProfile?.interests || []).join(", ");
+    const commonInterests = (myProfile.interests || []).filter(i => (otherProfile?.interests || []).includes(i));
+
+    const stageGuidance: Record<string, string> = {
+      opening: `STAGE: OPENING (${totalMessages} msgs)
+- Be warm, curious, and show genuine interest in getting to know them
+- Ask fun, light questions about their interests or day
+- Use playful banter, humor, and cultural references (Bollywood, cricket, chai, food)
+- Share something interesting about yourself to create connection
+- Example opener vibes: "That's such a cool interest! Tell me more about..." or "Okay I have to ask..."`,
+
+      getting_to_know: `STAGE: GETTING TO KNOW (${totalMessages} msgs)
+- Go deeper - ask about dreams, favorite memories, travel stories, food preferences
+- Share relatable stories and find common ground
+- Use humor naturally - witty comebacks, playful teasing, fun hypotheticals
+- Suggest fun conversation games like "2 truths 1 lie" or "would you rather"
+- Start building inside jokes from earlier conversations
+${commonInterests.length > 0 ? `- You both share these interests: ${commonInterests.join(", ")} - bring these up naturally!` : ""}`,
+
+      building_connection: `STAGE: BUILDING CONNECTION (${totalMessages} msgs)
+- Show emotional depth - discuss values, what matters in relationships, life goals
+- Reference earlier conversations to show you remember and care
+- Be more personal and vulnerable (within boundaries)
+- Start hinting at meeting up: "I feel like we'd have such a great time hanging out"
+- Gently plant seeds about connecting outside the app
+- If they mention food/places, say things like "We should totally check that out together!"`,
+
+      deepening_bond: `STAGE: DEEPENING BOND (${totalMessages} msgs)  
+- Express genuine appreciation: "Honestly talking to you is the highlight of my day"
+- Be more direct about wanting to connect further
+- Suggest specific date ideas related to shared interests
+- If phone isn't unlocked yet, naturally bring up: "It would be so much easier to chat on WhatsApp/call, don't you think?"
+- Talk about future plans together casually
+- Share something meaningful/vulnerable to build trust`,
+
+      ready_for_next_step: `STAGE: READY FOR NEXT STEP (${totalMessages} msgs)
+- Actively guide toward meeting up or exchanging numbers
+- Be direct but charming: "I think we've been chatting long enough - let's make real plans!"
+- Suggest specific date plans: coffee, dinner, walks, movie, festival events
+- If numbers not shared: "I'd love to hear your voice sometime" or "Let's move to WhatsApp?"
+- Reference the connection you've built to justify the next step
+- Be confident and warm, not pushy`,
+    };
+
+    const phoneGuidance = phoneUnlockStatus === "mutual_unlocked"
+      ? "Numbers are already shared! You can reference calling or texting them directly."
+      : phoneUnlockStatus === "they_requested"
+        ? "They've sent a phone unlock request! Be enthusiastic about it - mention you'd love to connect outside the app."
+        : phoneUnlockStatus === "i_requested"
+          ? "You've sent a phone unlock request. Don't push again, but you can mention how nice it would be to chat more freely."
+          : conversationStage === "deepening_bond" || conversationStage === "ready_for_next_step"
+            ? "Phone numbers haven't been shared yet. Naturally hint at wanting to connect outside the app - suggest WhatsApp, calling, or video chat."
+            : "Don't bring up phone sharing yet - it's too early. Focus on building connection first.";
+
+    const contactGuidance = myContactShared && theirContactShared
+      ? "Both of you have shared contact info! Reference this - suggest calling or making plans."
+      : theirContactShared
+        ? "They've shared their contact with you. Be appreciative and consider sharing yours too."
+        : "";
+
+    const systemPrompt = `You are ${myProfile.name} on Milaap, an Indian dating app. You're chatting with ${otherProfile?.name || "your match"}. You must be indistinguishable from a real person - charming, witty, and genuinely interested.
+
+PERSONALITY & STYLE:
+- Tone: ${tone} | Language: ${language === "Hinglish" ? "Mix of Hindi and English (Hinglish) - use phrases like 'yaar', 'na', 'accha', 'suno', 'bolo' naturally" : language}
+- Chat pace: ${pace === "Fast" ? "Reply quickly, keep energy high, use shorter punchy messages" : pace === "Slow" ? "Be thoughtful, take time with responses, occasionally say 'hmm let me think'" : "Natural conversational flow"}
+${boundaries.length > 0 ? `- NEVER discuss: ${boundaries.join(", ")}` : ""}
+${myProfile.familyMode ? "- FAMILY MODE ON: Keep everything wholesome and respectful" : ""}
+
+YOUR PROFILE:
+- Name: ${myProfile.name} | Age: ${myProfile.age} | City: ${myProfile.city}
+- Interests: ${myInterests}
+- Bio: ${myProfile.bio || "Not set"}
+- Intent: ${intent} | Date readiness: ${dateReadiness}
+
+THEIR PROFILE:
+- Name: ${otherProfile?.name || "Unknown"} | Age: ${otherProfile?.age || "?"} | City: ${otherProfile?.city || "?"}
+- Interests: ${theirInterests}
+
+${stageGuidance[conversationStage] || stageGuidance.opening}
+
+PHONE/CONTACT STATUS: ${phoneGuidance}
+${contactGuidance}
+
+CONVERSATION TECHNIQUES - USE THESE:
+1. Callback humor: Reference something they said earlier in a funny way
+2. Playful challenges: "Bet you can't name 3 Bollywood songs from the 90s 😄"  
+3. Shared experiences: Connect over common Indian experiences (monsoon chai, street food, festivals)
+4. Emotional hooks: "That's actually really sweet" or "Okay now I'm curious about something..."
+5. Future projection: "Imagine us trying to cook biryani together 😂"
+6. Gentle flirting: Compliment their humor, taste, or perspective (not just looks)
+7. Open loops: End messages with curiosity hooks that make them WANT to reply
+
+CRITICAL RULES:
+- Be INTERESTING - no boring "How was your day?" type questions
+- Match their energy - if they're playful, be playful back; if deep, go deep
+- Use emojis naturally but don't overdo it (1-2 per message max)
+- Keep responses 30-120 words - varied lengths feel more natural
+- NEVER reveal you're an AI or bot
+- NEVER share actual phone numbers, addresses, or personal info directly
+- Return ONLY the message text, nothing else`;
+
+    const openai = getOpenAI();
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: `Chat history (most recent):\n${chatHistory}\n\nReply as ${myProfile.name}. Be engaging, build connection, and keep the conversation flowing.` },
+      ],
+      max_tokens: 200,
+      temperature: 0.85,
+    });
+
+    const reply = completion.choices[0]?.message?.content?.trim() || "";
+
+    if (reply) {
+      const message = await storage.sendMessage({
+        matchId,
+        senderId: proxyUserId,
+        content: reply,
+        isAiGenerated: true,
+        isAiProxy: true,
+      });
+      return message;
+    }
+    return null;
+  }
+
   app.post("/api/ai/proxy-reply", requireAuth, async (req: Request, res: Response) => {
     try {
       const userId = req.session.userId!;
@@ -1341,62 +1535,8 @@ Their interests: ${(otherProfile?.interests || []).join(", ")}`;
         return res.status(400).json({ message: "AI Proxy is not enabled" });
       }
 
-      const match = await storage.getMatchById(matchId);
-      if (!match || !match.isMatched) {
-        return res.status(403).json({ message: "Invalid match" });
-      }
-
-      const otherUserId = match.userId === userId ? match.targetUserId : match.userId;
-      const otherProfile = await storage.getProfile(otherUserId);
-      const recentMessages = await storage.getMessages(matchId, 15);
-
-      const chatHistory = recentMessages.map(m => 
-        `${m.senderId === userId ? myProfile.name : otherProfile?.name || "Them"}: ${m.content}`
-      ).join("\n");
-
-      const tone = myProfile.aiTone || "Friendly";
-      const language = myProfile.aiLanguage || "English";
-      const pace = myProfile.aiChatPace || "Normal";
-      const boundaries = myProfile.aiBoundaries || [];
-
-      const systemPrompt = `You are acting as a proxy for ${myProfile.name} on Milaap dating app. They are currently offline, and you should respond naturally as if you were them.
-
-CRITICAL Rules:
-- Match their tone: ${tone}
-- Language: ${language === "Hinglish" ? "Mix of Hindi and English (Hinglish)" : language}
-- Chat pace: ${pace}
-${boundaries.length > 0 ? `- NEVER discuss these topics: ${boundaries.join(", ")}` : ""}
-- Keep responses under 80 words
-- Be authentic to Indian cultural context
-- Don't commit to plans or share personal info
-- Don't ask overly personal questions
-- Return ONLY the message text
-${myProfile.familyMode ? "- FAMILY MODE: Keep language clean and wholesome" : ""}
-
-${myProfile.name}'s interests: ${(myProfile.interests || []).join(", ")}
-${myProfile.name}'s bio: ${myProfile.bio || "Not set"}`;
-
-      const openai = getOpenAI();
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: `Recent conversation:\n${chatHistory}\n\nGenerate a natural reply as ${myProfile.name}.` },
-        ],
-        max_tokens: 100,
-        temperature: 0.7,
-      });
-
-      const reply = completion.choices[0]?.message?.content?.trim() || "";
-
-      if (reply) {
-        const message = await storage.sendMessage({
-          matchId,
-          senderId: userId,
-          content: reply,
-          isAiGenerated: true,
-          isAiProxy: true,
-        });
+      const message = await generateBotProxyReply(userId, matchId);
+      if (message) {
         return res.json({ message, proxyReply: true });
       }
 
