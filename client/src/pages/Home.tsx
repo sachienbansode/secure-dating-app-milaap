@@ -227,6 +227,7 @@ function SwipeCard({ profile, isFront, expanded, onSwipe, onToggleExpand, appSet
   profile: DiscoverProfile; isFront: boolean; expanded: boolean;
   onSwipe: (action: "like" | "pass" | "superlike") => void; onToggleExpand: () => void; appSettings?: any;
 }) {
+  const [, navigate] = useLocation();
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-200, 200], [-15, 15]);
   const likeOpacity = useTransform(x, [20, 150], [0, 1]);
@@ -381,7 +382,7 @@ function SwipeCard({ profile, isFront, expanded, onSwipe, onToggleExpand, appSet
             <Button data-testid="button-pass" size="icon" variant="outline" className="w-14 h-14 rounded-full bg-white/90 backdrop-blur border-red-200 shadow-lg hover:bg-red-50" onClick={() => onSwipe("pass")}>
               <X className="text-red-500" size={24} />
             </Button>
-            <Button data-testid="button-view-profile" size="icon" variant="outline" className="w-11 h-11 rounded-full bg-white/90 backdrop-blur border-blue-200 shadow-lg hover:bg-blue-50 self-center" onClick={(e) => { e.stopPropagation(); onToggleExpand(); }}>
+            <Button data-testid="button-view-profile" size="icon" variant="outline" className="w-11 h-11 rounded-full bg-white/90 backdrop-blur border-blue-200 shadow-lg hover:bg-blue-50 self-center" onClick={(e) => { e.stopPropagation(); navigate(`/view-profile/${profile.userId}`); }}>
               <Eye className="text-blue-500" size={16} />
             </Button>
             <Button data-testid="button-superlike" size="icon" variant="outline" className="w-11 h-11 rounded-full bg-white/90 backdrop-blur border-blue-200 shadow-lg hover:bg-blue-50 self-center" onClick={() => onSwipe("superlike")}>

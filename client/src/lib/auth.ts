@@ -2,12 +2,16 @@ import { apiRequest } from "./queryClient";
 
 export interface AuthUser {
   id: string;
+  phone?: string | null;
+  email?: string | null;
   respectScore: number;
   isVerified?: boolean;
   dailyLikesLimit?: number;
   dailyLikesUsed?: number;
   isOnline?: boolean;
   lastSeenAt?: string;
+  termsAcceptedAt?: string;
+  termsAcceptedVersion?: number;
 }
 
 export interface AuthProfile {

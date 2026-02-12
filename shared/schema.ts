@@ -260,7 +260,7 @@ export const updateProfileSchema = z.object({
   name: z.string().min(2).max(50),
   age: z.number().min(18).max(100),
   gender: z.enum(["Male", "Female", "Trans", "Couple"]),
-  bio: z.string().max(500).optional(),
+  bio: z.string().max(1000).optional(),
   city: z.string(),
   location: z.string(),
   interests: z.array(z.string()).max(10).optional(),

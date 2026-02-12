@@ -44,6 +44,9 @@ export default function Profile() {
   });
 
   const isNewUser = session?.user && !session?.profile;
+  const [registrationPhone, setRegistrationPhone] = useState("");
+  const [registrationEmail, setRegistrationEmail] = useState("");
+  const [contactError, setContactError] = useState("");
 
   const [form, setForm] = useState({
     name: "",
@@ -115,6 +118,38 @@ export default function Profile() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
+      setContactError("");
+      if (isNewUser) {
+        const needsPhone = !session?.user?.phone;
+        const needsEmail = !session?.user?.email;
+        if (needsPhone && !registrationPhone.trim()) {
+          throw new Error("Phone number is required for registration.");
+        }
+        if (needsEmail && !registrationEmail.trim()) {
+          throw new Error("Email address is required for registration.");
+        }
+        const contactUpdates: any = {};
+        if (needsPhone && registrationPhone.trim()) {
+          contactUpdates.phone = `+91${registrationPhone.replace(/\s/g, "")}`;
+        }
+        if (needsEmail && registrationEmail.trim()) {
+          contactUpdates.email = registrationEmail.trim();
+        }
+        if (Object.keys(contactUpdates).length > 0) {
+          const contactRes = await fetch("/api/auth/update-contact", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify(contactUpdates),
+          });
+          const contactData = await contactRes.json();
+          if (!contactRes.ok) {
+            setContactError(contactData.message);
+            throw new Error(contactData.message);
+          }
+        }
+      }
+
       const res = await apiRequest("POST", "/api/profile", form);
       const data = await res.json();
       if (!res.ok) {
@@ -241,6 +276,60 @@ export default function Profile() {
         </header>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-6 pb-32">
+          {isNewUser && (
+            <div className="bg-blue-900/20 rounded-2xl p-4 border border-blue-800 space-y-4">
+              <div className="flex items-center gap-2 mb-1">
+                <Phone size={16} className="text-blue-400" />
+                <h4 className="font-bold text-sm text-blue-300">Contact Information</h4>
+              </div>
+              <p className="text-xs text-blue-400">Both phone and email are required for registration.</p>
+              {contactError && (
+                <div className="text-sm p-2 rounded-lg bg-red-900/30 text-red-400 border border-red-800">{contactError}</div>
+              )}
+              {!session?.user?.phone && (
+                <div>
+                  <label className="text-sm font-medium text-blue-400 mb-2 block">Mobile Number</label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium border-r border-border pr-3 mr-2">+91</span>
+                    <Input
+                      data-testid="input-registration-phone"
+                      value={registrationPhone}
+                      onChange={(e) => setRegistrationPhone(e.target.value.replace(/[^\d\s]/g, ""))}
+                      placeholder="98765 43210"
+                      type="tel"
+                      inputMode="numeric"
+                      className="h-12 rounded-xl pl-20"
+                    />
+                  </div>
+                </div>
+              )}
+              {session?.user?.phone && (
+                <div>
+                  <label className="text-sm font-medium text-blue-400 mb-2 block">Mobile Number</label>
+                  <div className="h-12 rounded-xl bg-muted border border-border px-4 flex items-center text-muted-foreground text-sm">{session.user.phone}</div>
+                </div>
+              )}
+              {!session?.user?.email && (
+                <div>
+                  <label className="text-sm font-medium text-blue-400 mb-2 block">Email Address</label>
+                  <Input
+                    data-testid="input-registration-email"
+                    value={registrationEmail}
+                    onChange={(e) => setRegistrationEmail(e.target.value)}
+                    placeholder="name@example.com"
+                    type="email"
+                    className="h-12 rounded-xl"
+                  />
+                </div>
+              )}
+              {session?.user?.email && (
+                <div>
+                  <label className="text-sm font-medium text-blue-400 mb-2 block">Email Address</label>
+                  <div className="h-12 rounded-xl bg-muted border border-border px-4 flex items-center text-muted-foreground text-sm">{session.user.email}</div>
+                </div>
+              )}
+            </div>
+          )}
           {(!activeSection || activeSection === "Edit Profile") && (
             <>
               <div className="bg-card rounded-2xl p-4 border border-border">
@@ -317,7 +406,8 @@ export default function Profile() {
 
                 <div>
                   <label className="text-sm font-medium text-foreground mb-2 block">Bio</label>
-                  <textarea data-testid="input-bio" value={form.bio} onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value }))} placeholder="Tell us about yourself..." className="w-full h-24 rounded-xl border border-border px-4 py-3 resize-none text-sm bg-background text-foreground" maxLength={500} />
+                  <textarea data-testid="input-bio" value={form.bio} onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value }))} placeholder="Tell us about yourself... Share your story, what you're looking for, your values and personality." className="w-full h-32 rounded-xl border border-border px-4 py-3 resize-none text-sm bg-background text-foreground" maxLength={1000} />
+                  <p className="text-xs text-muted-foreground mt-1 text-right">{form.bio.length}/1000</p>
                 </div>
 
                 <div>

@@ -295,6 +295,8 @@ export async function registerRoutes(
       return res.json({
         user: {
           id: user.id,
+          phone: user.phone,
+          email: user.email,
           respectScore: user.respectScore,
           isVerified: user.isVerified,
           dailyLikesLimit: user.dailyLikesLimit,
@@ -306,6 +308,39 @@ export async function registerRoutes(
         },
         profile: profile || null,
       });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/auth/update-contact", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const { phone, email } = req.body;
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      const updates: any = {};
+      if (phone && !user.phone) {
+        const existing = await storage.getUserByPhone(phone);
+        if (existing && existing.id !== userId) {
+          return res.status(400).json({ message: "This phone number is already registered to another account." });
+        }
+        updates.phone = phone;
+      }
+      if (email && !user.email) {
+        const existing = await storage.getUserByEmail(email);
+        if (existing && existing.id !== userId) {
+          return res.status(400).json({ message: "This email is already registered to another account." });
+        }
+        updates.email = email;
+      }
+
+      if (Object.keys(updates).length > 0) {
+        await storage.updateUser(userId, updates);
+      }
+
+      return res.json({ message: "Contact info updated" });
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
     }
