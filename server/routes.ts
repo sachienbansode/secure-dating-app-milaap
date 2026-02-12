@@ -2101,5 +2101,219 @@ ${myProfile.name}'s bio: ${myProfile.bio || "Not set"}`;
     }
   });
 
+  // ==================== CONTACT SHARING IN CHAT ====================
+
+  app.post("/api/contact-share", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const { matchId, sharePhone, shareEmail } = req.body;
+
+      if (!matchId) return res.status(400).json({ message: "matchId is required" });
+      if (!sharePhone && !shareEmail) return res.status(400).json({ message: "Select at least phone or email to share" });
+
+      const match = await storage.getMatchById(matchId);
+      if (!match || !match.isMatched) return res.status(403).json({ message: "Invalid match" });
+
+      const otherUserId = match.userId === userId ? match.targetUserId : match.userId;
+
+      const share = await storage.upsertContactShare({
+        matchId,
+        sharerUserId: userId,
+        targetUserId: otherUserId,
+        sharePhone: !!sharePhone,
+        shareEmail: !!shareEmail,
+      });
+
+      const user = await storage.getUser(userId);
+      const profile = await storage.getProfile(userId);
+      const sharedItems = [];
+      if (sharePhone) sharedItems.push("mobile number");
+      if (shareEmail) sharedItems.push("email");
+
+      await storage.sendMessage({
+        matchId,
+        senderId: userId,
+        content: `📋 ${profile?.name || "User"} shared their ${sharedItems.join(" and ")} with you.`,
+        isSystemMessage: true,
+      });
+
+      await logActivity(userId, "contact_shared", "privacy", { matchId, sharePhone, shareEmail }, req);
+
+      return res.json({ success: true, share });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/contact-share/update", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const { matchId, sharePhone, shareEmail } = req.body;
+
+      if (!matchId) return res.status(400).json({ message: "matchId is required" });
+
+      const match = await storage.getMatchById(matchId);
+      if (!match || !match.isMatched) return res.status(403).json({ message: "Invalid match" });
+
+      const otherUserId = match.userId === userId ? match.targetUserId : match.userId;
+
+      const share = await storage.upsertContactShare({
+        matchId,
+        sharerUserId: userId,
+        targetUserId: otherUserId,
+        sharePhone: !!sharePhone,
+        shareEmail: !!shareEmail,
+      });
+
+      await logActivity(userId, "contact_share_updated", "privacy", { matchId, sharePhone, shareEmail }, req);
+      return res.json({ success: true, share });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/contact-share/:matchId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const matchId = req.params.matchId;
+
+      const match = await storage.getMatchById(matchId);
+      if (!match || !match.isMatched) return res.status(403).json({ message: "Invalid match" });
+
+      const otherUserId = match.userId === userId ? match.targetUserId : match.userId;
+
+      const myShare = await storage.getContactShare(matchId, userId);
+      const theirShare = await storage.getContactShare(matchId, otherUserId);
+
+      let theirSharedData: { phone?: string; email?: string } = {};
+      if (theirShare) {
+        const theirUser = await storage.getUser(otherUserId);
+        if (theirShare.sharePhone && theirUser?.phone) theirSharedData.phone = theirUser.phone;
+        if (theirShare.shareEmail && theirUser?.email) theirSharedData.email = theirUser.email;
+      }
+
+      return res.json({
+        myShare: myShare ? { sharePhone: myShare.sharePhone, shareEmail: myShare.shareEmail } : null,
+        theirShare: theirShare ? { sharePhone: theirShare.sharePhone, shareEmail: theirShare.shareEmail } : null,
+        theirSharedData,
+      });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ==================== LOCATION SHARING IN CHAT ====================
+
+  app.post("/api/location-share", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const { matchId, latitude, longitude, isLive } = req.body;
+
+      if (!matchId || !latitude || !longitude) {
+        return res.status(400).json({ message: "matchId, latitude, and longitude are required" });
+      }
+
+      const match = await storage.getMatchById(matchId);
+      if (!match || !match.isMatched) return res.status(403).json({ message: "Invalid match" });
+
+      const otherUserId = match.userId === userId ? match.targetUserId : match.userId;
+
+      const expiresAt = isLive ? new Date(Date.now() + 60 * 60 * 1000) : null;
+
+      const location = await storage.createLocationShare({
+        matchId,
+        sharerUserId: userId,
+        targetUserId: otherUserId,
+        latitude: String(latitude),
+        longitude: String(longitude),
+        isLive: !!isLive,
+        expiresAt: expiresAt as any,
+        lastUpdatedAt: new Date() as any,
+      });
+
+      const profile = await storage.getProfile(userId);
+      const typeLabel = isLive ? "live location (1 hour)" : "current location";
+      await storage.sendMessage({
+        matchId,
+        senderId: userId,
+        content: `📍 ${profile?.name || "User"} shared their ${typeLabel}.`,
+        isSystemMessage: true,
+      });
+
+      await logActivity(userId, "location_shared", "privacy", { matchId, isLive, latitude, longitude }, req);
+
+      return res.json({ success: true, location });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/location-share/update", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const { locationShareId, latitude, longitude } = req.body;
+
+      if (!locationShareId || !latitude || !longitude) {
+        return res.status(400).json({ message: "locationShareId, latitude, and longitude are required" });
+      }
+
+      const share = await storage.getLocationShare(locationShareId);
+      if (!share || share.sharerUserId !== userId) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      if (!share.isLive) {
+        return res.status(400).json({ message: "Only live locations can be updated" });
+      }
+
+      if (share.expiresAt && new Date(share.expiresAt) < new Date()) {
+        return res.status(400).json({ message: "Live location has expired" });
+      }
+
+      const updated = await storage.updateLocationShare(locationShareId, {
+        latitude: String(latitude),
+        longitude: String(longitude),
+        lastUpdatedAt: new Date(),
+      });
+
+      return res.json({ success: true, location: updated });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/location-share/:matchId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const matchId = req.params.matchId;
+
+      const match = await storage.getMatchById(matchId);
+      if (!match || !match.isMatched) return res.status(403).json({ message: "Invalid match" });
+
+      const locations = await storage.getActiveLocationShares(matchId);
+
+      return res.json({ locations });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/location-share/stop", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const { locationShareId } = req.body;
+
+      const share = await storage.getLocationShare(locationShareId);
+      if (!share || share.sharerUserId !== userId) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      await storage.deleteLocationShare(locationShareId);
+      return res.json({ success: true });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
   return httpServer;
 }
