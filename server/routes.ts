@@ -1348,11 +1348,15 @@ Their interests: ${(otherProfile?.interests || []).join(", ")}`;
   });
 
   async function generateBotProxyReply(proxyUserId: string, matchId: string): Promise<any> {
-    const hasAccess = await checkFeatureAccess(proxyUserId, "ai_proxy_mode");
-    if (!hasAccess) return null;
-
     const myProfile = await storage.getProfile(proxyUserId);
     if (!myProfile || !myProfile.aiProxyEnabled) return null;
+
+    const proxyUser = await storage.getUser(proxyUserId);
+    const isSeedProfile = proxyUser && !proxyUser.email && proxyUser.membershipTier === "basic";
+    if (!isSeedProfile) {
+      const hasAccess = await checkFeatureAccess(proxyUserId, "ai_proxy_mode");
+      if (!hasAccess) return null;
+    }
 
     const match = await storage.getMatchById(matchId);
     if (!match || !match.isMatched) return null;
