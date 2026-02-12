@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
 import { MapPin, Info, Heart, X, Star, SlidersHorizontal, ChevronDown, Shield, Lock, Leaf, PartyPopper, FlagIcon, ShieldCheck, MessageCircle, Mic, Users, Eye, Clock, RefreshCw } from "lucide-react";
+import LocationSearch from "@/components/LocationSearch";
 import { Button } from "@/components/ui/button";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -101,6 +102,13 @@ const CITIES = ["All", "Mumbai", "Pune", "Delhi", "Bangalore", "Hyderabad", "Che
 const INTENT_ICONS: Record<string, string> = { Casual: "☕", Dating: "💕", Serious: "💎", Marriage: "💍" };
 const INTENT_COLORS: Record<string, string> = { Casual: "bg-blue-500/80", Dating: "bg-red-500/80", Serious: "bg-blue-500/80", Marriage: "bg-blue-500/80" };
 
+const triggerHaptic = (style: 'light' | 'medium' | 'heavy' = 'light') => {
+  if ('vibrate' in navigator) {
+    const durations = { light: 10, medium: 25, heavy: 50 };
+    navigator.vibrate(durations[style]);
+  }
+};
+
 export default function Home() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
@@ -159,7 +167,10 @@ export default function Home() {
       return res.json();
     },
     onSuccess: (data) => {
-      if (data.isMutualMatch) setMatchPopup(data.match.targetUserId);
+      if (data.isMutualMatch) {
+        triggerHaptic("heavy");
+        setMatchPopup(data.match.targetUserId);
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/matches"] });
       recordSwipe();
       localStorage.setItem("milaap_last_swipe_time", String(Date.now()));
@@ -178,6 +189,7 @@ export default function Home() {
   const filteredProfiles = profiles.filter((p) => !dismissed.includes(p.userId) && (coupleProfilesEnabled || p.gender !== "Couple"));
 
   const handleSwipe = (userId: string, action: "like" | "pass" | "superlike") => {
+    triggerHaptic(action === "superlike" ? "heavy" : action === "like" ? "medium" : "light");
     setDismissed((prev) => [...prev, userId]);
     setExpandedCard(false);
     swipeMutation.mutate({ targetUserId: userId, action });
@@ -239,9 +251,11 @@ export default function Home() {
               </div>
               <div>
                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 block">City</label>
-                <select value={filters.city} onChange={(e) => setFilters((f) => ({ ...f, city: e.target.value }))} className="w-full h-10 rounded-xl border border-border px-3 bg-card text-foreground text-sm" data-testid="filter-city">
-                  {CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
+                <LocationSearch
+                  value={filters.city === "All" ? "" : filters.city}
+                  onChange={(city) => setFilters((f) => ({ ...f, city: city || "All" }))}
+                  placeholder="Search city or use GPS..."
+                />
               </div>
               {activeFilterCount > 0 && (
                 <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => setFilters({ gender: "All", ageMin: 18, ageMax: 45, city: "All" })} data-testid="button-clear-filters">

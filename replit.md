@@ -4,6 +4,14 @@
 Milaap is a mobile-first dating application designed for the Indian market featuring OTP-based authentication, AES-256-GCM data encryption at rest, AI-assisted messaging via OpenAI, photo uploads, respect-based matchmaking, and 12 advanced cultural features.
 
 ## Recent Changes
+- 2026-02-12: Fixed AI proxy auto-reply - bot profiles (no email) now correctly trigger proxy regardless of online status, added debug logging throughout proxy pipeline
+- 2026-02-12: Fixed Privacy & Safety section in Profile - added onClick handler with editing panel (visibility toggle, no-screenshot mode, blocked users)
+- 2026-02-12: Added membership comparison table - expandable table showing all 4 tiers with features, prices, limits, checkmarks
+- 2026-02-12: Enhanced membership expiry display - days remaining with color coding (green >14d, yellow 7-14d, red <7d), renewal reminder
+- 2026-02-12: Added haptic feedback (navigator.vibrate) on swipes, likes, superlikes, matches, sends, button taps across Home/Chat/Profile
+- 2026-02-12: Replaced static CITIES dropdowns with LocationSearch (OpenStreetMap/Nominatim API + GPS) in discover filters and hometown selection
+- 2026-02-12: Updated LocationSearch component styling for dark theme compatibility (bg-card, border-border, text-foreground)
+- 2026-02-12: Seed script assigns Gold membership to AI proxy-enabled bot profiles
 - 2026-02-12: Added Interactive Dating Quiz - 15 engaging questions covering personality, communication, values, lifestyle with Indian cultural context (Bollywood couples, monsoon evenings, festivals), 6 dating styles (Romantic, Adventurer, Intellectual, Family-First, Free Spirit, Ambitious Go-Getter), trait-based scoring with cosine similarity compatibility, quiz results page with animations, retake option, dating style badges on discover cards and profiles, quiz link in bottom nav and profile page
 - 2026-02-12: Enhanced AI bot proxy with 5 conversation stages (opening→getting_to_know→building_connection→deepening_bond→ready_for_next_step), auto-replies when recipient is offline with 3-8s delay, phone unlock awareness, date planning guidance, Indian cultural conversation techniques
 - 2026-02-12: Added 4-tier membership system (Basic/Silver/Gold/Platinum) with pricing, expiry, feature gating, and revenue tracking

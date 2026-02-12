@@ -9,6 +9,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { getMe } from "@/lib/auth";
 
+const triggerHaptic = (style: 'light' | 'medium' | 'heavy' = 'light') => {
+  if ('vibrate' in navigator) {
+    const durations = { light: 10, medium: 25, heavy: 50 };
+    navigator.vibrate(durations[style]);
+  }
+};
+
 interface ChatMessage {
   id: string;
   matchId: string;
@@ -436,6 +443,7 @@ export default function Chat() {
 
   const handleSend = () => {
     if (!input.trim() || !matchId || isChatCooledDown) return;
+    triggerHaptic("light");
     sendMutation.mutate({ matchId, content: input, isAiGenerated: false });
     setInput("");
   };

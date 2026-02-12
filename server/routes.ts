@@ -1024,13 +1024,19 @@ export async function registerRoutes(
         const recipientUserId = match.userId === userId ? match.targetUserId : match.userId;
         const recipientProfile = await storage.getProfile(recipientUserId);
         const recipientUser = await storage.getUser(recipientUserId);
-        if (recipientProfile?.aiProxyEnabled && !recipientUser?.isOnline) {
-          const delay = Math.floor(Math.random() * 8000) + 3000;
+        const hasNoActiveSession = !recipientUser?.isOnline;
+        const isBotProfile = recipientUser && !recipientUser.email;
+        const shouldProxy = recipientProfile?.aiProxyEnabled && (hasNoActiveSession || isBotProfile);
+        console.log(`[AI Proxy Check] recipient=${recipientUserId}, aiProxyEnabled=${recipientProfile?.aiProxyEnabled}, isOnline=${recipientUser?.isOnline}, isBot=${isBotProfile}, shouldProxy=${shouldProxy}`);
+        if (shouldProxy) {
+          const delay = Math.floor(Math.random() * 5000) + 2000;
           setTimeout(async () => {
             try {
-              await generateBotProxyReply(recipientUserId, parsed.data.matchId);
+              console.log(`[AI Proxy] Generating reply for ${recipientProfile?.name} in match ${parsed.data.matchId}`);
+              const proxyMsg = await generateBotProxyReply(recipientUserId, parsed.data.matchId);
+              console.log(`[AI Proxy] Reply generated: ${proxyMsg ? 'success' : 'null'}`);
             } catch (err) {
-              console.error("Auto bot-reply error:", err);
+              console.error("[AI Proxy] Auto bot-reply error:", err);
             }
           }, delay);
         }
@@ -1349,13 +1355,22 @@ Their interests: ${(otherProfile?.interests || []).join(", ")}`;
 
   async function generateBotProxyReply(proxyUserId: string, matchId: string): Promise<any> {
     const hasAccess = await checkFeatureAccess(proxyUserId, "ai_proxy_mode");
-    if (!hasAccess) return null;
+    if (!hasAccess) {
+      console.log(`[AI Proxy] Feature access denied for user ${proxyUserId}`);
+      return null;
+    }
 
     const myProfile = await storage.getProfile(proxyUserId);
-    if (!myProfile || !myProfile.aiProxyEnabled) return null;
+    if (!myProfile || !myProfile.aiProxyEnabled) {
+      console.log(`[AI Proxy] Profile not found or proxy not enabled for ${proxyUserId}`);
+      return null;
+    }
 
     const match = await storage.getMatchById(matchId);
-    if (!match || !match.isMatched) return null;
+    if (!match || !match.isMatched) {
+      console.log(`[AI Proxy] Match ${matchId} not found or not mutual`);
+      return null;
+    }
 
     const otherUserId = match.userId === proxyUserId ? match.targetUserId : match.userId;
     const otherProfile = await storage.getProfile(otherUserId);

@@ -145,14 +145,14 @@ export default function LocationSearch({ value, onChange, placeholder = "Search 
           onChange={(e) => handleInputChange(e.target.value)}
           onFocus={() => { if (results.length > 0) setShowDropdown(true); }}
           placeholder={placeholder}
-          className="w-full h-12 rounded-xl border border-gray-200 pl-10 pr-20 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+          className="w-full h-12 rounded-xl border border-border pl-10 pr-20 bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
         />
         <div className="absolute right-2 flex items-center gap-1">
           {query && (
             <button
               type="button"
               onClick={handleClear}
-              className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition-colors"
+              className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground transition-colors"
               data-testid="button-clear-city"
             >
               <X size={14} />
@@ -176,8 +176,8 @@ export default function LocationSearch({ value, onChange, placeholder = "Search 
       )}
 
       {loading && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl border border-gray-200 shadow-lg p-3 z-50">
-          <div className="flex items-center gap-2 text-sm text-gray-400">
+        <div className="absolute top-full left-0 right-0 mt-1 bg-card rounded-xl border border-border shadow-lg p-3 z-50">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 size={14} className="animate-spin" />
             Searching...
           </div>
@@ -185,7 +185,7 @@ export default function LocationSearch({ value, onChange, placeholder = "Search 
       )}
 
       {showDropdown && results.length > 0 && !loading && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl border border-gray-200 shadow-lg z-50 max-h-60 overflow-y-auto" data-testid="dropdown-city-results">
+        <div className="absolute top-full left-0 right-0 mt-1 bg-card rounded-xl border border-border shadow-lg z-50 max-h-60 overflow-y-auto" data-testid="dropdown-city-results">
           {results.map((result, i) => {
             const cityName = extractCityName(result);
             const parts = result.display_name.split(",").map(s => s.trim());
@@ -195,13 +195,13 @@ export default function LocationSearch({ value, onChange, placeholder = "Search 
                 key={`${result.lat}-${result.lon}-${i}`}
                 type="button"
                 onClick={() => handleSelect(result)}
-                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left border-b border-gray-50 last:border-0"
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted transition-colors text-left border-b border-border/50 last:border-0"
                 data-testid={`option-city-${i}`}
               >
                 <MapPin size={14} className="text-primary shrink-0" />
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-gray-800 truncate">{cityName}</p>
-                  {subtitle && <p className="text-xs text-gray-400 truncate">{subtitle}</p>}
+                  <p className="text-sm font-medium text-foreground truncate">{cityName}</p>
+                  {subtitle && <p className="text-xs text-muted-foreground truncate">{subtitle}</p>}
                 </div>
               </button>
             );
@@ -210,8 +210,8 @@ export default function LocationSearch({ value, onChange, placeholder = "Search 
       )}
 
       {showDropdown && results.length === 0 && !loading && query.length >= 2 && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl border border-gray-200 shadow-lg p-3 z-50">
-          <p className="text-sm text-gray-400 text-center">No cities found</p>
+        <div className="absolute top-full left-0 right-0 mt-1 bg-card rounded-xl border border-border shadow-lg p-3 z-50">
+          <p className="text-sm text-muted-foreground text-center">No cities found</p>
         </div>
       )}
     </div>

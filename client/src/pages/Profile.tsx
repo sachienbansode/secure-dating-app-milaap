@@ -30,6 +30,32 @@ const DATE_READINESS_COLORS: Record<string, string> = { "Chat-only": "bg-blue-90
 const INTENT_ICONS: Record<string, string> = { Casual: "☕", Dating: "💕", Serious: "💎", Marriage: "💍" };
 const INTENT_COLORS: Record<string, string> = { Casual: "bg-blue-900/20 border-blue-800 text-blue-400", Dating: "bg-red-900/20 border-red-800 text-red-400", Serious: "bg-blue-900/20 border-blue-800 text-blue-400", Marriage: "bg-blue-900/20 border-blue-800 text-blue-400" };
 
+const FEATURE_NAME_MAP: Record<string, string> = {
+  chat_attachments: "Chat Attachments",
+  contact_sharing: "Contact Sharing",
+  location_sharing: "Location Sharing",
+  read_receipts: "Read Receipts",
+  date_readiness: "Date Readiness",
+  green_flag_stories: "Green Flag Stories",
+  ai_proxy_mode: "AI Proxy Mode",
+  no_screenshot_mode: "No Screenshot Mode",
+  photo_authenticity: "Photo Authenticity",
+  festival_boosts: "Festival Boosts",
+  super_likes: "Super Likes",
+  unlimited_likes: "Unlimited Likes",
+  advanced_filters: "Advanced Filters",
+  see_who_liked: "See Who Liked",
+  profile_boost: "Profile Boost",
+  family_mode: "Family Mode",
+};
+
+const triggerHaptic = (style: 'light' | 'medium' | 'heavy' = 'light') => {
+  if ('vibrate' in navigator) {
+    const durations = { light: 10, medium: 25, heavy: 50 };
+    navigator.vibrate(durations[style]);
+  }
+};
+
 export default function Profile() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
@@ -38,6 +64,7 @@ export default function Profile() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [intentWarning, setIntentWarning] = useState<string | null>(null);
+  const [showComparePlans, setShowComparePlans] = useState(false);
 
   const { data: session, isLoading: loadingSession } = useQuery({
     queryKey: ["/api/auth/me"],
@@ -602,6 +629,45 @@ export default function Profile() {
             </>
           )}
 
+          {(!activeSection || activeSection === "Privacy & Safety") && (
+            <>
+              <div className="bg-orange-900/20 rounded-2xl p-4 space-y-4 border border-orange-800">
+                <div className="flex items-center gap-2">
+                  <Shield size={16} className="text-orange-400" />
+                  <h4 className="font-bold text-sm text-orange-300">Privacy & Safety</h4>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h5 className="font-semibold text-sm">Profile Visibility</h5>
+                    <p className="text-xs text-muted-foreground">Others can discover and view your profile</p>
+                  </div>
+                  <Switch data-testid="switch-privacy-visibility" checked={form.isVisible} onCheckedChange={(checked) => setForm((f) => ({ ...f, isVisible: checked }))} />
+                </div>
+                <div className={`flex items-center justify-between pt-2 border-t border-orange-800 ${!hasFeature("no_screenshot_mode") ? "opacity-50" : ""}`}>
+                  <div>
+                    <h5 className="font-semibold text-sm flex items-center gap-1">
+                      <ShieldAlert size={14} className="text-orange-400" /> No Screenshot Mode
+                      {!hasFeature("no_screenshot_mode") && <Lock size={12} className="text-amber-400 ml-1" />}
+                    </h5>
+                    <p className="text-xs text-muted-foreground">{!hasFeature("no_screenshot_mode") ? "Upgrade to Gold or higher to unlock" : "Protect your chats from screenshots"}</p>
+                  </div>
+                  <Switch data-testid="switch-privacy-no-screenshot" checked={form.noScreenshotMode} onCheckedChange={(checked) => { if (hasFeature("no_screenshot_mode")) setForm((f) => ({ ...f, noScreenshotMode: checked })); }} disabled={!hasFeature("no_screenshot_mode")} />
+                </div>
+                <div className="pt-2 border-t border-orange-800">
+                  <div className="flex items-center justify-between cursor-pointer hover:bg-orange-900/10 rounded-lg p-2 -mx-2">
+                    <div>
+                      <h5 className="font-semibold text-sm flex items-center gap-1">
+                        <Ban size={14} className="text-orange-400" /> Blocked Users
+                      </h5>
+                      <p className="text-xs text-muted-foreground">Manage your blocked users list</p>
+                    </div>
+                    <ChevronRight size={18} className="text-muted-foreground" />
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
           {(!activeSection || activeSection === "AI & Settings") && (
             <>
               <div className="bg-blue-900/20 rounded-2xl p-4 space-y-4 border border-blue-800">
@@ -696,10 +762,11 @@ export default function Profile() {
                 </div>
                 <div>
                   <label className="text-xs font-medium text-orange-700 mb-1 block">Hometown (for festival proximity matching)</label>
-                  <select value={form.hometownForFestivals} onChange={(e) => setForm((f) => ({ ...f, hometownForFestivals: e.target.value }))} className="w-full h-10 rounded-lg border border-orange-200 px-3 bg-card text-foreground text-sm" data-testid="select-hometown">
-                    <option value="">Select hometown</option>
-                    {CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                  </select>
+                  <LocationSearch
+                    value={form.hometownForFestivals}
+                    onChange={(city) => setForm((f) => ({ ...f, hometownForFestivals: city }))}
+                    placeholder="Search hometown or use GPS..."
+                  />
                 </div>
               </div>
 
@@ -954,6 +1021,7 @@ export default function Profile() {
                     disabled={savingInterest}
                     data-testid={`button-settings-interested-${option}`}
                     onClick={async () => {
+                      triggerHaptic();
                       const updated = localInterestedIn.includes(option)
                         ? localInterestedIn.filter((g) => g !== option)
                         : [...localInterestedIn, option];
@@ -996,7 +1064,7 @@ export default function Profile() {
           <section>
             <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3 px-1">Settings</h3>
             <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
-              <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-muted border-b border-border" onClick={() => { setIsEditing(true); setActiveSection("Edit Profile"); }}>
+              <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-muted border-b border-border" onClick={() => { triggerHaptic(); setIsEditing(true); setActiveSection("Edit Profile"); }}>
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600"><Edit size={16} /></div>
                   <div>
@@ -1037,11 +1105,21 @@ export default function Profile() {
                     </div>
                     <div>
                       <h4 className="font-bold text-sm" data-testid="text-membership-tier">{myMembership.tier?.charAt(0).toUpperCase() + myMembership.tier?.slice(1)} Plan</h4>
-                      {myMembership.expiresAt && (
-                        <p className="text-xs text-muted-foreground" data-testid="text-membership-expiry">
-                          Expires: {new Date(myMembership.expiresAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                        </p>
-                      )}
+                      {myMembership.expiresAt && (() => {
+                        const daysRemaining = Math.ceil((new Date(myMembership.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                        const expiryColor = daysRemaining > 14 ? "text-green-400" : daysRemaining >= 7 ? "text-yellow-400" : "text-red-400";
+                        return (
+                          <div>
+                            <p className="text-xs text-muted-foreground" data-testid="text-membership-expiry">
+                              Expires: {new Date(myMembership.expiresAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                              <span className={`ml-1 font-semibold ${expiryColor}`}>({daysRemaining} days left)</span>
+                            </p>
+                            {daysRemaining < 7 && (
+                              <p className="text-xs text-red-400 font-medium mt-0.5" data-testid="text-renewal-reminder">⚠️ Renew soon to keep your premium features!</p>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -1054,6 +1132,85 @@ export default function Profile() {
                     <h4 className="font-bold text-sm">Free Plan</h4>
                     <p className="text-xs text-muted-foreground">Upgrade to unlock premium features</p>
                   </div>
+                </div>
+              )}
+
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full rounded-xl border-border text-foreground hover:bg-muted"
+                onClick={() => setShowComparePlans(!showComparePlans)}
+                data-testid="button-compare-plans"
+              >
+                {showComparePlans ? "Hide Comparison" : "Compare Plans"}
+              </Button>
+
+              {showComparePlans && membershipPlans.length > 0 && (
+                <div className="overflow-x-auto -mx-1 rounded-xl border border-border" data-testid="table-compare-plans">
+                  <table className="w-full text-xs min-w-[500px]">
+                    <thead>
+                      <tr className="border-b border-border bg-muted/50">
+                        <th className="text-left p-2 font-semibold text-muted-foreground sticky left-0 bg-muted/50">Feature</th>
+                        {membershipPlans.map((plan: any) => {
+                          const planColor = plan.color || (plan.tier === "platinum" ? "#8B5CF6" : plan.tier === "gold" ? "#F59E0B" : plan.tier === "silver" ? "#6B7280" : "#3B82F6");
+                          return (
+                            <th key={plan.tier} className="p-2 text-center font-bold" style={{ color: planColor }}>
+                              {plan.tier?.charAt(0).toUpperCase() + plan.tier?.slice(1)}
+                            </th>
+                          );
+                        })}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-b border-border">
+                        <td className="p-2 font-medium text-muted-foreground sticky left-0 bg-card">Price (Monthly)</td>
+                        {membershipPlans.map((plan: any) => (
+                          <td key={plan.tier} className="p-2 text-center text-foreground font-semibold">
+                            {parseFloat(plan.priceMonthly || "0") === 0 ? "Free" : `₹${plan.priceMonthly}`}
+                          </td>
+                        ))}
+                      </tr>
+                      <tr className="border-b border-border">
+                        <td className="p-2 font-medium text-muted-foreground sticky left-0 bg-card">Price (Yearly)</td>
+                        {membershipPlans.map((plan: any) => (
+                          <td key={plan.tier} className="p-2 text-center text-foreground font-semibold">
+                            {parseFloat(plan.priceYearly || "0") === 0 ? "Free" : `₹${plan.priceYearly}`}
+                          </td>
+                        ))}
+                      </tr>
+                      <tr className="border-b border-border">
+                        <td className="p-2 font-medium text-muted-foreground sticky left-0 bg-card">Daily Likes Limit</td>
+                        {membershipPlans.map((plan: any) => (
+                          <td key={plan.tier} className="p-2 text-center text-foreground">{plan.dailyLikesLimit ?? "—"}</td>
+                        ))}
+                      </tr>
+                      <tr className="border-b border-border">
+                        <td className="p-2 font-medium text-muted-foreground sticky left-0 bg-card">Super Likes/Day</td>
+                        {membershipPlans.map((plan: any) => (
+                          <td key={plan.tier} className="p-2 text-center text-foreground">{plan.superLikesPerDay ?? "—"}</td>
+                        ))}
+                      </tr>
+                      <tr className="border-b border-border">
+                        <td className="p-2 font-medium text-muted-foreground sticky left-0 bg-card">Ads</td>
+                        {membershipPlans.map((plan: any) => (
+                          <td key={plan.tier} className="p-2 text-center">{plan.adsEnabled ? <span className="text-red-400">Yes</span> : <span className="text-green-400">No</span>}</td>
+                        ))}
+                      </tr>
+                      {Object.keys(FEATURE_NAME_MAP).map((featureKey) => (
+                        <tr key={featureKey} className="border-b border-border last:border-b-0">
+                          <td className="p-2 font-medium text-muted-foreground sticky left-0 bg-card">{FEATURE_NAME_MAP[featureKey]}</td>
+                          {membershipPlans.map((plan: any) => {
+                            const hasIt = Array.isArray(plan.features) && plan.features.includes(featureKey);
+                            return (
+                              <td key={plan.tier} className="p-2 text-center">
+                                {hasIt ? <span className="text-green-400">✓</span> : <span className="text-red-400/50">✗</span>}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
 
@@ -1085,7 +1242,7 @@ export default function Profile() {
                       <button
                         data-testid={`button-subscribe-${plan.tier}`}
                         disabled={isCurrent || subscribeMutation.isPending}
-                        onClick={() => subscribeMutation.mutate({ tier: plan.tier })}
+                        onClick={() => { triggerHaptic('medium'); subscribeMutation.mutate({ tier: plan.tier }); }}
                         className={`w-full mt-2 py-1.5 rounded-lg text-xs font-bold transition-all ${isCurrent ? "bg-muted text-muted-foreground cursor-default" : "text-white hover:opacity-90"}`}
                         style={{ backgroundColor: isCurrent ? undefined : planColor }}
                       >
@@ -1103,7 +1260,7 @@ export default function Profile() {
           <section>
             <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3 px-1">Account</h3>
             <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
-              <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-muted border-b border-border">
+              <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-muted border-b border-border" onClick={() => { triggerHaptic(); setIsEditing(true); setActiveSection("Privacy & Safety"); }} data-testid="button-privacy-safety">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600"><Shield size={16} /></div>
                   <div>
@@ -1113,7 +1270,7 @@ export default function Profile() {
                 </div>
                 <ChevronRight size={18} className="text-muted-foreground" />
               </div>
-              <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-muted" onClick={handleLogout} data-testid="button-logout">
+              <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-muted" onClick={() => { triggerHaptic('heavy'); handleLogout(); }} data-testid="button-logout">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-600"><LogOut size={16} /></div>
                   <div className="text-red-600 font-medium text-sm">Log Out</div>
