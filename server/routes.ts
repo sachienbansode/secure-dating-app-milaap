@@ -44,7 +44,17 @@ function formatValidationError(error: ZodError): string {
 
   const messages = issues.map((issue) => {
     const field = issue.path[0]?.toString() || "";
-    return fieldMessages[field] || issue.message.replace(/^String/, "This field");
+    if (fieldMessages[field]) return fieldMessages[field];
+    if (issue.code === "invalid_enum_value") {
+      return fieldMessages[field] || `Please select a valid option for ${field || "this field"}`;
+    }
+    if (issue.code === "too_small") {
+      return `Please fill in ${field || "this field"}`;
+    }
+    if (issue.code === "too_big") {
+      return `${field || "This field"} is too long`;
+    }
+    return "Please check your input and try again";
   });
 
   const unique = [...new Set(messages)];
@@ -892,20 +902,29 @@ export async function registerRoutes(
       const mutualMatches = await storage.getMutualMatches(userId);
       const targetIds = mutualMatches.map(m => m.targetUserId);
       const matchIds = mutualMatches.map(m => m.id);
+
+      const companionMap = await storage.getCompanionMatchIds(matchIds);
+      const allMsgMatchIds = [...matchIds, ...Array.from(companionMap.values())];
+
       const [profilesMap, usersMap, lastMsgsMap] = await Promise.all([
         storage.getProfilesByUserIds(targetIds),
         storage.getUsersByIds(targetIds),
-        storage.getLastMessagesForMatches(matchIds),
+        storage.getLastMessagesForMatches(allMsgMatchIds),
       ]);
 
       const enriched = mutualMatches.map((match) => {
         const profile = profilesMap.get(match.targetUserId);
         const user = usersMap.get(match.targetUserId);
         const lastMsg = lastMsgsMap.get(match.id);
+        const companionId = companionMap.get(match.id);
+        const companionLastMsg = companionId ? lastMsgsMap.get(companionId) : null;
+        const bestLastMsg = lastMsg && companionLastMsg
+          ? (new Date(lastMsg.createdAt) > new Date(companionLastMsg.createdAt) ? lastMsg : companionLastMsg)
+          : lastMsg || companionLastMsg;
         return {
           ...match,
           profile: profile ? { ...profile, respectScore: user?.respectScore, isOnline: user?.isOnline || profile.aiProxyEnabled, lastSeenAt: user?.lastSeenAt } : null,
-          lastMessage: lastMsg ? { content: lastMsg.content, createdAt: lastMsg.createdAt, senderId: lastMsg.senderId } : null,
+          lastMessage: bestLastMsg ? { content: bestLastMsg.content, createdAt: bestLastMsg.createdAt, senderId: bestLastMsg.senderId } : null,
         };
       });
 

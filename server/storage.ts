@@ -47,6 +47,9 @@ export interface IStorage {
   createMatch(match: InsertMatch): Promise<Match>;
   getMatch(userId: string, targetUserId: string): Promise<Match | undefined>;
   getMatchById(id: string): Promise<Match | undefined>;
+  getCompanionMatchId(matchId: string): Promise<string | null>;
+  getBothMatchIds(matchId: string): Promise<string[]>;
+  getCompanionMatchIds(matchIds: string[]): Promise<Map<string, string>>;
   getMutualMatches(userId: string): Promise<Match[]>;
   checkMutualMatch(userId: string, targetUserId: string): Promise<boolean>;
 
@@ -304,6 +307,34 @@ export class DatabaseStorage implements IStorage {
     return match;
   }
 
+  async getCompanionMatchId(matchId: string): Promise<string | null> {
+    const match = await this.getMatchById(matchId);
+    if (!match) return null;
+    const companion = await this.getMatch(match.targetUserId, match.userId);
+    return companion?.id ?? null;
+  }
+
+  async getBothMatchIds(matchId: string): Promise<string[]> {
+    const companionId = await this.getCompanionMatchId(matchId);
+    return companionId ? [matchId, companionId] : [matchId];
+  }
+
+  async getCompanionMatchIds(matchIds: string[]): Promise<Map<string, string>> {
+    if (matchIds.length === 0) return new Map();
+    const matchList = await db.select().from(matches).where(inArray(matches.id, matchIds));
+    if (matchList.length === 0) return new Map();
+    const reverseConditions = matchList.map(m =>
+      and(eq(matches.userId, m.targetUserId), eq(matches.targetUserId, m.userId))
+    );
+    const companions = await db.select().from(matches).where(or(...reverseConditions));
+    const result = new Map<string, string>();
+    for (const m of matchList) {
+      const comp = companions.find(c => c.userId === m.targetUserId && c.targetUserId === m.userId);
+      if (comp) result.set(m.id, comp.id);
+    }
+    return result;
+  }
+
   async getMutualMatches(userId: string, includeArchived = false): Promise<Match[]> {
     const conditions = [eq(matches.userId, userId), eq(matches.isMatched, true), eq(matches.isDeleted, false)];
     if (!includeArchived) {
@@ -357,8 +388,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getMessages(matchId: string, limit = 50): Promise<Message[]> {
+    const allMatchIds = await this.getBothMatchIds(matchId);
     const result = await db.select().from(messages)
-      .where(eq(messages.matchId, matchId))
+      .where(inArray(messages.matchId, allMatchIds))
       .orderBy(desc(messages.createdAt))
       .limit(limit);
     
@@ -378,11 +410,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async markMessagesRead(matchId: string, userId: string): Promise<void> {
+    const allMatchIds = await this.getBothMatchIds(matchId);
     await db.update(messages)
       .set({ isRead: true })
       .where(
         and(
-          eq(messages.matchId, matchId),
+          inArray(messages.matchId, allMatchIds),
           ne(messages.senderId, userId),
           eq(messages.isRead, false)
         )
