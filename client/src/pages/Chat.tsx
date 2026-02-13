@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRoute, Link, useLocation } from "wouter";
-import { ArrowLeft, Send, Sparkles, MoreVertical, ShieldCheck, Phone, Video, Paperclip, CheckCheck, Flag, Loader2, Bot, ShieldAlert, Camera, Ban, Unlock, Clock, MessageCircle, Mic, Users, Archive, Trash2, Image, X, Eye, EyeOff, Play, Mail, MapPin, Navigation, Share2 } from "lucide-react";
+import { ArrowLeft, Send, Sparkles, MoreVertical, ShieldCheck, Phone, Paperclip, CheckCheck, Flag, Loader2, Bot, ShieldAlert, Camera, Ban, Unlock, Clock, MessageCircle, Mic, Users, Archive, Trash2, Image, X, Eye, EyeOff, Play, Mail, MapPin, Navigation, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -546,81 +546,84 @@ export default function Chat() {
 
   return (
     <div className={`h-full flex flex-col bg-background ${noScreenshotActive ? "select-none" : ""}`}>
-      <header className="bg-card px-4 py-3 flex items-center justify-between border-b border-border shadow-sm z-10">
-        <div className="flex items-center gap-3">
-          <Link href="/matches">
-            <Button variant="ghost" size="icon" className="rounded-full w-8 h-8 -ml-2" data-testid="button-back"><ArrowLeft size={20} /></Button>
-          </Link>
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <Avatar className="w-10 h-10 border border-border">
-                <AvatarImage src={profile?.photos?.[0] || "/profiles/generic_indian_1.jpg"} />
-                <AvatarFallback>{profile?.name?.[0] || "?"}</AvatarFallback>
-              </Avatar>
-              <div className={`absolute bottom-0 right-0 w-3 h-3 ${otherIsOnline ? "bg-green-500 animate-pulse" : "bg-muted-foreground"} border-2 border-card rounded-full`}></div>
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <h3 className="font-heading font-bold text-sm" data-testid="text-chat-name">{profile?.name || "Match"}</h3>
-                {profile?.photoVerifiedAt && (
-                  <ShieldCheck size={12} className="text-blue-500" />
-                )}
-                <div className={`w-2 h-2 rounded-full ${getRespectColor(otherRespectScore)}`} title={`Respect: ${otherRespectScore}`} />
-              </div>
-              <div className="flex items-center gap-1.5">
-                <p className={`text-xs font-medium ${otherIsOnline ? "text-green-600" : "text-muted-foreground"}`}>
-                  {otherIsOnline ? "Online now" : "Offline"}
-                </p>
-                {profile?.intent && (
-                  <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded-full text-muted-foreground font-medium">{profile.intent}</span>
-                )}
-                {appSettings?.feature_date_readiness && (
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium flex items-center gap-0.5 ${readinessConfig.color}`} data-testid="badge-date-readiness">
-                    <ReadinessIcon size={10} /> {readinessConfig.label}
-                  </span>
-                )}
-              </div>
-            </div>
+      <header className="bg-card px-3 py-2.5 flex items-center gap-2 border-b border-border shadow-sm z-10">
+        <Link href="/matches">
+          <Button variant="ghost" size="icon" className="rounded-full w-8 h-8 shrink-0" data-testid="button-back"><ArrowLeft size={18} /></Button>
+        </Link>
+        <Link href={otherUserId ? `/view-profile/${otherUserId}` : "#"} className="flex items-center gap-2.5 flex-1 min-w-0">
+          <div className="relative shrink-0">
+            <Avatar className="w-9 h-9 border border-border">
+              <AvatarImage src={profile?.photos?.[0] || "/profiles/generic_indian_1.jpg"} />
+              <AvatarFallback>{profile?.name?.[0] || "?"}</AvatarFallback>
+            </Avatar>
+            <div className={`absolute bottom-0 right-0 w-2.5 h-2.5 ${otherIsOnline ? "bg-green-500 animate-pulse" : "bg-muted-foreground"} border-2 border-card rounded-full`}></div>
           </div>
-        </div>
-        <div className="flex items-center gap-1 relative">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1">
+              <h3 className="font-heading font-bold text-sm truncate" data-testid="text-chat-name">{profile?.name || "Match"}</h3>
+              {profile?.photoVerifiedAt && <ShieldCheck size={11} className="text-blue-500 shrink-0" />}
+              <div className={`w-2 h-2 rounded-full shrink-0 ${getRespectColor(otherRespectScore)}`} title={`Respect: ${otherRespectScore}`} />
+            </div>
+            <p className={`text-[11px] font-medium ${otherIsOnline ? "text-green-500" : "text-muted-foreground"}`}>
+              {otherIsOnline ? "Online" : "Offline"}
+              {profile?.intent && <span className="text-muted-foreground"> · {profile.intent}</span>}
+            </p>
+          </div>
+        </Link>
+        <div className="flex items-center gap-0.5 shrink-0">
           {noScreenshotActive && (
-            <div className="bg-red-900/30 px-2 py-1 rounded-full flex items-center gap-1" title="Screenshot protection active">
+            <div className="bg-red-900/30 p-1.5 rounded-full" title="Screenshot protection active">
               <ShieldAlert size={12} className="text-red-500" />
             </div>
           )}
-          <Button variant="ghost" size="icon" className="text-muted-foreground rounded-full w-9 h-9"><Phone size={18} /></Button>
-          <Button variant="ghost" size="icon" className="text-muted-foreground rounded-full w-9 h-9"><Video size={18} /></Button>
-          <Button variant="ghost" size="icon" className="text-muted-foreground rounded-full w-9 h-9" onClick={() => setShowMenu(!showMenu)} data-testid="button-menu">
-            <MoreVertical size={18} />
-          </Button>
-          {showMenu && (
-            <div className="absolute top-full right-0 mt-1 bg-card border border-border rounded-xl shadow-lg overflow-hidden z-30 w-52">
-              <button className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-red-900/20 flex items-center gap-2" onClick={() => { setShowReport(true); setShowMenu(false); }} data-testid="button-report-user">
-                <Flag size={14} /> Report User
-              </button>
-              <button className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-red-900/20 flex items-center gap-2 border-t border-border" onClick={() => { if (otherUserId) blockMutation.mutate(otherUserId); }} data-testid="button-block-user">
-                <Ban size={14} /> Block User
-              </button>
-              {appSettings?.feature_no_phone_number && !phoneUnlockStatus?.unlocked && (
-                <button className="w-full text-left px-4 py-3 text-sm text-blue-400 hover:bg-blue-900/20 flex items-center gap-2 border-t border-border" onClick={() => { setShowPhoneUnlock(true); setShowMenu(false); }} data-testid="button-phone-unlock">
-                  <Unlock size={14} /> Request Contact Sharing
-                </button>
-              )}
-              <button className="w-full text-left px-4 py-3 text-sm text-blue-400 hover:bg-blue-900/20 flex items-center gap-2 border-t border-border" onClick={() => { setShowContactShare(true); setShowMenu(false); }} data-testid="button-contact-share">
-                <Share2 size={14} /> Share Contact Info
-              </button>
-              <button className="w-full text-left px-4 py-3 text-sm text-green-400 hover:bg-green-900/20 flex items-center gap-2 border-t border-border" onClick={() => { setShowLocationShare(true); setShowMenu(false); }} data-testid="button-location-share">
-                <MapPin size={14} /> Share Location
-              </button>
-              <button className="w-full text-left px-4 py-3 text-sm text-blue-400 hover:bg-blue-900/20 flex items-center gap-2 border-t border-border" onClick={() => { archiveMutation.mutate(); setShowMenu(false); }} data-testid="button-archive-chat">
-                <Archive size={14} /> Archive Chat
-              </button>
-              <button className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-red-900/20 flex items-center gap-2 border-t border-border" onClick={() => { deleteChatMutation.mutate(); setShowMenu(false); }} data-testid="button-delete-chat">
-                <Trash2 size={14} /> Delete Chat
-              </button>
+          {appSettings?.feature_date_readiness && (
+            <div className={`px-2 py-1 rounded-full text-[10px] font-medium flex items-center gap-0.5 ${readinessConfig.color}`} data-testid="badge-date-readiness">
+              <ReadinessIcon size={10} /> {readinessConfig.label}
             </div>
           )}
+          <div className="relative">
+            <Button variant="ghost" size="icon" className="text-muted-foreground rounded-full w-8 h-8" onClick={() => setShowMenu(!showMenu)} data-testid="button-menu">
+              <MoreVertical size={18} />
+            </Button>
+            {showMenu && (
+              <>
+                <div className="fixed inset-0 z-20" onClick={() => setShowMenu(false)} />
+                <div className="absolute top-full right-0 mt-1 bg-card border border-border rounded-xl shadow-xl overflow-hidden z-30 w-56">
+                  <Link href={otherUserId ? `/view-profile/${otherUserId}` : "#"} onClick={() => setShowMenu(false)}>
+                    <button className="w-full text-left px-4 py-3 text-sm text-foreground hover:bg-muted flex items-center gap-2.5" data-testid="button-view-profile">
+                      <Eye size={15} className="text-blue-400" /> View Profile
+                    </button>
+                  </Link>
+                  <div className="h-px bg-border mx-3" />
+                  <button className="w-full text-left px-4 py-3 text-sm text-foreground hover:bg-muted flex items-center gap-2.5" onClick={() => { setShowContactShare(true); setShowMenu(false); }} data-testid="button-contact-share">
+                    <Share2 size={15} className="text-blue-400" /> Share Contact Info
+                  </button>
+                  <button className="w-full text-left px-4 py-3 text-sm text-foreground hover:bg-muted flex items-center gap-2.5" onClick={() => { setShowLocationShare(true); setShowMenu(false); }} data-testid="button-location-share">
+                    <MapPin size={15} className="text-green-400" /> Share Location
+                  </button>
+                  {appSettings?.feature_no_phone_number && !phoneUnlockStatus?.unlocked && (
+                    <button className="w-full text-left px-4 py-3 text-sm text-foreground hover:bg-muted flex items-center gap-2.5" onClick={() => { setShowPhoneUnlock(true); setShowMenu(false); }} data-testid="button-phone-unlock">
+                      <Unlock size={15} className="text-blue-400" /> Request Contact Sharing
+                    </button>
+                  )}
+                  <div className="h-px bg-border mx-3" />
+                  <button className="w-full text-left px-4 py-3 text-sm text-foreground hover:bg-muted flex items-center gap-2.5" onClick={() => { archiveMutation.mutate(); setShowMenu(false); }} data-testid="button-archive-chat">
+                    <Archive size={15} className="text-muted-foreground" /> Archive Chat
+                  </button>
+                  <button className="w-full text-left px-4 py-3 text-sm text-foreground hover:bg-muted flex items-center gap-2.5" onClick={() => { deleteChatMutation.mutate(); setShowMenu(false); }} data-testid="button-delete-chat">
+                    <Trash2 size={15} className="text-red-400" /> Delete Chat
+                  </button>
+                  <div className="h-px bg-border mx-3" />
+                  <button className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-red-900/10 flex items-center gap-2.5" onClick={() => { setShowReport(true); setShowMenu(false); }} data-testid="button-report-user">
+                    <Flag size={15} /> Report User
+                  </button>
+                  <button className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-red-900/10 flex items-center gap-2.5" onClick={() => { if (otherUserId) blockMutation.mutate(otherUserId); }} data-testid="button-block-user">
+                    <Ban size={15} /> Block User
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </header>
 

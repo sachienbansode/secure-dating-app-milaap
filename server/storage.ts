@@ -37,6 +37,7 @@ export interface IStorage {
   getProfile(userId: string): Promise<Profile | undefined>;
   getProfilesByUserIds(userIds: string[]): Promise<Map<string, Profile>>;
   getUsersByIds(userIds: string[]): Promise<Map<string, User>>;
+  getLastMessagesForMatches(matchIds: string[]): Promise<Map<string, { content: string; createdAt: Date; senderId: string }>>;
   getAppSettings(keys: string[]): Promise<Map<string, string>>;
   createProfile(profile: InsertProfile): Promise<Profile>;
   updateProfile(userId: string, data: Partial<InsertProfile>): Promise<Profile | undefined>;
@@ -175,6 +176,23 @@ export class DatabaseStorage implements IStorage {
     const map = new Map<string, User>();
     for (const u of result) {
       map.set(u.id, u);
+    }
+    return map;
+  }
+
+  async getLastMessagesForMatches(matchIds: string[]): Promise<Map<string, { content: string; createdAt: Date; senderId: string }>> {
+    if (matchIds.length === 0) return new Map();
+    const result = await db.execute(sql`
+      SELECT DISTINCT ON (match_id) match_id, content, created_at, sender_id
+      FROM messages
+      WHERE match_id = ANY(${matchIds})
+      ORDER BY match_id, created_at DESC
+    `);
+    const map = new Map<string, { content: string; createdAt: Date; senderId: string }>();
+    for (const row of result.rows as any[]) {
+      const content = row.content;
+      const decryptedContent = decryptMessage(content);
+      map.set(row.match_id, { content: decryptedContent, createdAt: new Date(row.created_at), senderId: row.sender_id });
     }
     return map;
   }

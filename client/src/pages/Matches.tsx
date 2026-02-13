@@ -15,6 +15,11 @@ interface MatchWithProfile {
   isMatched: boolean;
   isArchived?: boolean;
   createdAt: string;
+  lastMessage?: {
+    content: string;
+    createdAt: string;
+    senderId: string;
+  } | null;
   profile: {
     name: string;
     age: number;
@@ -103,6 +108,21 @@ export default function Matches() {
   const filteredMatches = displayMatches.filter((m) =>
     m.profile?.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const formatTimestamp = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return "now";
+    if (diffMins < 60) return `${diffMins}m`;
+    if (diffHours < 24) return `${diffHours}h`;
+    if (diffDays < 7) return date.toLocaleDateString("en-IN", { weekday: "short" });
+    return date.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+  };
 
   return (
     <div className="h-full flex flex-col bg-background">
@@ -208,11 +228,15 @@ export default function Matches() {
                         <div className="flex justify-between items-baseline mb-0.5">
                           <h4 className="font-heading font-bold text-sm truncate pr-2">{match.profile?.name}, {match.profile?.age}</h4>
                           <span className="text-[10px] text-muted-foreground shrink-0">
-                            {new Date(match.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                            {formatTimestamp(match.lastMessage?.createdAt || match.createdAt)}
                           </span>
                         </div>
                         <p className="text-xs truncate text-muted-foreground">
-                          {match.profile?.city} {tab === "archived" ? "• Archived" : "• Tap to start chatting"}
+                          {match.lastMessage
+                            ? match.lastMessage.content.length > 40
+                              ? match.lastMessage.content.substring(0, 40) + "..."
+                              : match.lastMessage.content
+                            : tab === "archived" ? "Archived" : "Tap to start chatting"}
                         </p>
                       </div>
                     </Link>

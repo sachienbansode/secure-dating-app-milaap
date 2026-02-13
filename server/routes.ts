@@ -849,18 +849,28 @@ export async function registerRoutes(
       const userId = req.session.userId!;
       const mutualMatches = await storage.getMutualMatches(userId);
       const targetIds = mutualMatches.map(m => m.targetUserId);
-      const [profilesMap, usersMap] = await Promise.all([
+      const matchIds = mutualMatches.map(m => m.id);
+      const [profilesMap, usersMap, lastMsgsMap] = await Promise.all([
         storage.getProfilesByUserIds(targetIds),
         storage.getUsersByIds(targetIds),
+        storage.getLastMessagesForMatches(matchIds),
       ]);
 
       const enriched = mutualMatches.map((match) => {
         const profile = profilesMap.get(match.targetUserId);
         const user = usersMap.get(match.targetUserId);
+        const lastMsg = lastMsgsMap.get(match.id);
         return {
           ...match,
           profile: profile ? { ...profile, respectScore: user?.respectScore, isOnline: user?.isOnline || profile.aiProxyEnabled, lastSeenAt: user?.lastSeenAt } : null,
+          lastMessage: lastMsg ? { content: lastMsg.content, createdAt: lastMsg.createdAt, senderId: lastMsg.senderId } : null,
         };
+      });
+
+      enriched.sort((a, b) => {
+        const aTime = a.lastMessage?.createdAt ? new Date(a.lastMessage.createdAt).getTime() : new Date(a.createdAt).getTime();
+        const bTime = b.lastMessage?.createdAt ? new Date(b.lastMessage.createdAt).getTime() : new Date(b.createdAt).getTime();
+        return bTime - aTime;
       });
 
       return res.json(enriched);
