@@ -1202,10 +1202,12 @@ export async function registerRoutes(
     try {
       const userId = req.session.userId!;
       const matchId = req.params.matchId;
+      const allMatchIds = await storage.getBothMatchIds(matchId);
       const now = Date.now();
       const entries: { userId: string; name: string }[] = [];
       typingStatus.forEach((val, key) => {
-        if (key.startsWith(matchId + ":") && val.userId !== userId && val.expiresAt > now) {
+        const keyMatchId = key.split(":")[0];
+        if (allMatchIds.includes(keyMatchId) && val.userId !== userId && val.expiresAt > now) {
           entries.push({ userId: val.userId, name: val.name });
         }
       });
@@ -2620,16 +2622,17 @@ MESSAGE LENGTH - THIS IS EXTREMELY IMPORTANT:
 
       const otherUserId = match.userId === userId ? match.targetUserId : match.userId;
 
+      const allMatchIds = await storage.getBothMatchIds(matchId);
+      const canonicalMatchId = allMatchIds[0];
+
       const share = await storage.upsertContactShare({
-        matchId,
+        matchId: canonicalMatchId,
         sharerUserId: userId,
         targetUserId: otherUserId,
         sharePhone: !!sharePhone,
         shareEmail: !!shareEmail,
       });
 
-      const user = await storage.getUser(userId);
-      const profile = await storage.getProfile(userId);
       const sharedItems = [];
       if (sharePhone) sharedItems.push("mobile number");
       if (shareEmail) sharedItems.push("email");
@@ -2637,7 +2640,7 @@ MESSAGE LENGTH - THIS IS EXTREMELY IMPORTANT:
       await storage.sendMessage({
         matchId,
         senderId: userId,
-        content: `📋 ${profile?.name || "User"} shared their ${sharedItems.join(" and ")} with you.`,
+        content: `📋 Contact info shared: ${sharedItems.join(" and ")}`,
         isSystemMessage: true,
       });
 
@@ -2661,8 +2664,11 @@ MESSAGE LENGTH - THIS IS EXTREMELY IMPORTANT:
 
       const otherUserId = match.userId === userId ? match.targetUserId : match.userId;
 
+      const allMatchIds = await storage.getBothMatchIds(matchId);
+      const canonicalMatchId = allMatchIds[0];
+
       const share = await storage.upsertContactShare({
-        matchId,
+        matchId: canonicalMatchId,
         sharerUserId: userId,
         targetUserId: otherUserId,
         sharePhone: !!sharePhone,
@@ -2670,11 +2676,10 @@ MESSAGE LENGTH - THIS IS EXTREMELY IMPORTANT:
       });
 
       if (!sharePhone && !shareEmail) {
-        const profile = await storage.getProfile(userId);
         await storage.sendMessage({
           matchId,
           senderId: userId,
-          content: `🔒 ${profile?.name || "User"} has hidden their contact info.`,
+          content: `🔒 Contact info has been hidden.`,
           isSystemMessage: true,
         });
       }
@@ -2749,12 +2754,11 @@ MESSAGE LENGTH - THIS IS EXTREMELY IMPORTANT:
         lastUpdatedAt: new Date() as any,
       });
 
-      const profile = await storage.getProfile(userId);
-      const typeLabel = isLive ? "live location (1 hour)" : "current location";
+      const typeLabel = isLive ? "Live location (1 hour)" : "Current location";
       await storage.sendMessage({
         matchId,
         senderId: userId,
-        content: `📍 ${profile?.name || "User"} shared their ${typeLabel}.`,
+        content: `📍 ${typeLabel} has been shared.`,
         isSystemMessage: true,
       });
 

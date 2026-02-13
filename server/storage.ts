@@ -690,13 +690,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getContactShare(matchId: string, sharerUserId: string): Promise<ContactShare | undefined> {
+    const allMatchIds = await this.getBothMatchIds(matchId);
     const [share] = await db.select().from(contactShares)
-      .where(and(eq(contactShares.matchId, matchId), eq(contactShares.sharerUserId, sharerUserId)));
+      .where(and(inArray(contactShares.matchId, allMatchIds), eq(contactShares.sharerUserId, sharerUserId)));
     return share;
   }
 
   async getContactSharesForMatch(matchId: string): Promise<ContactShare[]> {
-    return db.select().from(contactShares).where(eq(contactShares.matchId, matchId));
+    const allMatchIds = await this.getBothMatchIds(matchId);
+    return db.select().from(contactShares).where(inArray(contactShares.matchId, allMatchIds));
   }
 
   async createLocationShare(data: InsertLocationShare): Promise<LocationShare> {
@@ -834,7 +836,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getChaiDateForMatch(matchId: string, status?: string): Promise<ChaiDate | undefined> {
-    const conditions = [eq(chaiDates.matchId, matchId)];
+    const allMatchIds = await this.getBothMatchIds(matchId);
+    const conditions: any[] = [inArray(chaiDates.matchId, allMatchIds)];
     if (status) {
       conditions.push(eq(chaiDates.status, status));
     }
