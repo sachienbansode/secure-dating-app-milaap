@@ -2153,6 +2153,7 @@ CRITICAL RULES:
       const attachments = await storage.getAppSetting("feature_attachments");
       const attachmentExtensions = await storage.getAppSetting("attachment_extensions");
       const botModeMaxHours = await storage.getAppSetting("bot_mode_max_hours");
+      const selectedLogo = await storage.getAppSetting("selected_logo");
 
       return res.json({
         welcome_taglines: parsedTaglines,
@@ -2166,6 +2167,7 @@ CRITICAL RULES:
         feature_attachments: attachments !== null ? attachments === "true" : true,
         attachment_extensions: attachmentExtensions || ".jpg,.jpeg,.png,.webp,.gif,.mp4,.mov,.avi,.mkv",
         bot_mode_max_hours: botModeMaxHours ? parseInt(botModeMaxHours) : 12,
+        selected_logo: selectedLogo || "new",
       });
     } catch (err: any) {
       return res.status(500).json({ message: err.message });

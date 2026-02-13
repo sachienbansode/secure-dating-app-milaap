@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Mail, Phone, ArrowRight, Shield, Play } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import logo from "@/assets/milaap-logo.png";
+import logoNew from "@/assets/milaap-logo.png";
+import logoClassic from "@/assets/logo.png";
 import { requestOtp, verifyOtp, getMe } from "@/lib/auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import WelcomeOverlay from "@/components/WelcomeOverlay";
@@ -30,6 +31,7 @@ export default function AuthPage() {
   const [showTermsUpdate, setShowTermsUpdate] = useState(false);
   const [pendingDestination, setPendingDestination] = useState<string | null>(null);
   const [showFeatures, setShowFeatures] = useState(false);
+  const [selectedLogo, setSelectedLogo] = useState<"new" | "classic">("new");
 
   const { data: session, isLoading: checkingSession } = useQuery({
     queryKey: ["/api/auth/me"],
@@ -42,6 +44,7 @@ export default function AuthPage() {
       .then(r => r.json())
       .then(data => {
         if (data.welcome_taglines?.length) setTaglines(data.welcome_taglines);
+        if (data.selected_logo) setSelectedLogo(data.selected_logo);
       })
       .catch(() => {});
   }, []);
@@ -204,7 +207,7 @@ export default function AuthPage() {
           >
             <motion.div animate={{ scale: [1, 1.15, 1], opacity: [0.4, 0.6, 0.4] }} transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }} className="absolute inset-[-8px] rounded-[28px] blur-xl" style={{ background: "linear-gradient(135deg, #dc2626, #8B5CF6, #2563eb)" }} />
             <div className="relative w-28 h-28 rounded-[24px] flex items-center justify-center overflow-hidden border border-white/20" style={{ background: "linear-gradient(160deg, rgba(20,10,30,0.9), rgba(10,5,20,0.95))", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1), 0 0 40px rgba(139,92,246,0.2)" }}>
-              <img src={logo} alt="Milaap Logo" className="w-[85%] h-[85%] object-contain drop-shadow-2xl" />
+              <img src={selectedLogo === "classic" ? logoClassic : logoNew} alt="Milaap Logo" className="w-[85%] h-[85%] object-contain drop-shadow-2xl" />
             </div>
           </motion.div>
           <motion.h1
@@ -220,11 +223,11 @@ export default function AuthPage() {
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.5 }}
-            className="text-lg font-medium max-w-[300px] leading-relaxed"
-            style={{ color: "rgba(255,255,255,0.8)" }}
+            className="text-[11px] font-medium max-w-[280px] leading-relaxed tracking-wide"
+            style={{ color: "rgba(255,255,255,0.45)" }}
           >
             Dil se dil tak. <br />
-            <span style={{ color: "rgba(255,255,255,0.6)" }}>Meaningful connections with respect.</span>
+            Meaningful connections with respect.
           </motion.p>
         </div>
 
@@ -294,35 +297,57 @@ export default function AuthPage() {
 
       <div className="flex-1 z-10">
         <div className="flex items-center gap-3 mb-2">
-          <motion.svg
-            initial={{ scale: 0, rotate: -30 }}
-            animate={{ scale: 1, rotate: 0 }}
-            transition={{ type: "spring", stiffness: 200, damping: 12 }}
-            width="38" height="38" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"
+          <motion.div
+            initial={{ scale: 0, rotateY: -90 }}
+            animate={{ scale: 1, rotateY: 0 }}
+            transition={{ type: "spring", stiffness: 180, damping: 14 }}
+            className="relative"
           >
-            <defs>
-              <linearGradient id="namasteGrad" x1="0" y1="0" x2="64" y2="64">
-                <stop offset="0%" stopColor="#F59E0B" />
-                <stop offset="50%" stopColor="#F97316" />
-                <stop offset="100%" stopColor="#EF4444" />
-              </linearGradient>
-              <filter id="glow">
-                <feGaussianBlur stdDeviation="2" result="blur" />
-                <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-              </filter>
-            </defs>
-            <g filter="url(#glow)">
-              <path d="M32 6C32 6 28 14 28 20V34C28 34 28 36 30 36H34C36 36 36 34 36 34V20C36 14 32 6 32 6Z" fill="url(#namasteGrad)" opacity="0.9" />
-              <path d="M22 18C20 14 18 12 16 14C14 16 16 20 18 24L24 34C24 34 25 36 27 35L28 34V22C28 22 26 20 22 18Z" fill="url(#namasteGrad)" opacity="0.8" />
-              <path d="M42 18C44 14 46 12 48 14C50 16 48 20 46 24L40 34C40 34 39 36 37 35L36 34V22C36 22 38 20 42 18Z" fill="url(#namasteGrad)" opacity="0.8" />
-              <path d="M26 36L24 42C24 42 22 48 26 50C28 51 30 50 32 48C34 50 36 51 38 50C42 48 40 42 38 36" fill="none" stroke="url(#namasteGrad)" strokeWidth="2.5" strokeLinecap="round" />
-              <circle cx="32" cy="4" r="2" fill="#F59E0B" opacity="0.7" />
-              <path d="M24 8L20 4" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round" opacity="0.5" />
-              <path d="M40 8L44 4" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round" opacity="0.5" />
-              <path d="M18 12L14 10" stroke="#F97316" strokeWidth="1.5" strokeLinecap="round" opacity="0.4" />
-              <path d="M46 12L50 10" stroke="#F97316" strokeWidth="1.5" strokeLinecap="round" opacity="0.4" />
-            </g>
-          </motion.svg>
+            <svg width="40" height="40" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="skinGrad" x1="30" y1="10" x2="50" y2="70" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stopColor="#D4A574" />
+                  <stop offset="100%" stopColor="#C08B5C" />
+                </linearGradient>
+                <linearGradient id="sparkGrad" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stopColor="#F59E0B" />
+                  <stop offset="100%" stopColor="#EF4444" />
+                </linearGradient>
+                <filter id="handGlow">
+                  <feGaussianBlur stdDeviation="1.5" result="b" />
+                  <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+                </filter>
+              </defs>
+              <g filter="url(#handGlow)">
+                <path d="M40 16 C40 16, 34 22, 34 30 L34 52 C34 54, 36 55, 38 55 L42 55 C44 55, 46 54, 46 52 L46 30 C46 22, 40 16, 40 16Z" fill="url(#skinGrad)" />
+                <path d="M34 30 C32 24, 28 18, 24 16 C22 15, 20 17, 21 20 C22 24, 26 32, 30 40 L30 44 C30 44, 32 46, 34 44 L34 30Z" fill="url(#skinGrad)" opacity="0.95" />
+                <path d="M46 30 C48 24, 52 18, 56 16 C58 15, 60 17, 59 20 C58 24, 54 32, 50 40 L50 44 C50 44, 48 46, 46 44 L46 30Z" fill="url(#skinGrad)" opacity="0.95" />
+                <path d="M34 55 L32 60 C31 63, 33 66, 36 67 C38 68, 40 66, 40 64 C40 66, 42 68, 44 67 C47 66, 49 63, 48 60 L46 55" fill="url(#skinGrad)" opacity="0.9" />
+                <line x1="40" y1="30" x2="40" y2="50" stroke="rgba(0,0,0,0.08)" strokeWidth="0.8" />
+              </g>
+              <circle cx="40" cy="11" r="2.5" fill="url(#sparkGrad)" opacity="0.8">
+                <animate attributeName="opacity" values="0.4;0.9;0.4" dur="2s" repeatCount="indefinite" />
+              </circle>
+              <circle cx="28" cy="14" r="1.5" fill="#F59E0B" opacity="0.5">
+                <animate attributeName="opacity" values="0.2;0.6;0.2" dur="2.5s" repeatCount="indefinite" />
+              </circle>
+              <circle cx="52" cy="14" r="1.5" fill="#F59E0B" opacity="0.5">
+                <animate attributeName="opacity" values="0.2;0.6;0.2" dur="2.5s" repeatCount="indefinite" begin="0.5s" />
+              </circle>
+              <path d="M22 10 L18 6" stroke="url(#sparkGrad)" strokeWidth="1.5" strokeLinecap="round" opacity="0.4">
+                <animate attributeName="opacity" values="0.2;0.5;0.2" dur="3s" repeatCount="indefinite" />
+              </path>
+              <path d="M58 10 L62 6" stroke="url(#sparkGrad)" strokeWidth="1.5" strokeLinecap="round" opacity="0.4">
+                <animate attributeName="opacity" values="0.2;0.5;0.2" dur="3s" repeatCount="indefinite" begin="1s" />
+              </path>
+              <path d="M15 20 L12 18" stroke="#F97316" strokeWidth="1.2" strokeLinecap="round" opacity="0.3">
+                <animate attributeName="opacity" values="0.1;0.4;0.1" dur="3.5s" repeatCount="indefinite" begin="0.3s" />
+              </path>
+              <path d="M65 20 L68 18" stroke="#F97316" strokeWidth="1.2" strokeLinecap="round" opacity="0.3">
+                <animate attributeName="opacity" values="0.1;0.4;0.1" dur="3.5s" repeatCount="indefinite" begin="1.5s" />
+              </path>
+            </svg>
+          </motion.div>
           <h2 className="text-3xl font-heading font-bold" style={{ background: "linear-gradient(135deg, #F59E0B, #F97316, #EF4444)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
             Namaste!
           </h2>

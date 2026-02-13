@@ -7,10 +7,12 @@ import {
   Mail, ArrowRight, LogOut, Users, MessageSquareQuote,
   Settings, Shield, Clock, ShieldAlert, ShieldCheck,
   Lock, EyeOff, Trash2, Plus, ChevronRight, ArrowLeft,
-  Activity, Heart, Paperclip, Crown, DollarSign, Bot, Megaphone,
+  Activity, Heart, Paperclip, Crown, DollarSign, Bot, Megaphone, Image,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import type { AuthResponse } from "@/lib/auth";
+import logoNew from "@/assets/milaap-logo.png";
+import logoClassic from "@/assets/logo.png";
 
 export default function AdminConsole() {
   const queryClient = useQueryClient();
@@ -62,6 +64,7 @@ export default function AdminConsole() {
           {activeSection === "Ad Settings" && <AdSettingsEditor />}
           {activeSection === "Bot Mode Settings" && <BotModeSettings />}
           {activeSection === "Membership Revenue" && <MembershipRevenue />}
+          {activeSection === "App Logo" && <LogoSelector />}
         </div>
       </div>
     );
@@ -95,6 +98,7 @@ export default function AdminConsole() {
           { id: "Ad Settings", icon: Megaphone, color: "bg-green-100 text-green-600", desc: "Configure Google Ads settings" },
           { id: "Bot Mode Settings", icon: Bot, color: "bg-purple-100 text-purple-600", desc: "Configure bot mode auto-offline" },
           { id: "Membership Revenue", icon: DollarSign, color: "bg-emerald-100 text-emerald-600", desc: "View revenue & transactions" },
+          { id: "App Logo", icon: Image, color: "bg-pink-100 text-pink-600", desc: "Choose between logo styles" },
         ].map((item) => (
           <button
             key={item.id}
@@ -1862,6 +1866,91 @@ function MembershipRevenue() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function LogoSelector() {
+  const [selected, setSelected] = useState<"new" | "classic">("new");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/app-settings")
+      .then(r => r.json())
+      .then(data => {
+        if (data.selected_logo) setSelected(data.selected_logo);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
+
+  const handleSave = async (choice: "new" | "classic") => {
+    setSelected(choice);
+    setSaving(true);
+    setSaved(false);
+    try {
+      const res = await fetch("/api/app-settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: "selected_logo", value: choice }),
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to save");
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch {}
+    setSaving(false);
+  };
+
+  if (loading) return <div className="text-center py-8 text-slate-400">Loading...</div>;
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-pink-900/20 rounded-2xl p-4 border border-pink-800">
+        <div className="flex items-center gap-2 mb-3">
+          <Image size={16} className="text-pink-400" />
+          <h4 className="font-bold text-sm text-pink-300">App Logo</h4>
+        </div>
+        <p className="text-xs text-pink-400 mb-4">Select which logo to display on the login screen.</p>
+
+        <div className="grid grid-cols-2 gap-4">
+          <button
+            onClick={() => handleSave("new")}
+            className="rounded-2xl p-4 flex flex-col items-center gap-3 transition-all border-2"
+            style={{
+              background: selected === "new" ? "rgba(236,72,153,0.15)" : "rgba(255,255,255,0.03)",
+              borderColor: selected === "new" ? "#ec4899" : "rgba(255,255,255,0.1)",
+            }}
+            data-testid="button-logo-new"
+          >
+            <div className="w-20 h-20 rounded-xl bg-black/40 flex items-center justify-center p-2 border border-white/10">
+              <img src={logoNew} alt="New Logo" className="w-full h-full object-contain" />
+            </div>
+            <span className="text-xs font-semibold" style={{ color: selected === "new" ? "#ec4899" : "rgba(255,255,255,0.5)" }}>Modern</span>
+            {selected === "new" && <span className="text-[10px] font-bold text-pink-400 bg-pink-900/40 px-2 py-0.5 rounded-full">Active</span>}
+          </button>
+          <button
+            onClick={() => handleSave("classic")}
+            className="rounded-2xl p-4 flex flex-col items-center gap-3 transition-all border-2"
+            style={{
+              background: selected === "classic" ? "rgba(236,72,153,0.15)" : "rgba(255,255,255,0.03)",
+              borderColor: selected === "classic" ? "#ec4899" : "rgba(255,255,255,0.1)",
+            }}
+            data-testid="button-logo-classic"
+          >
+            <div className="w-20 h-20 rounded-xl bg-black/40 flex items-center justify-center p-2 border border-white/10">
+              <img src={logoClassic} alt="Classic Logo" className="w-full h-full object-contain" />
+            </div>
+            <span className="text-xs font-semibold" style={{ color: selected === "classic" ? "#ec4899" : "rgba(255,255,255,0.5)" }}>Classic</span>
+            {selected === "classic" && <span className="text-[10px] font-bold text-pink-400 bg-pink-900/40 px-2 py-0.5 rounded-full">Active</span>}
+          </button>
+        </div>
+      </div>
+      {saved && (
+        <div className="text-center text-sm text-green-400 font-medium py-2">Logo updated successfully!</div>
+      )}
     </div>
   );
 }
