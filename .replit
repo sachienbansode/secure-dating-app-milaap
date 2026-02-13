@@ -6,6 +6,10 @@ hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
 channel = "stable-24_05"
 
 [[ports]]
+localPort = 3000
+externalPort = 3000
+
+[[ports]]
 localPort = 5000
 externalPort = 80
 
@@ -42,3 +46,7 @@ waitForPort = 5000
 stack = "MOCKUP_JS"
 mockupState = "FULLSTACK"
 integrations = ["javascript_openai_ai_integrations:2.0.0"]
+
+[userenv]
+
+[userenv.development]
