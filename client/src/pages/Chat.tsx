@@ -632,7 +632,7 @@ export default function Chat() {
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-1">
-              <h3 className="font-heading font-bold text-sm truncate" data-testid="text-chat-name">Match</h3>
+              <h3 className="font-heading font-bold text-sm truncate" data-testid="text-chat-name">{profile?.name || "Match"}</h3>
               {(profile?.isVerified || profile?.photoVerifiedAt) && <ShieldCheck size={11} className="text-blue-500 shrink-0" />}
               <div className={`w-2 h-2 rounded-full shrink-0 ${getRespectColor(otherRespectScore)}`} title={`Respect: ${otherRespectScore}`} />
             </div>
