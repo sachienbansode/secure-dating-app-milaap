@@ -2998,6 +2998,8 @@ MESSAGE LENGTH - THIS IS EXTREMELY IMPORTANT:
   app.post("/api/quiz/submit", requireAuth, async (req: Request, res: Response) => {
     try {
       const userId = req.session.userId!;
+      const hasAccess = await checkFeatureAccess(userId, "dating_quiz");
+      if (!hasAccess) return res.status(403).json({ message: "Dating Quiz requires a Silver or higher membership", requiredFeature: "dating_quiz" });
       const { responses } = req.body;
       if (!responses || !Array.isArray(responses) || responses.length < 10) {
         return res.status(400).json({ message: "Please answer at least 10 questions" });
@@ -3129,9 +3131,9 @@ MESSAGE LENGTH - THIS IS EXTREMELY IMPORTANT:
       if (plans.length === 0) {
         const defaultPlans = [
           { tier: "basic", name: "Basic", description: "Free plan with essential features", priceMonthly: "0", priceYearly: "0", durationDays: 0, dailyLikesLimit: 25, superLikesPerDay: 1, showAds: true, isActive: true, sortOrder: 0, color: "#6b7280", features: ["chat_attachments", "contact_sharing"] },
-          { tier: "silver", name: "Silver", description: "Enhanced dating experience with more likes and fewer ads", priceMonthly: "299", priceYearly: "2999", durationDays: 30, dailyLikesLimit: 50, superLikesPerDay: 3, showAds: true, isActive: true, sortOrder: 1, color: "#9ca3af", features: ["chat_attachments", "contact_sharing", "location_sharing", "read_receipts", "date_readiness", "green_flag_stories"] },
-          { tier: "gold", name: "Gold", description: "Premium features including AI and advanced matching", priceMonthly: "599", priceYearly: "5999", durationDays: 30, dailyLikesLimit: 100, superLikesPerDay: 5, showAds: false, isActive: true, sortOrder: 2, color: "#f59e0b", features: ["chat_attachments", "contact_sharing", "location_sharing", "read_receipts", "date_readiness", "green_flag_stories", "ai_proxy_mode", "no_screenshot_mode", "photo_authenticity", "festival_boosts", "super_likes", "advanced_filters", "see_who_liked"] },
-          { tier: "platinum", name: "Platinum", description: "Ultimate experience with all features and unlimited likes", priceMonthly: "999", priceYearly: "9999", durationDays: 30, dailyLikesLimit: 9999, superLikesPerDay: 10, showAds: false, isActive: true, sortOrder: 3, color: "#8b5cf6", features: ["chat_attachments", "contact_sharing", "location_sharing", "read_receipts", "date_readiness", "green_flag_stories", "ai_proxy_mode", "no_screenshot_mode", "photo_authenticity", "festival_boosts", "super_likes", "unlimited_likes", "advanced_filters", "see_who_liked", "profile_boost", "family_mode"] },
+          { tier: "silver", name: "Silver", description: "Enhanced dating experience with more likes and fewer ads", priceMonthly: "299", priceYearly: "2999", durationDays: 30, dailyLikesLimit: 50, superLikesPerDay: 3, showAds: true, isActive: true, sortOrder: 1, color: "#9ca3af", features: ["chat_attachments", "contact_sharing", "location_sharing", "read_receipts", "date_readiness", "green_flag_stories", "chai_date", "dating_quiz"] },
+          { tier: "gold", name: "Gold", description: "Premium features including AI and advanced matching", priceMonthly: "599", priceYearly: "5999", durationDays: 30, dailyLikesLimit: 100, superLikesPerDay: 5, showAds: false, isActive: true, sortOrder: 2, color: "#f59e0b", features: ["chat_attachments", "contact_sharing", "location_sharing", "read_receipts", "date_readiness", "green_flag_stories", "ai_proxy_mode", "no_screenshot_mode", "photo_authenticity", "festival_boosts", "super_likes", "advanced_filters", "see_who_liked", "chai_date", "dating_quiz", "profile_verification"] },
+          { tier: "platinum", name: "Platinum", description: "Ultimate experience with all features and unlimited likes", priceMonthly: "999", priceYearly: "9999", durationDays: 30, dailyLikesLimit: 9999, superLikesPerDay: 10, showAds: false, isActive: true, sortOrder: 3, color: "#8b5cf6", features: ["chat_attachments", "contact_sharing", "location_sharing", "read_receipts", "date_readiness", "green_flag_stories", "ai_proxy_mode", "no_screenshot_mode", "photo_authenticity", "festival_boosts", "super_likes", "unlimited_likes", "advanced_filters", "see_who_liked", "profile_boost", "family_mode", "chai_date", "dating_quiz", "profile_verification"] },
         ];
         for (const p of defaultPlans) {
           await storage.createMembershipPlan(p as any);
@@ -3453,6 +3455,8 @@ MESSAGE LENGTH - THIS IS EXTREMELY IMPORTANT:
   app.post("/api/chai-date/request", requireAuth, async (req: Request, res: Response) => {
     try {
       const userId = req.session.userId!;
+      const hasAccess = await checkFeatureAccess(userId, "chai_date");
+      if (!hasAccess) return res.status(403).json({ message: "Chai Date requires a Silver or higher membership", requiredFeature: "chai_date" });
       const { matchId } = req.body;
       if (!matchId) return res.status(400).json({ message: "Match ID is required" });
 
@@ -3622,6 +3626,8 @@ MESSAGE LENGTH - THIS IS EXTREMELY IMPORTANT:
   app.post("/api/verification/submit", requireAuth, upload.single("selfie"), async (req: Request, res: Response) => {
     try {
       const userId = req.session.userId!;
+      const hasAccess = await checkFeatureAccess(userId, "profile_verification");
+      if (!hasAccess) return res.status(403).json({ message: "Profile Verification requires a Gold or higher membership", requiredFeature: "profile_verification" });
       const { poseId } = req.body;
 
       if (!req.file) return res.status(400).json({ message: "Selfie is required" });

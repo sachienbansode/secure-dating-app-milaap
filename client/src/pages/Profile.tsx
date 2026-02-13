@@ -48,6 +48,9 @@ const FEATURE_NAME_MAP: Record<string, string> = {
   see_who_liked: "See Who Liked",
   profile_boost: "Profile Boost",
   family_mode: "Family Mode",
+  chai_date: "Chai Date Meetups",
+  dating_quiz: "Dating Quiz",
+  profile_verification: "Profile Verification",
 };
 
 const triggerHaptic = (style: 'light' | 'medium' | 'heavy' = 'light') => {
