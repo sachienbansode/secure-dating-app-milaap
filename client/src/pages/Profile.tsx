@@ -228,7 +228,13 @@ export default function Profile() {
         }
       }
 
-      const res = await apiRequest("POST", "/api/profile", form);
+      const submitData = { ...form };
+      if (submitData.gender !== "Couple") {
+        delete (submitData as any).partner2Name;
+        delete (submitData as any).partner2Age;
+        delete (submitData as any).partner2Gender;
+      }
+      const res = await apiRequest("POST", "/api/profile", submitData);
       const data = await res.json();
       if (!res.ok) {
         if (data.canForceChange) {
@@ -411,7 +417,7 @@ export default function Profile() {
           {(!activeSection || activeSection === "Edit Profile") && (
             <>
               <div className="bg-card rounded-2xl p-4 border border-border">
-                <label className="text-sm font-medium text-foreground mb-3 block">Photos ({form.photos.length}/6)</label>
+                <label className="text-sm font-medium text-foreground mb-3 block">Photos ({form.photos.length}/6) <span className="text-red-500">*</span></label>
                 <div className="grid grid-cols-3 gap-3">
                   {form.photos.map((photo, index) => (
                     <div key={index} className="relative aspect-[3/4] rounded-xl overflow-hidden bg-muted border border-border">
@@ -433,17 +439,17 @@ export default function Profile() {
 
               <div className="bg-card rounded-2xl p-4 border border-border space-y-4">
                 <div>
-                  <label className="text-sm font-medium text-foreground mb-2 block">{form.gender === "Couple" && appSettings?.feature_couple_profiles !== false ? "Partner 1 Name" : "Name"}</label>
+                  <label className="text-sm font-medium text-foreground mb-2 block">{form.gender === "Couple" && appSettings?.feature_couple_profiles !== false ? "Partner 1 Name" : "Name"} <span className="text-red-500">*</span></label>
                   <Input data-testid="input-name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder={form.gender === "Couple" && appSettings?.feature_couple_profiles !== false ? "First partner's name" : "Your name"} className="h-12 rounded-xl" />
                 </div>
 
                 <div className="flex gap-4">
                   <div className="flex-1">
-                    <label className="text-sm font-medium text-foreground mb-2 block">{form.gender === "Couple" && appSettings?.feature_couple_profiles !== false ? "Partner 1 Age" : "Age"}</label>
+                    <label className="text-sm font-medium text-foreground mb-2 block">{form.gender === "Couple" && appSettings?.feature_couple_profiles !== false ? "Partner 1 Age" : "Age"} <span className="text-red-500">*</span></label>
                     <Input data-testid="input-age" type="number" value={form.age} onChange={(e) => setForm((f) => ({ ...f, age: parseInt(e.target.value) || 18 }))} min={18} max={100} className="h-12 rounded-xl" />
                   </div>
                   <div className="flex-1">
-                    <label className="text-sm font-medium text-foreground mb-2 block">{form.gender === "Couple" && appSettings?.feature_couple_profiles !== false ? "Profile Type" : "Gender"}</label>
+                    <label className="text-sm font-medium text-foreground mb-2 block">{form.gender === "Couple" && appSettings?.feature_couple_profiles !== false ? "Profile Type" : "Gender"} <span className="text-red-500">*</span></label>
                     <select data-testid="select-gender" value={form.gender} onChange={(e) => setForm((f) => ({ ...f, gender: e.target.value as "Male" | "Female" | "Trans" | "Couple" }))} className="w-full h-12 rounded-xl border border-border px-3 bg-card text-foreground">
                       <option value="Male">Male</option>
                       <option value="Female">Female</option>
@@ -489,7 +495,7 @@ export default function Profile() {
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium text-foreground mb-2 block">City</label>
+                  <label className="text-sm font-medium text-foreground mb-2 block">City <span className="text-red-500">*</span></label>
                   <LocationSearch
                     value={form.city}
                     onChange={(city, location) => setForm((f) => ({ ...f, city, location }))}
