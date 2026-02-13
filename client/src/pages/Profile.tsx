@@ -104,6 +104,7 @@ export default function Profile() {
     hometownForFestivals: "",
     greenFlagStories: [] as {prompt: string; answer: string}[],
     dateReadiness: "Chat-only" as string,
+    expectations: "Okay with both" as string,
     interestedIn: [] as string[],
     partner2Name: "" as string,
     partner2Age: 25 as number,
@@ -137,6 +138,7 @@ export default function Profile() {
         hometownForFestivals: p.hometownForFestivals || "",
         greenFlagStories: (p.greenFlagStories as {prompt: string; answer: string}[]) || [],
         dateReadiness: p.dateReadiness || "Chat-only",
+        expectations: (p as any).expectations || "Okay with both",
         interestedIn: p.interestedIn || [],
         partner2Name: (p as any).partner2Name || "",
         partner2Age: (p as any).partner2Age || 25,
@@ -810,6 +812,30 @@ export default function Profile() {
                   </div>
                 </div>
               )}
+
+              <div className="bg-purple-50 rounded-2xl p-4 space-y-3 border border-purple-200">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck size={16} className="text-purple-600" />
+                  <h4 className="font-bold text-sm text-purple-800">Expectations <span className="text-red-500">*</span></h4>
+                </div>
+                <p className="text-xs text-purple-700">What are you comfortable with? This helps us match you better.</p>
+                <div className="space-y-2">
+                  {(["Paid benefits/FWB", "Strict NO to paid benefits/FWB", "Okay with both"] as const).map((opt) => (
+                    <button
+                      key={opt}
+                      data-testid={`button-expectations-${opt.toLowerCase().replace(/[\s/]/g, "-")}`}
+                      onClick={() => setForm((f) => ({ ...f, expectations: opt }))}
+                      className={`w-full px-4 py-3 rounded-xl text-sm font-medium transition-all border text-left ${
+                        form.expectations === opt
+                          ? "bg-purple-600 text-white border-purple-700 shadow-sm"
+                          : "bg-card border-border text-muted-foreground hover:bg-muted"
+                      }`}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
               <div className="bg-card rounded-2xl p-4 space-y-3 border border-border">
                 <div className={`flex items-center justify-between ${!hasFeature("no_screenshot_mode") ? "opacity-50" : ""}`}>

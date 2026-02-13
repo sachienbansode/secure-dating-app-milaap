@@ -165,6 +165,7 @@ export async function autoSeedProfiles() {
           hometownForFestivals: locationData.city,
           interestedIn: gender === "Couple" ? ["Couple", "Female"] : undefined,
           dateReadiness: getRandom(["Chat-only", "Voice-ready", "Meet-ready"]),
+          expectations: phoneCounter <= 5 ? "Strict NO to paid benefits/FWB" : "Okay with both",
           ...(partner2Name && {
             partner2Name: encrypt(partner2Name),
             partner2Age,
@@ -231,6 +232,7 @@ async function seedFounderProfiles(dbOrTx: any = db) {
       interestedIn: ["Female"],
       dateReadiness: "Meet-ready",
       datingStyle: "The Adventurer",
+      expectations: "Okay with both",
     });
   }
 
@@ -270,6 +272,7 @@ async function seedFounderProfiles(dbOrTx: any = db) {
       hometownForFestivals: "Hyderabad",
       interestedIn: ["Male", "Trans"],
       dateReadiness: "Chat-only",
+      expectations: "Okay with both",
     });
   }
 }

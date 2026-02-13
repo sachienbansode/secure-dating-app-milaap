@@ -173,13 +173,35 @@ export default function Chat() {
       }
       return res.json();
     },
+    onMutate: async (data) => {
+      await queryClient.cancelQueries({ queryKey: [`/api/messages/${matchId}`] });
+      const previousMessages = queryClient.getQueryData<ChatMessage[]>([`/api/messages/${matchId}`]);
+      const optimisticMessage: ChatMessage = {
+        id: `temp-${Date.now()}`,
+        matchId: data.matchId,
+        senderId: session?.user?.id || "",
+        content: data.content,
+        isAiGenerated: data.isAiGenerated || false,
+        isAiProxy: false,
+        isRead: false,
+        isSystemMessage: false,
+        createdAt: new Date().toISOString(),
+        attachmentUrl: null,
+        attachmentType: null,
+      };
+      queryClient.setQueryData<ChatMessage[]>([`/api/messages/${matchId}`], (old = []) => [...old, optimisticMessage]);
+      return { previousMessages };
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/messages/${matchId}`] });
       if (appSettings?.feature_chat_cooldown && messages.filter(m => m.senderId === session?.user?.id && !m.isSystemMessage).length > 0 && messages.filter(m => m.senderId === session?.user?.id && !m.isSystemMessage).length % 5 === 4) {
         escalationMutation.mutate();
       }
     },
-    onError: (err: any) => {
+    onError: (err: any, _variables, context) => {
+      if (context?.previousMessages) {
+        queryClient.setQueryData([`/api/messages/${matchId}`], context.previousMessages);
+      }
       if (err.cooldown) {
         setCooldownAlert(`Chat paused for ${err.minutesLeft} minute(s). Take a moment to reflect.`);
         setTimeout(() => setCooldownAlert(null), 5000);

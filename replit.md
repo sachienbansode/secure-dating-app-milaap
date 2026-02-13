@@ -23,6 +23,9 @@ The application incorporates a 4-tier membership system (Basic, Silver, Gold, Pl
 - **Attachments Democratized**: Voice notes and file attachments available to all users (removed membership gate); admin toggle retained; audio MIME types added
 - **Server-side Cooldown**: Moved swipe cooldown from localStorage to DB column (users.lastDiscoverDepletedAt); persists across reloads
 - **Auto-seed**: 22 profiles total (20 seed + 2 founders: Ithan Hunt +919820098200 and Rekha +917950903063 as Platinum)
+- **Expectations Field**: Mandatory profile field with 3 options (Paid benefits/FWB, Strict NO to paid benefits/FWB, Okay with both); "Strict NO" users only see "Strict NO" profiles; others see the other two options; 5 seed profiles marked as "Strict NO", rest as "Okay with both"
+- **Chat Optimistic Updates**: Messages appear immediately in chat using TanStack Query optimistic updates with rollback on error
+- **Chat Profile Fix**: Dedicated /api/match-detail/:matchId endpoint for reliable profile display in chat
 
 ## External Dependencies
 - **OpenAI**: Used for AI-assisted messaging, chat suggestions, AI proxy replies, tone analysis, and green flag analysis.

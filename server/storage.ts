@@ -283,6 +283,15 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(profiles.familyMode, true));
     }
 
+    const myProfileData = myProfile ?? await this.getProfile(userId);
+    if (myProfileData?.expectations === "Strict NO to paid benefits/FWB") {
+      conditions.push(eq(profiles.expectations, "Strict NO to paid benefits/FWB"));
+    } else {
+      conditions.push(
+        sql`(${profiles.expectations} IS NULL OR ${profiles.expectations} IN ('Paid benefits/FWB', 'Okay with both'))`
+      );
+    }
+
     const result = await db.select({
       profile: profiles,
       isOnline: users.isOnline,

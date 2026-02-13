@@ -67,6 +67,7 @@ export const profiles = pgTable("profiles", {
   zodiacSign: text("zodiac_sign"),
   dateOfBirth: text("date_of_birth"),
   dateReadiness: text("date_readiness").default("Chat-only"),
+  expectations: text("expectations").default("Okay with both"),
   photoAuthenticityScore: integer("photo_authenticity_score"),
   photoVerifiedAt: timestamp("photo_verified_at"),
   datingStyle: text("dating_style"),
@@ -422,6 +423,7 @@ export const updateProfileSchema = z.object({
   partner2Age: z.number().min(18).max(100).optional().nullable(),
   partner2Gender: z.enum(["Male", "Female", "Trans"]).optional().nullable(),
   dateReadiness: z.enum(["Chat-only", "Voice-ready", "Meet-ready"]).optional(),
+  expectations: z.enum(["Paid benefits/FWB", "Strict NO to paid benefits/FWB", "Okay with both"]).default("Okay with both"),
   zodiacSign: z.string().optional(),
   dateOfBirth: z.string().min(1, "Date of birth is required"),
 });
