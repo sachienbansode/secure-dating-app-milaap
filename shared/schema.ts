@@ -71,6 +71,10 @@ export const profiles = pgTable("profiles", {
   datingStyle: text("dating_style"),
   datingStyleTraits: jsonb("dating_style_traits").$type<Record<string, number>>(),
   quizCompletedAt: timestamp("quiz_completed_at"),
+  isVerified: boolean("is_verified").default(false),
+  verifiedAt: timestamp("verified_at"),
+  verificationSelfieUrl: text("verification_selfie_url"),
+  verificationPose: text("verification_pose"),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
@@ -457,6 +461,47 @@ export const FESTIVAL_LIST = [
   "Pongal",
   "Baisakhi",
   "Durga Puja",
+] as const;
+
+export const chaiDates = pgTable("chai_dates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  matchId: varchar("match_id").notNull().references(() => matches.id),
+  requesterId: varchar("requester_id").notNull().references(() => users.id),
+  recipientId: varchar("recipient_id").notNull().references(() => users.id),
+  status: text("status").notNull().default("pending"),
+  durationMinutes: integer("duration_minutes").default(5),
+  extended: boolean("extended").default(false),
+  startedAt: timestamp("started_at"),
+  endedAt: timestamp("ended_at"),
+  endReason: text("end_reason"),
+  icebreakersTopic: text("icebreakers_topic"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertChaiDateSchema = createInsertSchema(chaiDates).omit({ id: true, createdAt: true });
+export type ChaiDate = typeof chaiDates.$inferSelect;
+export type InsertChaiDate = z.infer<typeof insertChaiDateSchema>;
+
+export const VERIFICATION_POSES = [
+  { id: "thumbs_up", label: "Thumbs Up", instruction: "Show a thumbs up with your right hand near your face", emoji: "👍" },
+  { id: "peace_sign", label: "Peace Sign", instruction: "Make a peace/victory sign with your fingers", emoji: "✌️" },
+  { id: "wave", label: "Wave Hello", instruction: "Wave with your hand raised near your face", emoji: "👋" },
+  { id: "hand_on_chin", label: "Hand on Chin", instruction: "Rest your chin on your hand thoughtfully", emoji: "🤔" },
+] as const;
+
+export const CHAI_DATE_ICEBREAKERS = [
+  "What's the best chai you've ever had?",
+  "If you could travel anywhere in India tomorrow, where would you go?",
+  "What's your most embarrassing Bollywood moment?",
+  "What does a perfect Sunday look like for you?",
+  "What's one thing most people don't know about you?",
+  "If you could have dinner with any person, who would it be?",
+  "What's your go-to comfort food?",
+  "Mountains or beaches - and why?",
+  "What's the best compliment you've ever received?",
+  "What's your hidden talent?",
+  "If your life had a theme song, what would it be?",
+  "What's the most spontaneous thing you've ever done?",
 ] as const;
 
 export const INTENT_OPTIONS = ["Casual", "Dating", "Serious", "Marriage"] as const;
