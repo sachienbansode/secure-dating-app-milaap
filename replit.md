@@ -16,6 +16,14 @@ Milaap uses a React frontend with Tailwind v4, TanStack Query, wouter, and Frame
 
 The application incorporates a 4-tier membership system (Basic, Silver, Gold, Platinum) with feature gating and pricing. Key features include an interactive dating quiz with cultural context, a sophisticated AI bot proxy with conversation stages, and advanced privacy controls such as "No Screenshot Mode" and an "Enhanced Report & Block" system. User interactions are enhanced with haptic feedback and dynamic location search using OpenStreetMap/Nominatim API. Admin functionalities cover membership management, ad settings, bot mode configurations, and comprehensive activity logging.
 
+## Recent Changes (Feb 2026)
+- **DOB Field**: Replaced age number input with Date of Birth date picker; age computed from DOB with 18+ validation
+- **SwipeCard Fix**: Added bottom padding (pb-24) and max-height (200px) for expanded content to prevent overlap with action buttons
+- **Chai Date Icebreaker**: Added inline answer input on Chai Date screen; answers sent to chat with ☕ prefix
+- **Attachments Democratized**: Voice notes and file attachments available to all users (removed membership gate); admin toggle retained; audio MIME types added
+- **Server-side Cooldown**: Moved swipe cooldown from localStorage to DB column (users.lastDiscoverDepletedAt); persists across reloads
+- **Auto-seed**: 22 profiles total (20 seed + 2 founders: Ithan Hunt +919820098200 and Rekha +917950903063 as Platinum)
+
 ## External Dependencies
 - **OpenAI**: Used for AI-assisted messaging, chat suggestions, AI proxy replies, tone analysis, and green flag analysis.
 - **OpenStreetMap/Nominatim API**: Integrated for location search functionality in discover filters and hometown selection.

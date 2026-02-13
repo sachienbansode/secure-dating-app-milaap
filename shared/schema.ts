@@ -29,6 +29,7 @@ export const users = pgTable("users", {
   membershipTier: text("membership_tier").default("basic"),
   membershipExpiresAt: timestamp("membership_expires_at"),
   membershipStartedAt: timestamp("membership_started_at"),
+  lastDiscoverDepletedAt: timestamp("last_discover_depleted_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -422,7 +423,7 @@ export const updateProfileSchema = z.object({
   partner2Gender: z.enum(["Male", "Female", "Trans"]).optional().nullable(),
   dateReadiness: z.enum(["Chat-only", "Voice-ready", "Meet-ready"]).optional(),
   zodiacSign: z.string().optional(),
-  dateOfBirth: z.string().optional(),
+  dateOfBirth: z.string().min(1, "Date of birth is required"),
 });
 
 export const swipeSchema = z.object({

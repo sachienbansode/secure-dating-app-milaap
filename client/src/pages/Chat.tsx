@@ -539,8 +539,9 @@ export default function Chat() {
 
     const imageTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
     const videoTypes = ["video/mp4", "video/quicktime", "video/x-msvideo", "video/x-matroska"];
-    if (!imageTypes.includes(file.type) && !videoTypes.includes(file.type)) {
-      setCooldownAlert("Only image and video files are allowed.");
+    const audioTypes = ["audio/mpeg", "audio/wav", "audio/ogg", "audio/webm", "audio/mp4"];
+    if (!imageTypes.includes(file.type) && !videoTypes.includes(file.type) && !audioTypes.includes(file.type)) {
+      setCooldownAlert("Only image, video, and audio files are allowed.");
       setTimeout(() => setCooldownAlert(null), 3000);
       return;
     }
@@ -550,6 +551,8 @@ export default function Chat() {
       const reader = new FileReader();
       reader.onload = (ev) => setAttachmentPreview(ev.target?.result as string);
       reader.readAsDataURL(file);
+    } else if (audioTypes.includes(file.type)) {
+      setAttachmentPreview("audio");
     } else {
       setAttachmentPreview("video");
     }
@@ -980,6 +983,8 @@ export default function Chat() {
                     <div className="mb-1">
                       {msg.attachmentType === "image" ? (
                         <img src={msg.attachmentUrl} alt="Shared image" className="rounded-xl max-w-full max-h-60 object-cover cursor-pointer" onClick={() => window.open(msg.attachmentUrl!, "_blank")} data-testid={`attachment-image-${msg.id}`} />
+                      ) : msg.attachmentType === "audio" ? (
+                        <audio controls src={msg.attachmentUrl} className="max-w-[250px] mt-1" data-testid={`audio-attachment-${msg.id}`} />
                       ) : (
                         <video src={msg.attachmentUrl} controls className="rounded-xl max-w-full max-h-60" data-testid={`attachment-video-${msg.id}`} />
                       )}
@@ -996,7 +1001,7 @@ export default function Chat() {
                           data-testid={`button-view-once-${msg.id}`}
                         >
                           {msg.senderId === currentUserId ? (
-                            <><Eye size={14} /> {msg.attachmentType === "image" ? "📷" : "🎥"} View once {msg.oneTimeViewed ? "(Opened)" : ""}</>
+                            <><Eye size={14} /> {msg.attachmentType === "image" ? "📷" : msg.attachmentType === "audio" ? "🎵" : "🎥"} View once {msg.oneTimeViewed ? "(Opened)" : ""}</>
                           ) : (
                             <><Eye size={14} /> Tap to view</>
                           )}
@@ -1084,6 +1089,10 @@ export default function Chat() {
                 <div className="w-16 h-16 rounded-xl bg-muted flex items-center justify-center">
                   <Play size={24} className="text-blue-400" />
                 </div>
+              ) : attachmentPreview === "audio" ? (
+                <div className="w-16 h-16 rounded-xl bg-muted flex items-center justify-center">
+                  <Mic size={24} className="text-green-400" />
+                </div>
               ) : (
                 <img src={attachmentPreview} alt="Preview" className="w-16 h-16 rounded-xl object-cover" />
               )}
@@ -1119,7 +1128,7 @@ export default function Chat() {
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*,video/*"
+          accept="image/*,video/*,audio/*"
           className="hidden"
           onChange={handleAttachmentSelect}
           data-testid="input-attachment-file"

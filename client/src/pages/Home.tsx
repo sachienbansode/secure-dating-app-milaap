@@ -10,34 +10,29 @@ import { apiRequest } from "@/lib/queryClient";
 import { getMe } from "@/lib/auth";
 import { AdBanner, useAdFrequency } from "@/components/AdBanner";
 
-function CooldownMessage({ activeFilterCount, onClearFilters, onRefresh }: { activeFilterCount: number; onClearFilters: () => void; onRefresh: () => void }) {
+function CooldownMessage({ activeFilterCount, onClearFilters, onRefresh, lastSwipeTime }: { activeFilterCount: number; onClearFilters: () => void; onRefresh: () => void; lastSwipeTime: number | null }) {
   const [timeLeft, setTimeLeft] = useState("");
-  const hasCooldown = !!localStorage.getItem("milaap_last_swipe_time");
 
   useEffect(() => {
-    if (!hasCooldown) return;
+    if (!lastSwipeTime) return;
     const update = () => {
-      const lastSwipeTime = localStorage.getItem("milaap_last_swipe_time");
-      if (lastSwipeTime) {
-        const elapsed = Date.now() - parseInt(lastSwipeTime);
-        const remaining = 4 * 60 * 60 * 1000 - elapsed;
-        if (remaining > 0) {
-          const hrs = Math.floor(remaining / 3600000);
-          const mins = Math.floor((remaining % 3600000) / 60000);
-          const secs = Math.floor((remaining % 60000) / 1000);
-          setTimeLeft(`${hrs}h ${mins}m ${secs}s`);
-        } else {
-          setTimeLeft("");
-          localStorage.removeItem("milaap_last_swipe_time");
-        }
+      const elapsed = Date.now() - lastSwipeTime;
+      const remaining = 4 * 60 * 60 * 1000 - elapsed;
+      if (remaining > 0) {
+        const hrs = Math.floor(remaining / 3600000);
+        const mins = Math.floor((remaining % 3600000) / 60000);
+        const secs = Math.floor((remaining % 60000) / 1000);
+        setTimeLeft(`${hrs}h ${mins}m ${secs}s`);
+      } else {
+        setTimeLeft("");
       }
     };
     update();
     const interval = setInterval(update, 1000);
     return () => clearInterval(interval);
-  }, [hasCooldown]);
+  }, [lastSwipeTime]);
 
-  const isCooldownActive = hasCooldown && timeLeft !== "";
+  const isCooldownActive = !!lastSwipeTime && timeLeft !== "";
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center p-8 max-w-sm mx-auto">
@@ -149,6 +144,11 @@ export default function Home() {
     enabled: !!session?.user,
   });
 
+  const { data: cooldownData } = useQuery<{ lastSwipeTime: number | null }>({
+    queryKey: ["/api/cooldown"],
+    enabled: !!session?.user,
+  });
+
   const discoverUrl = `/api/discover?${new URLSearchParams({
     ...(filters.gender !== "All" && { gender: filters.gender }),
     ...(filters.ageMin !== 18 && { ageMin: String(filters.ageMin) }),
@@ -172,8 +172,8 @@ export default function Home() {
         setMatchPopup(data.match.targetUserId);
       }
       queryClient.invalidateQueries({ queryKey: ["/api/matches"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/cooldown"] });
       recordSwipe();
-      localStorage.setItem("milaap_last_swipe_time", String(Date.now()));
     },
   });
 
@@ -280,7 +280,7 @@ export default function Home() {
                 );
               })
             ) : (
-              <CooldownMessage activeFilterCount={activeFilterCount} onClearFilters={() => setFilters({ gender: "All", ageMin: 18, ageMax: 45, city: "All" })} onRefresh={handleRefresh} />
+              <CooldownMessage activeFilterCount={activeFilterCount} onClearFilters={() => setFilters({ gender: "All", ageMin: 18, ageMax: 45, city: "All" })} onRefresh={handleRefresh} lastSwipeTime={cooldownData?.lastSwipeTime || null} />
             )}
           </AnimatePresence>
         )}
@@ -367,7 +367,7 @@ function SwipeCard({ profile, isFront, expanded, onSwipe, onToggleExpand, appSet
     >
       <div className="relative w-full h-full rounded-3xl overflow-hidden shadow-xl bg-card select-none">
         <img src={photoUrl} alt={profile.name} className="w-full h-full object-cover pointer-events-none" />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/80 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/10 to-black/90 pointer-events-none" />
 
         <div className="absolute top-4 left-4 flex gap-2 z-10">
           {profile.intent && (
@@ -414,9 +414,9 @@ function SwipeCard({ profile, isFront, expanded, onSwipe, onToggleExpand, appSet
           </>
         )}
 
-        <div className="absolute bottom-0 left-0 right-0 p-6 text-white cursor-pointer" onClick={(e) => { e.stopPropagation(); if (isFront) onToggleExpand(); }}>
+        <div className={`absolute bottom-0 left-0 right-0 p-6 ${isFront ? "pb-24" : "pb-6"} text-white cursor-pointer`} onClick={(e) => { e.stopPropagation(); if (isFront) onToggleExpand(); }}>
           <div className="flex items-center justify-between mb-1">
-            <h2 className="text-3xl font-heading font-bold" data-testid={`text-name-${profile.userId}`}>
+            <h2 className="text-2xl font-heading font-bold" data-testid={`text-name-${profile.userId}`}>
               {coupleProfilesEnabled && profile.gender === "Couple" && profile.partner2Name
                 ? `${profile.name} & ${profile.partner2Name}`
                 : profile.name}
@@ -426,7 +426,7 @@ function SwipeCard({ profile, isFront, expanded, onSwipe, onToggleExpand, appSet
             </h2>
             {isFront && <motion.div animate={{ rotate: expanded ? 180 : 0 }}><ChevronDown size={20} className="text-white/70" /></motion.div>}
           </div>
-          <div className="flex items-center text-white/80 text-sm mb-3 flex-wrap gap-y-1">
+          <div className="flex items-center text-white/80 text-sm mb-2 flex-wrap gap-y-1">
             <MapPin size={14} className="mr-1" /><span>{profile.location}</span>
             <span className="mx-2 text-white/40">·</span>
             <span className="bg-white/15 px-2 py-0.5 rounded-full text-xs">{profile.gender}</span>
@@ -436,7 +436,7 @@ function SwipeCard({ profile, isFront, expanded, onSwipe, onToggleExpand, appSet
 
           <AnimatePresence>
             {expanded && isFront && (
-              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden max-h-[200px] overflow-y-auto">
                 {profile.bio && <p className="text-white/90 mb-3 font-light text-sm">{profile.bio}</p>}
                 {coupleProfilesEnabled && profile.gender === "Couple" && profile.partner2Name && (
                   <div className="bg-blue-500/20 backdrop-blur-sm rounded-lg px-3 py-2 mb-3 border border-blue-400/20">

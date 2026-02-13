@@ -108,6 +108,7 @@ export default function Profile() {
     partner2Name: "" as string,
     partner2Age: 25 as number,
     partner2Gender: "" as string,
+    dateOfBirth: "",
   });
 
   useEffect(() => {
@@ -140,6 +141,7 @@ export default function Profile() {
         partner2Name: (p as any).partner2Name || "",
         partner2Age: (p as any).partner2Age || 25,
         partner2Gender: (p as any).partner2Gender || "",
+        dateOfBirth: (p as any).dateOfBirth || "",
       });
     }
   }, [session?.profile]);
@@ -228,7 +230,11 @@ export default function Profile() {
         }
       }
 
-      const submitData = { ...form };
+      const submitData: any = { ...form };
+      if (submitData.dateOfBirth) {
+        const birthDate = new Date(submitData.dateOfBirth);
+        submitData.age = Math.floor((Date.now() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+      }
       if (submitData.gender !== "Couple") {
         delete (submitData as any).partner2Name;
         delete (submitData as any).partner2Age;
@@ -445,8 +451,11 @@ export default function Profile() {
 
                 <div className="flex gap-4">
                   <div className="flex-1">
-                    <label className="text-sm font-medium text-foreground mb-2 block">{form.gender === "Couple" && appSettings?.feature_couple_profiles !== false ? "Partner 1 Age" : "Age"} <span className="text-red-500">*</span></label>
-                    <Input data-testid="input-age" type="number" value={form.age} onChange={(e) => setForm((f) => ({ ...f, age: parseInt(e.target.value) || 18 }))} min={18} max={100} className="h-12 rounded-xl" />
+                    <label className="text-sm font-medium text-foreground mb-2 block">{form.gender === "Couple" && appSettings?.feature_couple_profiles !== false ? "Partner 1 Date of Birth" : "Date of Birth"} <span className="text-red-500">*</span></label>
+                    <Input data-testid="input-dob" type="date" value={form.dateOfBirth} onChange={(e) => setForm((f) => ({ ...f, dateOfBirth: e.target.value }))} max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split('T')[0]} className="h-12 rounded-xl" />
+                    {form.dateOfBirth && (
+                      <p className="text-xs text-muted-foreground mt-1" data-testid="text-computed-age">Age: {Math.floor((Date.now() - new Date(form.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000))} years</p>
+                    )}
                   </div>
                   <div className="flex-1">
                     <label className="text-sm font-medium text-foreground mb-2 block">{form.gender === "Couple" && appSettings?.feature_couple_profiles !== false ? "Profile Type" : "Gender"} <span className="text-red-500">*</span></label>

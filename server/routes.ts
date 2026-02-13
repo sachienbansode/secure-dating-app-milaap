@@ -609,6 +609,11 @@ export async function registerRoutes(
 
       const profileData: any = { ...parsed.data };
 
+      if (profileData.dateOfBirth) {
+        const birthDate = new Date(profileData.dateOfBirth);
+        profileData.age = Math.floor((Date.now() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+      }
+
       if (parsed.data.intent && (!existing?.intent || parsed.data.intent !== existing?.intent)) {
         profileData.intentLockedAt = new Date();
         if (existing?.intent && existing?.intentLockedAt) {
@@ -830,6 +835,16 @@ export async function registerRoutes(
     return res.json(status);
   });
 
+  app.get("/api/cooldown", requireAuth, async (req: Request, res: Response) => {
+    const userId = req.session.userId!;
+    const { eq: eqOp } = await import("drizzle-orm");
+    const { db: database } = await import("./db");
+    const { users: usersTable } = await import("@shared/schema");
+    const [user] = await database.select({ lastDiscoverDepletedAt: usersTable.lastDiscoverDepletedAt }).from(usersTable).where(eqOp(usersTable.id, userId));
+    const lastSwipeTime = user?.lastDiscoverDepletedAt ? user.lastDiscoverDepletedAt.getTime() : null;
+    res.json({ lastSwipeTime });
+  });
+
   app.post("/api/swipe", requireAuth, async (req: Request, res: Response) => {
     try {
       const parsed = swipeSchema.safeParse(req.body);
@@ -889,6 +904,12 @@ export async function registerRoutes(
         }
       }
 
+      {
+        const { eq: eqOp } = await import("drizzle-orm");
+        const { db: database } = await import("./db");
+        const { users: usersTable } = await import("@shared/schema");
+        await database.update(usersTable).set({ lastDiscoverDepletedAt: new Date() }).where(eqOp(usersTable.id, userId));
+      }
       await logActivity(userId, "swipe_action", "match", { action: parsed.data.action, targetUserId: parsed.data.targetUserId }, req);
       return res.json({ match, isMutualMatch });
     } catch (err: any) {
@@ -1237,9 +1258,6 @@ export async function registerRoutes(
       const userId = req.session.userId!;
       const { matchId, isOneTimeView } = req.body;
 
-      const hasAttachAccess = await checkFeatureAccess(userId, "chat_attachments");
-      if (!hasAttachAccess) return res.status(403).json({ message: "This feature requires a premium membership", requiredFeature: "chat_attachments" });
-
       if (!matchId) {
         return res.status(400).json({ message: "matchId is required" });
       }
@@ -1256,7 +1274,7 @@ export async function registerRoutes(
       const allowedExtensionsSetting = await storage.getAppSetting("attachment_extensions");
       const allowedExtensions = allowedExtensionsSetting
         ? allowedExtensionsSetting.split(",").map((e: string) => e.trim().toLowerCase())
-        : [".jpg", ".jpeg", ".png", ".webp", ".gif", ".mp4", ".mov", ".avi", ".mkv"];
+        : [".jpg", ".jpeg", ".png", ".webp", ".gif", ".mp4", ".mov", ".avi", ".mkv", ".mp3", ".wav", ".ogg", ".webm", ".m4a"];
 
       const fileExt = path.extname(req.file.originalname).toLowerCase();
       if (!allowedExtensions.includes(fileExt)) {
@@ -1266,11 +1284,12 @@ export async function registerRoutes(
 
       const imageTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
       const videoTypes = ["video/mp4", "video/quicktime", "video/x-msvideo", "video/x-matroska"];
-      const allowedMimes = [...imageTypes, ...videoTypes];
+      const audioTypes = ["audio/mpeg", "audio/wav", "audio/ogg", "audio/webm", "audio/mp4"];
+      const allowedMimes = [...imageTypes, ...videoTypes, ...audioTypes];
 
       if (!allowedMimes.includes(req.file.mimetype)) {
         fs.unlinkSync(req.file.path);
-        return res.status(400).json({ message: "Only image and video files are allowed." });
+        return res.status(400).json({ message: "Only image, video, and audio files are allowed." });
       }
 
       const user = await storage.getUser(userId);
@@ -1289,13 +1308,13 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Not part of this match" });
       }
 
-      const attachmentType = imageTypes.includes(req.file.mimetype) ? "image" : "video";
+      const attachmentType = imageTypes.includes(req.file.mimetype) ? "image" : videoTypes.includes(req.file.mimetype) ? "video" : "audio";
       const attachmentUrl = `/uploads/chat/${req.file.filename}`;
 
       const message = await storage.sendMessage({
         matchId,
         senderId: userId,
-        content: isOneTimeView === "true" ? "📷 View once" : (attachmentType === "image" ? "📷 Photo" : "🎥 Video"),
+        content: isOneTimeView === "true" ? "📷 View once" : (attachmentType === "image" ? "📷 Photo" : attachmentType === "video" ? "🎥 Video" : "🎵 Voice Note"),
         isAiGenerated: false,
         isAiProxy: false,
         attachmentUrl,

@@ -45,6 +45,7 @@ export default function ChaiDate() {
   const [currentIcebreaker, setCurrentIcebreaker] = useState(0);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [ended, setEnded] = useState(false);
+  const [icebreakerAnswer, setIcebreakerAnswer] = useState("");
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const { data: session } = useQuery({
@@ -82,6 +83,21 @@ export default function ChaiDate() {
     onSuccess: () => {
       triggerHaptic("heavy");
       setEnded(true);
+    },
+  });
+
+  const sendIcebreakerMutation = useMutation({
+    mutationFn: async (answer: string) => {
+      const res = await apiRequest("POST", "/api/messages", {
+        matchId: chaiDate.matchId,
+        content: `☕ ${ICEBREAKERS[currentIcebreaker]}\n\n${answer}`,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      setIcebreakerAnswer("");
+      triggerHaptic("medium");
+      nextIcebreaker();
     },
   });
 
@@ -339,13 +355,39 @@ export default function ChaiDate() {
           </div>
         </motion.div>
 
+        <div className="w-full max-w-sm flex gap-2 mt-3">
+          <input
+            type="text"
+            value={icebreakerAnswer}
+            onChange={(e) => setIcebreakerAnswer(e.target.value)}
+            placeholder="Type your answer..."
+            className="flex-1 px-4 py-3 rounded-xl text-sm text-white placeholder-gray-500 border border-amber-500/20 focus:border-amber-500/50 focus:outline-none"
+            style={{ background: "rgba(245, 158, 11, 0.05)" }}
+            data-testid="input-icebreaker-answer"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && icebreakerAnswer.trim()) {
+                sendIcebreakerMutation.mutate(icebreakerAnswer.trim());
+              }
+            }}
+          />
+          <Button
+            onClick={() => icebreakerAnswer.trim() && sendIcebreakerMutation.mutate(icebreakerAnswer.trim())}
+            disabled={!icebreakerAnswer.trim() || sendIcebreakerMutation.isPending}
+            className="px-4 py-3 rounded-xl text-sm font-bold text-white shrink-0"
+            style={{ background: "linear-gradient(135deg, #f59e0b, #dc2626)" }}
+            data-testid="button-send-icebreaker"
+          >
+            {sendIcebreakerMutation.isPending ? "..." : "Send"}
+          </Button>
+        </div>
+
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1 }}
           className="text-gray-500 text-xs text-center max-w-xs"
         >
-          Talk about the icebreaker in your chat! This is a fun timed session to get to know each other.
+          Answer here or in chat! Your responses are sent to the conversation.
         </motion.p>
       </div>
 
