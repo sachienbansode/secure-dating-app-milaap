@@ -759,7 +759,7 @@ export async function registerRoutes(
   app.get("/api/discover", requireAuth, async (req: Request, res: Response) => {
     try {
       const userId = req.session.userId!;
-      const limit = parseInt(req.query.limit as string) || 500;
+      const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
       const myProfile = await storage.getProfile(userId);
       const filters = {
         gender: req.query.gender as string | undefined,
@@ -769,7 +769,7 @@ export async function registerRoutes(
         intent: req.query.intent as string | undefined,
         familyMode: myProfile?.familyMode ? true : undefined,
       };
-      let profilesList = await storage.getDiscoverProfiles(userId, limit, filters);
+      let profilesList = await storage.getDiscoverProfiles(userId, limit, filters, myProfile);
 
       const coupleProfilesEnabled = await storage.getAppSetting("feature_couple_profiles");
       if (coupleProfilesEnabled === "false") {

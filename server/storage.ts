@@ -41,7 +41,7 @@ export interface IStorage {
   getAppSettings(keys: string[]): Promise<Map<string, string>>;
   createProfile(profile: InsertProfile): Promise<Profile>;
   updateProfile(userId: string, data: Partial<InsertProfile>): Promise<Profile | undefined>;
-  getDiscoverProfiles(userId: string, limit?: number, filters?: { gender?: string; ageMin?: number; ageMax?: number; city?: string; intent?: string; familyMode?: boolean }): Promise<Profile[]>;
+  getDiscoverProfiles(userId: string, limit?: number, filters?: { gender?: string; ageMin?: number; ageMax?: number; city?: string; intent?: string; familyMode?: boolean }, myProfile?: Profile | null): Promise<Profile[]>;
 
   createMatch(match: InsertMatch): Promise<Match>;
   getMatch(userId: string, targetUserId: string): Promise<Match | undefined>;
@@ -182,16 +182,16 @@ export class DatabaseStorage implements IStorage {
 
   async getLastMessagesForMatches(matchIds: string[]): Promise<Map<string, { content: string; createdAt: Date; senderId: string }>> {
     if (matchIds.length === 0) return new Map();
+    const matchIdsArray = `{${matchIds.join(',')}}`;
     const result = await db.execute(sql`
       SELECT DISTINCT ON (match_id) match_id, content, created_at, sender_id
       FROM messages
-      WHERE match_id = ANY(${matchIds})
+      WHERE match_id = ANY(${matchIdsArray}::text[])
       ORDER BY match_id, created_at DESC
     `);
     const map = new Map<string, { content: string; createdAt: Date; senderId: string }>();
-    for (const row of result.rows as any[]) {
-      const content = row.content;
-      const decryptedContent = decryptMessage(content);
+    for (const row of (result.rows || []) as any[]) {
+      const decryptedContent = decryptMessage(row.content);
       map.set(row.match_id, { content: decryptedContent, createdAt: new Date(row.created_at), senderId: row.sender_id });
     }
     return map;
@@ -224,7 +224,7 @@ export class DatabaseStorage implements IStorage {
     return updated ? decryptProfile(updated) : undefined;
   }
 
-  async getDiscoverProfiles(userId: string, limit = 500, filters?: { gender?: string; ageMin?: number; ageMax?: number; city?: string; intent?: string; familyMode?: boolean }): Promise<Profile[]> {
+  async getDiscoverProfiles(userId: string, limit = 50, filters?: { gender?: string; ageMin?: number; ageMax?: number; city?: string; intent?: string; familyMode?: boolean }, myProfile?: Profile | null): Promise<Profile[]> {
     const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000);
     const [recentSwipes, blocked, deactivatedUsers] = await Promise.all([
       db.select({ targetUserId: matches.targetUserId })
@@ -252,9 +252,9 @@ export class DatabaseStorage implements IStorage {
     if (filters?.gender && filters.gender !== "All") {
       conditions.push(eq(profiles.gender, filters.gender));
     } else {
-      const myProfile = await this.getProfile(userId);
-      if (myProfile?.interestedIn && myProfile.interestedIn.length > 0) {
-        conditions.push(inArray(profiles.gender, myProfile.interestedIn));
+      const profile = myProfile ?? await this.getProfile(userId);
+      if (profile?.interestedIn && profile.interestedIn.length > 0) {
+        conditions.push(inArray(profiles.gender, profile.interestedIn));
       }
     }
     if (filters?.ageMin) {
