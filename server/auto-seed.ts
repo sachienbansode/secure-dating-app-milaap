@@ -89,7 +89,7 @@ export async function autoSeedProfiles() {
     await db.delete(users).where(sql`phone LIKE '+91990000%'`);
   }
 
-  console.log("Auto-seed: Empty database detected, creating 20 seed profiles (5 per category)...");
+  console.log("Auto-seed: Seed profiles missing, creating 20 seed profiles (5 per category)...");
 
   let phoneCounter = 0;
 
