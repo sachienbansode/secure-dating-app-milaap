@@ -4,6 +4,9 @@
 Milaap is a mobile-first dating application designed for the Indian market featuring OTP-based authentication, AES-256-GCM data encryption at rest, AI-assisted messaging via OpenAI, photo uploads, respect-based matchmaking, and 12 advanced cultural features.
 
 ## Recent Changes
+- 2026-02-13: Added animated Feature Tour showcase on login page - 11 feature slides with auto-play, Framer Motion animations, dot navigation, "Watch Feature Tour" button
+- 2026-02-13: Added Direct Chat for Gold/Platinum members - chat button on ViewProfile works without matching, auto-creates mutual match, feature-access gated, block validation, error handling
+- 2026-02-13: Updated membership comparison table and plan cards to show "Direct Chat (without matching)" as Gold/Platinum exclusive feature
 - 2026-02-12: Fixed AI proxy auto-reply - bot profiles (no email) now correctly trigger proxy regardless of online status, added debug logging throughout proxy pipeline
 - 2026-02-12: Fixed Privacy & Safety section in Profile - added onClick handler with editing panel (visibility toggle, no-screenshot mode, blocked users)
 - 2026-02-12: Added membership comparison table - expandable table showing all 4 tiers with features, prices, limits, checkmarks

@@ -31,6 +31,7 @@ const INTENT_ICONS: Record<string, string> = { Casual: "☕", Dating: "💕", Se
 const INTENT_COLORS: Record<string, string> = { Casual: "bg-blue-900/20 border-blue-800 text-blue-400", Dating: "bg-red-900/20 border-red-800 text-red-400", Serious: "bg-blue-900/20 border-blue-800 text-blue-400", Marriage: "bg-blue-900/20 border-blue-800 text-blue-400" };
 
 const FEATURE_NAME_MAP: Record<string, string> = {
+  direct_chat: "Direct Chat (without matching)",
   chat_attachments: "Chat Attachments",
   contact_sharing: "Contact Sharing",
   location_sharing: "Location Sharing",
@@ -1231,6 +1232,9 @@ export default function Profile() {
                       </div>
                       <p className="text-sm font-bold" style={{ color: planColor }} data-testid={`text-price-${plan.tier}`}>
                         {parseFloat(plan.priceMonthly || "0") === 0 ? "Free" : `Rs. ${plan.priceMonthly}/month`}
+                      </p>
+                      <p className="text-[10px] mt-1 font-medium" style={{ color: (plan.tier === "gold" || plan.tier === "platinum") ? "#34d399" : "#94a3b8" }}>
+                        {(plan.tier === "gold" || plan.tier === "platinum") ? "✓ Chat with anyone directly" : "Chat only after matching"}
                       </p>
                       {plan.features && (
                         <ul className="text-[10px] text-muted-foreground mt-1 space-y-0.5">

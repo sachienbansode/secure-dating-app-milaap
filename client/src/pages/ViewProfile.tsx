@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useLocation, useParams } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, MessageCircle, MapPin, Heart, Sparkles, Shield, CheckCircle, Mic, Users, Clock, X, ChevronLeft, ChevronRight, Maximize2 } from "lucide-react";
+import { ArrowLeft, MessageCircle, MapPin, Heart, Sparkles, Shield, CheckCircle, Mic, Users, Clock, X, ChevronLeft, ChevronRight, Maximize2, Crown, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { apiRequest } from "@/lib/queryClient";
 import { getMe } from "@/lib/auth";
 
 const INTENT_ICONS: Record<string, string> = { Casual: "☕", Dating: "💕", Serious: "💎", Marriage: "💍" };
@@ -80,13 +81,45 @@ export default function ViewProfile() {
     enabled: !!session?.user,
   });
 
+  const { data: myMembership } = useQuery<any>({
+    queryKey: ["/api/membership/my"],
+    enabled: !!session?.user,
+  });
+
   const matchWithUser = matches?.find(
     (m: any) => m.isMatched && (m.userId === userId || m.targetUserId === userId)
   );
 
+  const isPremiumChat = myMembership?.tier === "gold" || myMembership?.tier === "platinum";
+  const canDirectChat = isPremiumChat && !matchWithUser && session?.user?.id !== userId;
+
+  const [directChatError, setDirectChatError] = useState<string | null>(null);
+
+  const directChatMutation = useMutation({
+    mutationFn: async () => {
+      setDirectChatError(null);
+      const res = await apiRequest("POST", "/api/direct-chat", { targetUserId: userId });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Failed to start direct chat");
+      }
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      if (data.matchId) {
+        setLocation(`/chat/${data.matchId}`);
+      }
+    },
+    onError: (error: Error) => {
+      setDirectChatError(error.message);
+    },
+  });
+
   const handleChat = () => {
     if (matchWithUser) {
       setLocation(`/chat/${matchWithUser.id}`);
+    } else if (canDirectChat) {
+      directChatMutation.mutate();
     }
   };
 
@@ -313,9 +346,9 @@ export default function ViewProfile() {
         </div>
       </div>
 
-      {matchWithUser && (
-        <div className="fixed bottom-0 left-0 right-0 p-4 z-30" style={{ background: "linear-gradient(to top, hsl(var(--background)) 80%, transparent)" }}>
-          <div className="max-w-lg mx-auto">
+      <div className="fixed bottom-0 left-0 right-0 p-4 z-30" style={{ background: "linear-gradient(to top, hsl(var(--background)) 80%, transparent)" }}>
+        <div className="max-w-lg mx-auto">
+          {matchWithUser ? (
             <Button
               onClick={handleChat}
               className="w-full h-14 rounded-2xl font-bold text-lg text-white shadow-xl"
@@ -324,9 +357,37 @@ export default function ViewProfile() {
             >
               <MessageCircle size={20} className="mr-2" /> Chat with {profile.name}
             </Button>
-          </div>
+          ) : canDirectChat ? (
+            <div className="space-y-2">
+              {directChatError && (
+                <div className="text-xs text-red-400 text-center p-2 rounded-xl bg-red-500/10 border border-red-500/20" data-testid="text-direct-chat-error">
+                  {directChatError}
+                </div>
+              )}
+              <Button
+                onClick={handleChat}
+                disabled={directChatMutation.isPending}
+                className="w-full h-14 rounded-2xl font-bold text-lg text-white shadow-xl"
+                style={{ background: "linear-gradient(135deg, #F59E0B, #8B5CF6)" }}
+                data-testid="button-direct-chat"
+              >
+                <Crown size={20} className="mr-2" />
+                {directChatMutation.isPending ? "Connecting..." : `Direct Chat with ${profile.name}`}
+              </Button>
+            </div>
+          ) : session?.user?.id !== userId ? (
+            <div className="bg-card rounded-2xl border border-border p-3 text-center">
+              <div className="flex items-center justify-center gap-2 text-muted-foreground text-sm">
+                <Lock size={16} />
+                <span>Match with {profile.name} to start chatting</span>
+              </div>
+              <p className="text-xs text-muted-foreground/60 mt-1">
+                Upgrade to <span className="text-yellow-400 font-semibold">Gold</span> or <span className="text-purple-400 font-semibold">Platinum</span> to chat directly
+              </p>
+            </div>
+          ) : null}
         </div>
-      )}
+      </div>
     </div>
   );
 }

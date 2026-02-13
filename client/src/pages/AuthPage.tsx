@@ -2,12 +2,13 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Mail, Phone, ArrowRight, Shield } from "lucide-react";
-import { motion } from "framer-motion";
+import { Mail, Phone, ArrowRight, Shield, Play } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import logo from "@/assets/logo.png";
 import { requestOtp, verifyOtp, getMe } from "@/lib/auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import WelcomeOverlay from "@/components/WelcomeOverlay";
+import FeatureShowcase from "@/components/FeatureShowcase";
 
 export default function AuthPage() {
   const [, setLocation] = useLocation();
@@ -28,6 +29,7 @@ export default function AuthPage() {
   const [termsVersion, setTermsVersion] = useState(1);
   const [showTermsUpdate, setShowTermsUpdate] = useState(false);
   const [pendingDestination, setPendingDestination] = useState<string | null>(null);
+  const [showFeatures, setShowFeatures] = useState(false);
 
   const { data: session, isLoading: checkingSession } = useQuery({
     queryKey: ["/api/auth/me"],
@@ -253,14 +255,25 @@ export default function AuthPage() {
             By continuing, you agree to our Terms & Privacy Policy.
           </p>
           <button
+            data-testid="button-view-features"
+            onClick={() => setShowFeatures(true)}
+            className="flex items-center justify-center gap-2 mt-4 mx-auto text-sm font-semibold py-3 px-6 rounded-2xl transition-all active:scale-95"
+            style={{ color: "#f59e0b", background: "linear-gradient(135deg, rgba(245,158,11,0.2), rgba(139,92,246,0.15))", border: "1px solid rgba(245,158,11,0.4)", boxShadow: "0 0 20px rgba(245,158,11,0.15)" }}
+          >
+            <Play size={16} /> Watch Feature Tour
+          </button>
+          <button
             data-testid="button-admin-portal"
             onClick={() => setLocation("/admin")}
-            className="flex items-center justify-center gap-2 mt-5 mx-auto text-sm font-semibold py-3 px-6 rounded-2xl transition-all active:scale-95"
+            className="flex items-center justify-center gap-2 mt-3 mx-auto text-sm font-semibold py-3 px-6 rounded-2xl transition-all active:scale-95"
             style={{ color: "#34d399", background: "linear-gradient(135deg, rgba(5,150,105,0.2), rgba(14,165,233,0.15))", border: "1px solid rgba(5,150,105,0.4)", boxShadow: "0 0 20px rgba(5,150,105,0.15)" }}
           >
             <Shield size={16} /> Admin Portal
           </button>
         </motion.div>
+        <AnimatePresence>
+          {showFeatures && <FeatureShowcase onClose={() => setShowFeatures(false)} />}
+        </AnimatePresence>
       </div>
     );
   }

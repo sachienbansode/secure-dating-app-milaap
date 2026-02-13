@@ -2973,6 +2973,76 @@ CRITICAL RULES:
     }
   });
 
+  // ==================== DIRECT CHAT (Gold/Platinum) ====================
+
+  app.post("/api/direct-chat", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const { targetUserId } = req.body;
+      if (!targetUserId) return res.status(400).json({ message: "targetUserId required" });
+      if (userId === targetUserId) return res.status(400).json({ message: "Cannot chat with yourself" });
+
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      const hasAccess = await checkFeatureAccess(userId, "direct_chat");
+      if (!hasAccess) {
+        return res.status(403).json({ message: "Direct chat is only available for Gold and Platinum members. Please upgrade your membership." });
+      }
+
+      const targetUser = await storage.getUser(targetUserId);
+      if (!targetUser) return res.status(404).json({ message: "Target user not found" });
+
+      const blocked = await storage.getBlockedUsers(userId);
+      if (blocked?.some((b: any) => b.blockedUserId === targetUserId)) {
+        return res.status(403).json({ message: "Cannot chat with this user" });
+      }
+      const blockedBy = await storage.getBlockedUsers(targetUserId);
+      if (blockedBy?.some((b: any) => b.blockedUserId === userId)) {
+        return res.status(403).json({ message: "Cannot chat with this user" });
+      }
+
+      const existingMatch = await storage.getMatch(userId, targetUserId);
+      if (existingMatch && existingMatch.isMatched) {
+        return res.json({ matchId: existingMatch.id, alreadyMatched: true });
+      }
+
+      if (existingMatch) {
+        await storage.updateMatch(existingMatch.id, { isMatched: true });
+        const reverseMatch = await storage.getMatch(targetUserId, userId);
+        if (reverseMatch) {
+          await storage.updateMatch(reverseMatch.id, { isMatched: true });
+        }
+        return res.json({ matchId: existingMatch.id, alreadyMatched: false });
+      }
+
+      const match = await storage.createMatch({
+        userId,
+        targetUserId,
+        action: "like",
+        isMatched: true,
+      });
+
+      const reverseExists = await storage.getMatch(targetUserId, userId);
+      if (reverseExists) {
+        await storage.updateMatch(reverseExists.id, { isMatched: true });
+      } else {
+        await storage.createMatch({
+          userId: targetUserId,
+          targetUserId: userId,
+          action: "like",
+          isMatched: true,
+        });
+      }
+
+      await logActivity(userId, "direct_chat_initiated", "chat", { targetUserId }, req);
+
+      return res.json({ matchId: match.id, alreadyMatched: false });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
   // ==================== FEATURE ACCESS CHECK ====================
 
   app.get("/api/membership/feature-access", requireAuth, async (req: Request, res: Response) => {
