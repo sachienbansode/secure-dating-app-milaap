@@ -496,9 +496,6 @@ export class DatabaseStorage implements IStorage {
     const req2 = await this.getPhoneUnlockRequest(userId2, userId1, matchId);
     if (!req1 || !req2) return false;
     if (req1.status !== "approved" || req2.status !== "approved") return false;
-    const now = new Date();
-    if (req1.coolOffEndsAt && now < req1.coolOffEndsAt) return false;
-    if (req2.coolOffEndsAt && now < req2.coolOffEndsAt) return false;
     return true;
   }
 

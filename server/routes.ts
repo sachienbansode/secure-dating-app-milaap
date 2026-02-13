@@ -2201,10 +2201,27 @@ MESSAGE LENGTH - THIS IS EXTREMELY IMPORTANT:
 
       const existing = await storage.getPhoneUnlockRequest(userId, otherUserId, matchId);
       if (existing) {
+        if (existing.status === "pending" && existing.requestedAt) {
+          const hoursSinceRequest = (Date.now() - new Date(existing.requestedAt).getTime()) / (1000 * 60 * 60);
+          const otherUser = await storage.getUser(otherUserId);
+          if (hoursSinceRequest >= 4 && otherUser?.isOnline) {
+            await storage.updatePhoneUnlockRequest(existing.id, {
+              requestedAt: new Date(),
+            });
+            await storage.sendMessage({
+              matchId,
+              senderId: userId,
+              content: `📱 ${(await storage.getProfile(userId))?.name || "Your match"} has re-requested to share contact details. You can respond from chat options.`,
+              isAiGenerated: false,
+              isAiProxy: false,
+              isSystemMessage: true,
+            });
+            await logActivity(userId, "phone_unlock_re_requested", "privacy", { matchId }, req);
+            return res.json({ request: existing, message: "Re-request sent successfully." });
+          }
+        }
         return res.status(409).json({ message: "Unlock request already sent", status: existing.status });
       }
-
-      const coolOffEndsAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
       const request = await storage.createPhoneUnlockRequest({
         requesterId: userId,
@@ -2212,7 +2229,6 @@ MESSAGE LENGTH - THIS IS EXTREMELY IMPORTANT:
         matchId,
         status: "pending",
         requestedAt: new Date(),
-        coolOffEndsAt,
       });
 
       await storage.sendMessage({
@@ -2262,7 +2278,6 @@ MESSAGE LENGTH - THIS IS EXTREMELY IMPORTANT:
             matchId,
             status: "approved",
             requestedAt: new Date(),
-            coolOffEndsAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
             respondedAt: new Date(),
           });
         } else {
@@ -2275,14 +2290,14 @@ MESSAGE LENGTH - THIS IS EXTREMELY IMPORTANT:
         await storage.sendMessage({
           matchId,
           senderId: userId,
-          content: `✅ Contact sharing approved! After the 24-hour cool-off period, you'll be able to share contact details.`,
+          content: `✅ Contact sharing approved! You can now share contact details.`,
           isAiGenerated: false,
           isAiProxy: false,
           isSystemMessage: true,
         });
 
         await logActivity(userId, "phone_unlock_responded", "privacy", { requestId: theirRequest.id, status: "approved" }, req);
-        return res.json({ message: "Approved. Contact sharing will be unlocked after 24-hour cool-off.", mutual: true });
+        return res.json({ message: "Approved! Contact sharing is now unlocked.", mutual: true });
       } else {
         await storage.updatePhoneUnlockRequest(theirRequest.id, {
           status: "rejected",
@@ -2316,11 +2331,19 @@ MESSAGE LENGTH - THIS IS EXTREMELY IMPORTANT:
       const theirRequest = await storage.getPhoneUnlockRequest(otherUserId, userId, matchId);
       const unlocked = await storage.getMutualPhoneUnlock(userId, otherUserId, matchId);
 
+      const otherUser = await storage.getUser(otherUserId);
+      let canReRequest = false;
+      if (myRequest?.status === "pending" && myRequest.requestedAt) {
+        const hoursSinceRequest = (Date.now() - new Date(myRequest.requestedAt).getTime()) / (1000 * 60 * 60);
+        canReRequest = hoursSinceRequest >= 4 && !!otherUser?.isOnline;
+      }
+
       return res.json({
         restricted: true,
         unlocked,
-        myRequest: myRequest ? { status: myRequest.status, coolOffEndsAt: myRequest.coolOffEndsAt } : null,
+        myRequest: myRequest ? { status: myRequest.status, coolOffEndsAt: myRequest.coolOffEndsAt, requestedAt: myRequest.requestedAt } : null,
         theirRequest: theirRequest ? { status: theirRequest.status } : null,
+        canReRequest,
       });
     } catch (err: any) {
       console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
@@ -2626,6 +2649,16 @@ MESSAGE LENGTH - THIS IS EXTREMELY IMPORTANT:
         sharePhone: !!sharePhone,
         shareEmail: !!shareEmail,
       });
+
+      if (!sharePhone && !shareEmail) {
+        const profile = await storage.getProfile(userId);
+        await storage.sendMessage({
+          matchId,
+          senderId: userId,
+          content: `🔒 ${profile?.name || "User"} has hidden their contact info.`,
+          isSystemMessage: true,
+        });
+      }
 
       await logActivity(userId, "contact_share_updated", "privacy", { matchId, sharePhone, shareEmail }, req);
       return res.json({ success: true, share });

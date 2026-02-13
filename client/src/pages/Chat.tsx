@@ -1177,20 +1177,23 @@ export default function Chat() {
                 <p className="font-medium">How it works:</p>
                 <ul className="list-disc pl-5 text-xs space-y-1 text-blue-300">
                   <li>Both users must agree to share contact info</li>
-                  <li>A 24-hour cool-off period applies after mutual consent</li>
-                  <li>Only then can you share phone numbers in chat</li>
+                  <li>Once both agree, contact sharing unlocks immediately</li>
+                  <li>Shared contact info stays visible until you choose to hide it</li>
                 </ul>
               </div>
-              {phoneUnlockStatus?.myRequest?.status === "pending" && (
-                <p className="text-red-400 text-sm text-center font-medium">Your request is pending approval.</p>
+              {phoneUnlockStatus?.myRequest?.status === "pending" && !phoneUnlockStatus?.canReRequest && (
+                <p className="text-amber-400 text-sm text-center font-medium">Your request is pending approval.</p>
               )}
-              {phoneUnlockStatus?.myRequest?.status === "approved" && !phoneUnlockStatus?.unlocked && (
-                <p className="text-green-600 text-sm text-center font-medium">Approved! Waiting for 24-hour cool-off to complete.</p>
+              {phoneUnlockStatus?.myRequest?.status === "pending" && phoneUnlockStatus?.canReRequest && (
+                <p className="text-blue-400 text-sm text-center font-medium">No response yet. You can send a reminder since they are online.</p>
+              )}
+              {phoneUnlockStatus?.myRequest?.status === "approved" && phoneUnlockStatus?.unlocked && (
+                <p className="text-green-500 text-sm text-center font-medium">Contact sharing is unlocked! Use the share contact option from the menu.</p>
               )}
               <div className="flex gap-3 pt-2">
                 <Button variant="ghost" className="flex-1 rounded-xl" onClick={() => setShowPhoneUnlock(false)}>Cancel</Button>
-                <Button className="flex-1 rounded-xl bg-blue-600 hover:bg-blue-700 text-white" onClick={() => phoneUnlockRequestMutation.mutate()} disabled={phoneUnlockRequestMutation.isPending || !!phoneUnlockStatus?.myRequest} data-testid="button-send-unlock-request">
-                  {phoneUnlockRequestMutation.isPending ? "Sending..." : phoneUnlockStatus?.myRequest ? "Already Requested" : "Send Request"}
+                <Button className="flex-1 rounded-xl bg-blue-600 hover:bg-blue-700 text-white" onClick={() => phoneUnlockRequestMutation.mutate()} disabled={phoneUnlockRequestMutation.isPending || (!!phoneUnlockStatus?.myRequest && !phoneUnlockStatus?.canReRequest)} data-testid="button-send-unlock-request">
+                  {phoneUnlockRequestMutation.isPending ? "Sending..." : phoneUnlockStatus?.canReRequest ? "Send Reminder" : phoneUnlockStatus?.myRequest ? "Already Requested" : "Send Request"}
                 </Button>
               </div>
             </motion.div>
@@ -1294,7 +1297,11 @@ export default function Chat() {
               </div>
 
               {contactShareStatus?.myShare && (
-                <p className="text-xs text-muted-foreground text-center">You are currently sharing: {[contactShareStatus.myShare.sharePhone && "Mobile", contactShareStatus.myShare.shareEmail && "Email"].filter(Boolean).join(", ") || "Nothing"}</p>
+                <p className="text-xs text-muted-foreground text-center">
+                  {[contactShareStatus.myShare.sharePhone && "Mobile", contactShareStatus.myShare.shareEmail && "Email"].filter(Boolean).length > 0
+                    ? `Currently sharing: ${[contactShareStatus.myShare.sharePhone && "Mobile", contactShareStatus.myShare.shareEmail && "Email"].filter(Boolean).join(", ")}`
+                    : "Not sharing anything. Toggle options above to share again."}
+                </p>
               )}
 
               <div className="flex gap-3 pt-2">
@@ -1309,10 +1316,10 @@ export default function Chat() {
                     }
                     setShowContactShare(false);
                   }}
-                  disabled={!sharePhone && !shareEmail}
+                  disabled={!contactShareStatus?.myShare && !sharePhone && !shareEmail}
                   data-testid="button-confirm-contact-share"
                 >
-                  {contactShareStatus?.myShare ? "Update Sharing" : "Share Now"}
+                  {contactShareStatus?.myShare ? (!sharePhone && !shareEmail ? "Hide My Contact" : "Update Sharing") : "Share Now"}
                 </Button>
               </div>
             </motion.div>
