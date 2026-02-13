@@ -112,13 +112,17 @@ declare module "express-session" {
 
 async function requireAuth(req: Request, res: Response, next: Function) {
   if (!req.session.userId) {
-    return res.status(401).json({ message: "Unauthorized" });
+    return res.status(401).json({ message: "Please log in to continue" });
   }
   if (req.session.sessionToken) {
     const dbSession = await storage.getUserSession(req.session.sessionToken);
-    if (!dbSession || !dbSession.isActive) {
+    if (!dbSession || !dbSession.isActive || (dbSession.expiresAt && new Date(dbSession.expiresAt) < new Date())) {
+      if (dbSession && dbSession.isActive) {
+        await storage.invalidateSession(req.session.sessionToken);
+      }
+      await storage.setUserOnlineStatus(req.session.userId, false);
       req.session.destroy(() => {});
-      return res.status(401).json({ message: "Session expired. Please login again." });
+      return res.status(401).json({ message: "Your session has expired. Please log in again." });
     }
     await storage.updateSessionActivity(req.session.sessionToken);
   }
@@ -127,13 +131,16 @@ async function requireAuth(req: Request, res: Response, next: Function) {
 
 async function requireAdmin(req: Request, res: Response, next: Function) {
   if (!req.session.isAdmin || !req.session.adminUserId) {
-    return res.status(403).json({ message: "Admin access required" });
+    return res.status(401).json({ message: "Admin access required. Please log in." });
   }
   if (req.session.sessionToken) {
     const dbSession = await storage.getUserSession(req.session.sessionToken);
-    if (!dbSession || !dbSession.isActive) {
+    if (!dbSession || !dbSession.isActive || (dbSession.expiresAt && new Date(dbSession.expiresAt) < new Date())) {
+      if (dbSession && dbSession.isActive) {
+        await storage.invalidateSession(req.session.sessionToken);
+      }
       req.session.destroy(() => {});
-      return res.status(401).json({ message: "Admin session expired. Please login again." });
+      return res.status(401).json({ message: "Your admin session has expired. Please log in again." });
     }
     await storage.updateSessionActivity(req.session.sessionToken);
   }
@@ -554,16 +561,15 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/admin/auth/logout", requireAdmin, async (req: Request, res: Response) => {
-    const adminId = req.session.adminUserId;
+  app.post("/api/admin/auth/logout", async (req: Request, res: Response) => {
+    const adminId = req.session.adminUserId || null;
     if (req.session.sessionToken) {
       await storage.invalidateSession(req.session.sessionToken);
     }
-    await logActivity(adminId || null, "admin_logout", "admin", { ip: getClientIp(req) }, req);
-    req.session.isAdmin = false;
-    req.session.adminUserId = undefined as any;
-    req.session.sessionToken = undefined as any;
-    return res.json({ message: "Admin logged out" });
+    await logActivity(adminId, "admin_logout", "admin", { ip: getClientIp(req) }, req);
+    req.session.destroy(() => {
+      res.json({ message: "Logged out successfully" });
+    });
   });
 
   // ==================== PROFILES ====================

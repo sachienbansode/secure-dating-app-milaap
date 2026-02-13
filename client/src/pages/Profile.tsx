@@ -66,6 +66,7 @@ export default function Profile() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [intentWarning, setIntentWarning] = useState<string | null>(null);
   const [showComparePlans, setShowComparePlans] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const { data: session, isLoading: loadingSession } = useQuery({
     queryKey: ["/api/auth/me"],
@@ -1274,7 +1275,7 @@ export default function Profile() {
                 </div>
                 <ChevronRight size={18} className="text-muted-foreground" />
               </div>
-              <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-muted" onClick={() => { triggerHaptic('heavy'); handleLogout(); }} data-testid="button-logout">
+              <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-muted" onClick={() => { triggerHaptic('heavy'); setShowLogoutConfirm(true); }} data-testid="button-logout">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-600"><LogOut size={16} /></div>
                   <div className="text-red-600 font-medium text-sm">Log Out</div>
@@ -1284,6 +1285,39 @@ export default function Profile() {
           </section>
         </div>
       </div>
+
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" data-testid="modal-logout-confirm">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowLogoutConfirm(false)} />
+          <div className="relative bg-card rounded-2xl p-6 mx-6 w-full max-w-sm border border-border shadow-2xl">
+            <div className="text-center mb-5">
+              <div className="w-14 h-14 rounded-full bg-red-100 mx-auto flex items-center justify-center mb-3">
+                <LogOut size={24} className="text-red-600" />
+              </div>
+              <h3 className="text-lg font-bold text-foreground">Log Out</h3>
+              <p className="text-sm text-muted-foreground mt-1">Are you sure you want to log out of your account?</p>
+            </div>
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                className="flex-1 h-11 rounded-xl"
+                onClick={() => setShowLogoutConfirm(false)}
+                data-testid="button-logout-cancel"
+              >
+                Cancel
+              </Button>
+              <Button
+                className="flex-1 h-11 rounded-xl bg-red-600 hover:bg-red-700 text-white"
+                onClick={() => { setShowLogoutConfirm(false); handleLogout(); }}
+                data-testid="button-logout-confirm"
+              >
+                Log Out
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <BottomNav />
     </div>
   );

@@ -1,5 +1,11 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+let sessionExpiredHandler: ((message: string) => void) | null = null;
+
+export function setSessionExpiredHandler(handler: (message: string) => void) {
+  sessionExpiredHandler = handler;
+}
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
@@ -10,6 +16,15 @@ async function throwIfResNotOk(res: Response) {
     } catch {
       friendlyMessage = text;
     }
+
+    if (res.status === 401 && sessionExpiredHandler) {
+      const url = res.url || "";
+      const isAuthCheck = url.includes("/api/auth/me") || url.includes("/api/admin/auth/me");
+      if (!isAuthCheck) {
+        sessionExpiredHandler(friendlyMessage);
+      }
+    }
+
     throw new Error(friendlyMessage);
   }
 }

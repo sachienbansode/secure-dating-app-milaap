@@ -17,6 +17,7 @@ import logoClassic from "@/assets/logo.png";
 export default function AdminConsole() {
   const queryClient = useQueryClient();
   const [activeSection, setActiveSection] = useState<string | null>(null);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const { data: adminSession, isLoading: checkingAdmin } = useQuery({
     queryKey: ["/api/admin/auth/me"],
@@ -48,11 +49,20 @@ export default function AdminConsole() {
   if (activeSection) {
     return (
       <div className="h-full flex flex-col bg-slate-50">
-        <div className="bg-slate-900 text-white px-4 py-3 flex items-center gap-3">
-          <button onClick={() => setActiveSection(null)} className="p-1 hover:bg-slate-800 rounded-lg" data-testid="button-admin-back">
-            <ArrowLeft size={20} />
+        <div className="bg-slate-900 text-white px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button onClick={() => setActiveSection(null)} className="p-1 hover:bg-slate-800 rounded-lg" data-testid="button-admin-back">
+              <ArrowLeft size={20} />
+            </button>
+            <h2 className="font-bold text-lg">{activeSection}</h2>
+          </div>
+          <button
+            onClick={() => setShowLogoutConfirm(true)}
+            className="p-2 hover:bg-slate-800 rounded-xl transition-colors"
+            data-testid="button-admin-logout-section"
+          >
+            <LogOut size={18} />
           </button>
-          <h2 className="font-bold text-lg">{activeSection}</h2>
         </div>
         <div className="flex-1 overflow-y-auto p-4">
           {activeSection === "All Profiles" && <AllProfilesViewer />}
@@ -66,6 +76,37 @@ export default function AdminConsole() {
           {activeSection === "Membership Revenue" && <MembershipRevenue />}
           {activeSection === "App Logo" && <LogoSelector />}
         </div>
+
+        {showLogoutConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowLogoutConfirm(false)} />
+            <div className="relative bg-white rounded-2xl p-6 mx-6 w-full max-w-sm shadow-2xl">
+              <div className="text-center mb-5">
+                <div className="w-14 h-14 rounded-full bg-red-100 mx-auto flex items-center justify-center mb-3">
+                  <LogOut size={24} className="text-red-600" />
+                </div>
+                <h3 className="text-lg font-bold text-slate-900">Admin Logout</h3>
+                <p className="text-sm text-slate-500 mt-1">Are you sure you want to log out of the admin console?</p>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  className="flex-1 h-11 rounded-xl border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50 transition-colors"
+                  onClick={() => setShowLogoutConfirm(false)}
+                  data-testid="button-admin-logout-cancel-section"
+                >
+                  Cancel
+                </button>
+                <button
+                  className="flex-1 h-11 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors"
+                  onClick={() => { setShowLogoutConfirm(false); handleLogout(); }}
+                  data-testid="button-admin-logout-confirm-section"
+                >
+                  Log Out
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -79,7 +120,7 @@ export default function AdminConsole() {
             <p className="text-slate-400 text-sm mt-1">{adminSession.admin.email}</p>
           </div>
           <button
-            onClick={handleLogout}
+            onClick={() => setShowLogoutConfirm(true)}
             className="p-2 hover:bg-slate-800 rounded-xl transition-colors"
             data-testid="button-admin-logout"
           >
@@ -117,6 +158,37 @@ export default function AdminConsole() {
           </button>
         ))}
       </div>
+
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowLogoutConfirm(false)} />
+          <div className="relative bg-white rounded-2xl p-6 mx-6 w-full max-w-sm shadow-2xl">
+            <div className="text-center mb-5">
+              <div className="w-14 h-14 rounded-full bg-red-100 mx-auto flex items-center justify-center mb-3">
+                <LogOut size={24} className="text-red-600" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900">Admin Logout</h3>
+              <p className="text-sm text-slate-500 mt-1">Are you sure you want to log out of the admin console?</p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                className="flex-1 h-11 rounded-xl border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50 transition-colors"
+                onClick={() => setShowLogoutConfirm(false)}
+                data-testid="button-admin-logout-cancel"
+              >
+                Cancel
+              </button>
+              <button
+                className="flex-1 h-11 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors"
+                onClick={() => { setShowLogoutConfirm(false); handleLogout(); }}
+                data-testid="button-admin-logout-confirm"
+              >
+                Log Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
