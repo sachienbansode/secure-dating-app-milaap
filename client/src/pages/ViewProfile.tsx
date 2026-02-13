@@ -226,7 +226,14 @@ export default function ViewProfile() {
           <div className="bg-card rounded-2xl border border-border p-5 shadow-lg">
             <div className="flex items-start justify-between mb-1">
               <div>
-                <h1 className="text-2xl font-heading font-bold text-foreground" data-testid="text-profile-name">{displayName}, {displayAge}</h1>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-2xl font-heading font-bold text-foreground" data-testid="text-profile-name">{displayName}, {displayAge}</h1>
+                  {profile.isVerified && (
+                    <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: "linear-gradient(135deg, #2563eb, #06b6d4)" }} data-testid="badge-verified">
+                      <CheckCircle size={14} className="text-white" />
+                    </div>
+                  )}
+                </div>
                 <div className="flex items-center gap-1.5 mt-1">
                   <MapPin size={13} className="text-muted-foreground" />
                   <span className="text-muted-foreground text-sm">{profile.city}</span>

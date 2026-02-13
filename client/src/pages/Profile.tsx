@@ -981,6 +981,27 @@ export default function Profile() {
           </button>
         </div>
 
+        <div className="px-6 pt-4">
+          <button
+            onClick={() => setLocation("/verification")}
+            className={`w-full rounded-2xl p-4 flex items-center gap-3 transition-all ${currentProfile.isVerified ? "bg-gradient-to-r from-blue-600/20 to-cyan-600/20 border border-blue-500/30" : "bg-gradient-to-r from-blue-600/20 to-cyan-600/20 border border-blue-500/30 hover:from-blue-600/30 hover:to-cyan-600/30"}`}
+            data-testid="button-verification-card"
+          >
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ background: "linear-gradient(135deg, #2563eb, #06b6d4)" }}>
+              <ShieldCheck size={20} className="text-white" />
+            </div>
+            <div className="flex-1 text-left">
+              <h3 className="font-bold text-sm text-foreground">
+                {currentProfile.isVerified ? "Profile Verified ✓" : "Verify Your Profile"}
+              </h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {currentProfile.isVerified ? "Your verified badge is active" : "Get a verified badge to build trust"}
+              </p>
+            </div>
+            <ChevronRight size={18} className="text-muted-foreground" />
+          </button>
+        </div>
+
         {currentProfile.bio && (
           <div className="px-6 pt-4">
             <p className="text-sm text-muted-foreground bg-card p-4 rounded-2xl border border-border">{currentProfile.bio}</p>

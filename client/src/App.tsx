@@ -14,6 +14,8 @@ import Profile from "@/pages/Profile";
 import AdminConsole from "@/pages/AdminConsole";
 import ViewProfile from "@/pages/ViewProfile";
 import Quiz from "@/pages/Quiz";
+import ChaiDate from "@/pages/ChaiDate";
+import Verification from "@/pages/Verification";
 import { Download, X } from "lucide-react";
 
 function Router() {
@@ -27,6 +29,8 @@ function Router() {
       <Route path="/profile" component={Profile} />
       <Route path="/view-profile/:userId" component={ViewProfile} />
       <Route path="/quiz" component={Quiz} />
+      <Route path="/chai-date/:chaiDateId" component={ChaiDate} />
+      <Route path="/verification" component={Verification} />
       <Route path="/admin" component={AdminConsole} />
       <Route component={NotFound} />
     </Switch>

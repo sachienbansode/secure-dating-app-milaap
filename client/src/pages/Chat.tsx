@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRoute, Link, useLocation } from "wouter";
-import { ArrowLeft, Send, Sparkles, MoreVertical, ShieldCheck, Phone, Paperclip, CheckCheck, Flag, Loader2, Bot, ShieldAlert, Camera, Ban, Unlock, Clock, MessageCircle, Mic, Users, Archive, Trash2, Image, X, Eye, EyeOff, Play, Mail, MapPin, Navigation, Share2 } from "lucide-react";
+import { ArrowLeft, Send, Sparkles, MoreVertical, ShieldCheck, Phone, Paperclip, CheckCheck, Flag, Loader2, Bot, ShieldAlert, Camera, Ban, Unlock, Clock, MessageCircle, Mic, Users, Archive, Trash2, Image, X, Eye, EyeOff, Play, Mail, MapPin, Navigation, Share2, Coffee, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -350,6 +350,39 @@ export default function Chat() {
     },
   });
 
+  const { data: chaiDateStatus } = useQuery<any>({
+    queryKey: [`/api/chai-date/match/${matchId}`],
+    enabled: !!matchId,
+    refetchInterval: 5000,
+  });
+
+  const chaiDateRequestMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/chai-date/request", { matchId });
+      return res.json();
+    },
+    onSuccess: () => {
+      triggerHaptic("medium");
+      queryClient.invalidateQueries({ queryKey: [`/api/chai-date/match/${matchId}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/messages/${matchId}`] });
+    },
+  });
+
+  const chaiDateRespondMutation = useMutation({
+    mutationFn: async ({ chaiDateId, action }: { chaiDateId: string; action: string }) => {
+      const res = await apiRequest("POST", `/api/chai-date/${chaiDateId}/respond`, { action });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      triggerHaptic("heavy");
+      queryClient.invalidateQueries({ queryKey: [`/api/chai-date/match/${matchId}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/messages/${matchId}`] });
+      if (data?.status === "active") {
+        setLocation(`/chai-date/${data.id}`);
+      }
+    },
+  });
+
   useEffect(() => {
     if (noScreenshotActive) {
       const handleKeyDown = (e: KeyboardEvent) => {
@@ -600,7 +633,7 @@ export default function Chat() {
           <div className="min-w-0">
             <div className="flex items-center gap-1">
               <h3 className="font-heading font-bold text-sm truncate" data-testid="text-chat-name">{profile?.name || "Match"}</h3>
-              {profile?.photoVerifiedAt && <ShieldCheck size={11} className="text-blue-500 shrink-0" />}
+              {(profile?.isVerified || profile?.photoVerifiedAt) && <ShieldCheck size={11} className="text-blue-500 shrink-0" />}
               <div className={`w-2 h-2 rounded-full shrink-0 ${getRespectColor(otherRespectScore)}`} title={`Respect: ${otherRespectScore}`} />
             </div>
             <p className={`text-[11px] font-medium ${otherIsOnline ? "text-green-500" : "text-muted-foreground"}`}>
@@ -642,6 +675,15 @@ export default function Chat() {
                   </button>
                   <button className="w-full text-left px-4 py-3 text-sm text-foreground hover:bg-muted flex items-center gap-2.5" onClick={() => { setShowFestivalCards(true); setShowMenu(false); }} data-testid="button-festival-cards">
                     <span className="text-base">🎉</span> Send Festival Greeting
+                  </button>
+                  <button
+                    className="w-full text-left px-4 py-3 text-sm text-foreground hover:bg-muted flex items-center gap-2.5"
+                    onClick={() => { chaiDateRequestMutation.mutate(); setShowMenu(false); }}
+                    disabled={!!chaiDateStatus?.pending || !!chaiDateStatus?.active || chaiDateRequestMutation.isPending}
+                    data-testid="button-chai-date"
+                  >
+                    <Coffee size={15} className="text-amber-500" /> Chai Date ☕
+                    {(chaiDateStatus?.pending || chaiDateStatus?.active) && <span className="text-xs text-amber-400 ml-auto">Active</span>}
                   </button>
                   {appSettings?.feature_no_phone_number && !phoneUnlockStatus?.unlocked && (
                     <button className="w-full text-left px-4 py-3 text-sm text-foreground hover:bg-muted flex items-center gap-2.5" onClick={() => { setShowPhoneUnlock(true); setShowMenu(false); }} data-testid="button-phone-unlock">
@@ -791,6 +833,83 @@ export default function Chat() {
             const isSystem = msg.isSystemMessage;
 
             if (isSystem) {
+              const chaiRequestMatch = msg.content.match(/^\[CHAI_DATE_REQUEST:(.+?)\]$/);
+              const chaiAcceptedMatch = msg.content.match(/^\[CHAI_DATE_ACCEPTED:(.+?)\]$/);
+              const chaiDeclinedMatch = msg.content.match(/^\[CHAI_DATE_DECLINED:(.+?)\]$/);
+              const chaiEndedMatch = msg.content.match(/^\[CHAI_DATE_ENDED:(.+?)\]$/);
+
+              if (chaiRequestMatch) {
+                const cdId = chaiRequestMatch[1];
+                const isRequester = msg.senderId === currentUserId;
+                return (
+                  <div key={msg.id} className="flex justify-center my-4" data-testid={`message-chai-request-${msg.id}`}>
+                    <div className="rounded-2xl p-4 max-w-[85%] text-center" style={{ background: "linear-gradient(135deg, rgba(245,158,11,0.15), rgba(220,38,38,0.1))", border: "1px solid rgba(245,158,11,0.3)" }}>
+                      <div className="text-3xl mb-2">☕</div>
+                      <p className="text-amber-400 font-bold text-sm mb-1">
+                        {isRequester ? "You invited for a Chai Date!" : `${profile?.name || "Someone"} invited you for a Chai Date!`}
+                      </p>
+                      <p className="text-gray-400 text-xs mb-3">5-minute timed virtual meetup with icebreakers</p>
+                      {!isRequester && chaiDateStatus?.pending?.id === cdId && (
+                        <div className="flex gap-2 justify-center">
+                          <button
+                            onClick={() => chaiDateRespondMutation.mutate({ chaiDateId: cdId, action: "accept" })}
+                            className="px-4 py-2 rounded-xl text-white text-xs font-bold"
+                            style={{ background: "linear-gradient(135deg, #16a34a, #15803d)" }}
+                            data-testid="button-accept-chai-date"
+                          >
+                            <Check size={14} className="inline mr-1" /> Accept
+                          </button>
+                          <button
+                            onClick={() => chaiDateRespondMutation.mutate({ chaiDateId: cdId, action: "decline" })}
+                            className="px-4 py-2 rounded-xl text-white text-xs font-bold bg-gray-700"
+                            data-testid="button-decline-chai-date"
+                          >
+                            Decline
+                          </button>
+                        </div>
+                      )}
+                      {isRequester && <span className="text-xs text-gray-500">Waiting for response...</span>}
+                    </div>
+                  </div>
+                );
+              }
+
+              if (chaiAcceptedMatch) {
+                const cdId = chaiAcceptedMatch[1];
+                return (
+                  <div key={msg.id} className="flex justify-center my-4" data-testid={`message-chai-accepted-${msg.id}`}>
+                    <div className="rounded-2xl p-4 max-w-[85%] text-center" style={{ background: "linear-gradient(135deg, rgba(22,163,74,0.15), rgba(245,158,11,0.1))", border: "1px solid rgba(22,163,74,0.3)" }}>
+                      <div className="text-3xl mb-2">☕✨</div>
+                      <p className="text-green-400 font-bold text-sm mb-2">Chai Date Accepted!</p>
+                      <button
+                        onClick={() => setLocation(`/chai-date/${cdId}`)}
+                        className="px-5 py-2 rounded-xl text-white text-xs font-bold"
+                        style={{ background: "linear-gradient(135deg, #f59e0b, #dc2626)" }}
+                        data-testid="button-join-chai-date"
+                      >
+                        <Coffee size={14} className="inline mr-1" /> Join Chai Date
+                      </button>
+                    </div>
+                  </div>
+                );
+              }
+
+              if (chaiDeclinedMatch) {
+                return (
+                  <div key={msg.id} className="flex justify-center my-3" data-testid={`message-chai-declined-${msg.id}`}>
+                    <span className="text-[11px] font-medium text-gray-500 bg-gray-800/50 px-4 py-2 rounded-full">☕ Chai Date invitation was declined</span>
+                  </div>
+                );
+              }
+
+              if (chaiEndedMatch) {
+                return (
+                  <div key={msg.id} className="flex justify-center my-3" data-testid={`message-chai-ended-${msg.id}`}>
+                    <span className="text-[11px] font-medium text-amber-500/70 bg-amber-900/20 px-4 py-2 rounded-full">☕ Chai Date has ended</span>
+                  </div>
+                );
+              }
+
               return (
                 <div key={msg.id} className="flex justify-center my-3" data-testid={`message-system-${msg.id}`}>
                   <span className="text-[11px] font-medium text-muted-foreground bg-muted px-4 py-2 rounded-full max-w-[80%] text-center">{msg.content}</span>
