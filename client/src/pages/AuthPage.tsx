@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Mail, Phone, ArrowRight, Shield, Play } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import logo from "@/assets/logo.png";
+import logo from "@/assets/milaap-logo.png";
 import { requestOtp, verifyOtp, getMe } from "@/lib/auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import WelcomeOverlay from "@/components/WelcomeOverlay";
@@ -202,9 +202,9 @@ export default function AuthPage() {
             transition={{ type: "spring", stiffness: 200, damping: 15, duration: 0.8 }}
             className="relative mb-5"
           >
-            <div className="absolute inset-0 w-28 h-28 rounded-3xl blur-xl opacity-50" style={{ background: "linear-gradient(135deg, #dc2626, #2563eb)" }} />
-            <div className="relative w-28 h-28 rounded-3xl flex items-center justify-center p-3 border border-white/10" style={{ background: "linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05))", backdropFilter: "blur(20px)" }}>
-              <img src={logo} alt="Milaap Logo" className="w-full h-full object-contain drop-shadow-2xl" />
+            <motion.div animate={{ scale: [1, 1.15, 1], opacity: [0.4, 0.6, 0.4] }} transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }} className="absolute inset-[-8px] rounded-[28px] blur-xl" style={{ background: "linear-gradient(135deg, #dc2626, #8B5CF6, #2563eb)" }} />
+            <div className="relative w-28 h-28 rounded-[24px] flex items-center justify-center overflow-hidden border border-white/20" style={{ background: "linear-gradient(160deg, rgba(20,10,30,0.9), rgba(10,5,20,0.95))", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1), 0 0 40px rgba(139,92,246,0.2)" }}>
+              <img src={logo} alt="Milaap Logo" className="w-[85%] h-[85%] object-contain drop-shadow-2xl" />
             </div>
           </motion.div>
           <motion.h1
@@ -293,9 +293,40 @@ export default function AuthPage() {
       </Button>
 
       <div className="flex-1 z-10">
-        <h2 className="text-3xl font-heading font-bold text-white mb-2">
-          Namaste! 🙏
-        </h2>
+        <div className="flex items-center gap-3 mb-2">
+          <motion.svg
+            initial={{ scale: 0, rotate: -30 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ type: "spring", stiffness: 200, damping: 12 }}
+            width="38" height="38" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"
+          >
+            <defs>
+              <linearGradient id="namasteGrad" x1="0" y1="0" x2="64" y2="64">
+                <stop offset="0%" stopColor="#F59E0B" />
+                <stop offset="50%" stopColor="#F97316" />
+                <stop offset="100%" stopColor="#EF4444" />
+              </linearGradient>
+              <filter id="glow">
+                <feGaussianBlur stdDeviation="2" result="blur" />
+                <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+              </filter>
+            </defs>
+            <g filter="url(#glow)">
+              <path d="M32 6C32 6 28 14 28 20V34C28 34 28 36 30 36H34C36 36 36 34 36 34V20C36 14 32 6 32 6Z" fill="url(#namasteGrad)" opacity="0.9" />
+              <path d="M22 18C20 14 18 12 16 14C14 16 16 20 18 24L24 34C24 34 25 36 27 35L28 34V22C28 22 26 20 22 18Z" fill="url(#namasteGrad)" opacity="0.8" />
+              <path d="M42 18C44 14 46 12 48 14C50 16 48 20 46 24L40 34C40 34 39 36 37 35L36 34V22C36 22 38 20 42 18Z" fill="url(#namasteGrad)" opacity="0.8" />
+              <path d="M26 36L24 42C24 42 22 48 26 50C28 51 30 50 32 48C34 50 36 51 38 50C42 48 40 42 38 36" fill="none" stroke="url(#namasteGrad)" strokeWidth="2.5" strokeLinecap="round" />
+              <circle cx="32" cy="4" r="2" fill="#F59E0B" opacity="0.7" />
+              <path d="M24 8L20 4" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round" opacity="0.5" />
+              <path d="M40 8L44 4" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round" opacity="0.5" />
+              <path d="M18 12L14 10" stroke="#F97316" strokeWidth="1.5" strokeLinecap="round" opacity="0.4" />
+              <path d="M46 12L50 10" stroke="#F97316" strokeWidth="1.5" strokeLinecap="round" opacity="0.4" />
+            </g>
+          </motion.svg>
+          <h2 className="text-3xl font-heading font-bold" style={{ background: "linear-gradient(135deg, #F59E0B, #F97316, #EF4444)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+            Namaste!
+          </h2>
+        </div>
         <h3 className="text-xl mb-8" style={{ color: "rgba(255,255,255,0.5)" }}>
           {step === "input"
             ? (method === "phone" ? "Enter your mobile number" : "Enter your email address")
