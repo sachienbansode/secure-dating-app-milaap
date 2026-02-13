@@ -77,10 +77,16 @@ const getRandomSubset = <T,>(arr: T[], count: number): T[] => {
 const SEED_PHONE_BASE = 9900000000;
 
 export async function autoSeedProfiles() {
-  const existing = await db.select({ count: sql<number>`count(*)` }).from(profiles);
-  if (Number(existing[0].count) > 0) {
-    console.log(`Auto-seed: Database has ${existing[0].count} profiles, skipping.`);
+  const seedUsers = await db.select({ count: sql<number>`count(*)` }).from(users).where(sql`phone LIKE '+91990000%'`);
+  const seedCount = Number(seedUsers[0].count);
+  if (seedCount >= 20) {
+    console.log(`Auto-seed: ${seedCount} seed profiles already exist, skipping.`);
     return;
+  }
+  if (seedCount > 0) {
+    console.log(`Auto-seed: Found ${seedCount} incomplete seed profiles, cleaning up...`);
+    await db.delete(profiles).where(sql`user_id IN (SELECT id FROM users WHERE phone LIKE '+91990000%')`);
+    await db.delete(users).where(sql`phone LIKE '+91990000%'`);
   }
 
   console.log("Auto-seed: Empty database detected, creating 20 seed profiles (5 per category)...");
