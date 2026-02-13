@@ -15,6 +15,40 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 
+import type { ZodError } from "zod";
+
+function formatValidationError(error: ZodError): string {
+  const fieldMessages: Record<string, string> = {
+    email: "Please enter a valid email address",
+    password: "Password must be at least 6 characters",
+    phone: "Please enter a valid phone number",
+    otp: "Please enter a valid 6-digit OTP",
+    name: "Name must be between 2 and 50 characters",
+    age: "Age must be between 18 and 100",
+    gender: "Please select a valid gender",
+    bio: "Bio must be under 1000 characters",
+    city: "Please enter your city",
+    location: "Please enter your location",
+    content: "Message cannot be empty",
+    targetUserId: "Invalid user selected",
+    action: "Invalid action",
+    matchId: "Invalid match",
+    reason: "Please provide a reason",
+    reportedUserId: "Invalid user",
+  };
+
+  const issues = error.issues;
+  if (issues.length === 0) return "Please check your input and try again";
+
+  const messages = issues.map((issue) => {
+    const field = issue.path[0]?.toString() || "";
+    return fieldMessages[field] || issue.message.replace(/^String/, "This field");
+  });
+
+  const unique = [...new Set(messages)];
+  return unique.join(". ");
+}
+
 const uploadDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
@@ -200,7 +234,7 @@ export async function registerRoutes(
     try {
       const parsed = loginSchema.safeParse(req.body);
       if (!parsed.success) {
-        return res.status(400).json({ message: parsed.error.message });
+        return res.status(400).json({ message: formatValidationError(parsed.error) });
       }
 
       const { phone, email } = parsed.data;
@@ -212,7 +246,7 @@ export async function registerRoutes(
       
       return res.json({ message: "OTP sent successfully", otp_hint: otp });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -220,7 +254,7 @@ export async function registerRoutes(
     try {
       const parsed = verifyOtpSchema.safeParse(req.body);
       if (!parsed.success) {
-        return res.status(400).json({ message: parsed.error.message });
+        return res.status(400).json({ message: formatValidationError(parsed.error) });
       }
 
       const { phone, email, otp } = parsed.data;
@@ -294,7 +328,7 @@ export async function registerRoutes(
         isNewUser: !profile,
       });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -329,7 +363,7 @@ export async function registerRoutes(
         profile: profile || null,
       });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -362,7 +396,7 @@ export async function registerRoutes(
 
       return res.json({ message: "Contact info updated" });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -391,7 +425,7 @@ export async function registerRoutes(
     try {
       const parsed = adminLoginSchema.safeParse(req.body);
       if (!parsed.success) {
-        return res.status(400).json({ message: parsed.error.message });
+        return res.status(400).json({ message: formatValidationError(parsed.error) });
       }
       const { email, password } = parsed.data;
 
@@ -445,7 +479,7 @@ export async function registerRoutes(
         ...(isDev ? { otp_hint: otp } : {}),
       });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -453,7 +487,7 @@ export async function registerRoutes(
     try {
       const parsed = adminVerifyOtpSchema.safeParse(req.body);
       if (!parsed.success) {
-        return res.status(400).json({ message: parsed.error.message });
+        return res.status(400).json({ message: formatValidationError(parsed.error) });
       }
       const { email, otp } = parsed.data;
       const stored = otpStore.get(`admin:${email}`);
@@ -504,7 +538,7 @@ export async function registerRoutes(
 
       return res.json({ success: true, admin: { id: admin.id, email: admin.email, name: admin.name, role: admin.role } });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -516,7 +550,7 @@ export async function registerRoutes(
       }
       return res.json({ admin: { id: admin.id, email: admin.email, name: admin.name, role: admin.role } });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -538,7 +572,7 @@ export async function registerRoutes(
     try {
       const parsed = updateProfileSchema.safeParse(req.body);
       if (!parsed.success) {
-        return res.status(400).json({ message: parsed.error.message });
+        return res.status(400).json({ message: formatValidationError(parsed.error) });
       }
 
       const userId = req.session.userId!;
@@ -596,7 +630,7 @@ export async function registerRoutes(
       await logActivity(userId, "profile_created", "profile", { fields: Object.keys(req.body) }, req);
       return res.status(201).json(profile);
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -628,7 +662,7 @@ export async function registerRoutes(
       await logActivity(userId, "intent_lock_broken", "profile", { newIntent: req.body.intent }, req);
       return res.json({ message: "Intent changed. Visibility reduced for 30 days.", penalized: true });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -638,7 +672,7 @@ export async function registerRoutes(
       if (!profile) return res.status(404).json({ message: "Profile not found" });
       return res.json(profile);
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -654,7 +688,7 @@ export async function registerRoutes(
         lastSeenAt: user?.lastSeenAt,
       });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -676,7 +710,7 @@ export async function registerRoutes(
       const photoUrl = `/uploads/${req.file.filename}`;
       return res.json({ url: photoUrl });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -710,7 +744,7 @@ export async function registerRoutes(
         },
       });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -769,7 +803,7 @@ export async function registerRoutes(
 
       return res.json(enrichedProfiles);
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -782,7 +816,7 @@ export async function registerRoutes(
     try {
       const parsed = swipeSchema.safeParse(req.body);
       if (!parsed.success) {
-        return res.status(400).json({ message: parsed.error.message });
+        return res.status(400).json({ message: formatValidationError(parsed.error) });
       }
 
       const userId = req.session.userId!;
@@ -840,7 +874,7 @@ export async function registerRoutes(
       await logActivity(userId, "swipe_action", "match", { action: parsed.data.action, targetUserId: parsed.data.targetUserId }, req);
       return res.json({ match, isMutualMatch });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -875,7 +909,7 @@ export async function registerRoutes(
 
       return res.json(enriched);
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -889,7 +923,7 @@ export async function registerRoutes(
       await logActivity(userId, "chat_archived", "chat", { matchId }, req);
       return res.json({ message: "Chat archived" });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -901,7 +935,7 @@ export async function registerRoutes(
       await logActivity(userId, "chat_unarchived", "chat", { matchId }, req);
       return res.json({ message: "Chat unarchived" });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -913,7 +947,7 @@ export async function registerRoutes(
       await logActivity(userId, "chat_deleted", "chat", { matchId }, req);
       return res.json({ message: "Chat deleted" });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -936,7 +970,7 @@ export async function registerRoutes(
       });
       return res.json(enriched);
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -946,7 +980,7 @@ export async function registerRoutes(
     try {
       const parsed = sendMessageSchema.safeParse(req.body);
       if (!parsed.success) {
-        return res.status(400).json({ message: parsed.error.message });
+        return res.status(400).json({ message: formatValidationError(parsed.error) });
       }
 
       const userId = req.session.userId!;
@@ -1062,7 +1096,7 @@ export async function registerRoutes(
 
       return res.status(201).json(message);
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -1082,7 +1116,7 @@ export async function registerRoutes(
       const messagesList = await storage.getMessages(matchId);
       return res.json(messagesList);
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -1174,7 +1208,7 @@ export async function registerRoutes(
       await logActivity(userId, "attachment_sent", "chat", { matchId, attachmentType, isOneTimeView: isOneTimeView === "true" }, req);
       return res.status(201).json(message);
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -1198,7 +1232,7 @@ export async function registerRoutes(
       await storage.markOneTimeViewed(messageId);
       return res.json({ canView: true, url: message.attachmentUrl, type: message.attachmentType });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -1251,7 +1285,7 @@ export async function registerRoutes(
       await logActivity(userId, "screenshot_detected", "security", { matchId: req.body.matchId }, req);
       return res.json({ alert, message: "Screenshot detected. Other user has been notified." });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -1260,7 +1294,7 @@ export async function registerRoutes(
       const alerts = await storage.getScreenshotAlerts(req.params.matchId as string);
       return res.json(alerts);
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -1270,7 +1304,7 @@ export async function registerRoutes(
     try {
       const parsed = reportSchema.safeParse(req.body);
       if (!parsed.success) {
-        return res.status(400).json({ message: parsed.error.message });
+        return res.status(400).json({ message: formatValidationError(parsed.error) });
       }
 
       const report = await storage.createReport({
@@ -1282,7 +1316,7 @@ export async function registerRoutes(
       await logActivity(req.session.userId!, "user_reported", "moderation", { reportedUserId: req.body.reportedUserId, reason: req.body.reason }, req);
       return res.status(201).json(report);
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -1799,7 +1833,7 @@ CRITICAL RULES:
 
       return res.json({ cooldown: false, banned: false });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -1823,7 +1857,7 @@ CRITICAL RULES:
       await logActivity(userId, "user_blocked", "moderation", { blockedUserId: req.body.blockedUserId }, req);
       return res.json({ message: "User blocked successfully" });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -1831,7 +1865,7 @@ CRITICAL RULES:
     try {
       const parsed = reportSchema.safeParse(req.body);
       if (!parsed.success) {
-        return res.status(400).json({ message: parsed.error.message });
+        return res.status(400).json({ message: formatValidationError(parsed.error) });
       }
 
       const reportEnhancedEnabled = await storage.getAppSetting("feature_enhanced_report");
@@ -1911,7 +1945,7 @@ CRITICAL RULES:
         message: `Report filed. Action: ${actionTaken}. ${actionTaken === "deactivated" ? "User account has been deactivated." : ""}`,
       });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -1920,7 +1954,7 @@ CRITICAL RULES:
       const blocked = await storage.getBlockedUsers(req.session.userId!);
       return res.json(blocked);
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -1940,7 +1974,7 @@ CRITICAL RULES:
       await logActivity(req.session.userId!, "date_readiness_updated", "profile", { level: req.body.dateReadiness }, req);
       return res.json(updated);
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -1991,7 +2025,7 @@ CRITICAL RULES:
       await logActivity(userId, "phone_unlock_requested", "privacy", { matchId: req.body.matchId }, req);
       return res.json({ request, message: "Unlock request sent. 24-hour cool-off period applies." });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -2057,7 +2091,7 @@ CRITICAL RULES:
         return res.json({ message: "Request declined." });
       }
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -2087,7 +2121,7 @@ CRITICAL RULES:
         theirRequest: theirRequest ? { status: theirRequest.status } : null,
       });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -2184,7 +2218,7 @@ CRITICAL RULES:
         selected_logo: settingsMap.get("selected_logo") || "new",
       });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -2200,7 +2234,7 @@ CRITICAL RULES:
       await logActivity(adminId, "settings_updated", "admin", { key, value }, req);
       return res.json({ message: "Setting updated" });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -2214,7 +2248,7 @@ CRITICAL RULES:
       const version = termsSettings.has("terms_version") ? parseInt(termsSettings.get("terms_version")!) : 1;
       return res.json({ content: termsSettings.get("terms_and_conditions") || DEFAULT_TERMS, version });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -2232,7 +2266,7 @@ CRITICAL RULES:
       await logActivity(userId, "terms_accepted", "auth", { version: acceptVersion }, req);
       return res.json({ success: true });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -2251,7 +2285,7 @@ CRITICAL RULES:
       await logActivity(adminId, "terms_updated", "admin", { version: newVersion }, req);
       return res.json({ success: true, version: newVersion });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -2265,7 +2299,7 @@ CRITICAL RULES:
       const result = await storage.getAllProfilesAdmin(limit, offset, gender);
       return res.json(result);
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -2279,7 +2313,7 @@ CRITICAL RULES:
       const total = await storage.getActivityLogCount(category, userId);
       return res.json({ logs, total, limit, offset });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -2319,7 +2353,7 @@ CRITICAL RULES:
 
       return res.json({ message: `Created ${matchCount} mutual matches for testing`, matchCount });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -2367,7 +2401,7 @@ CRITICAL RULES:
 
       return res.json({ success: true, share });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -2394,7 +2428,7 @@ CRITICAL RULES:
       await logActivity(userId, "contact_share_updated", "privacy", { matchId, sharePhone, shareEmail }, req);
       return res.json({ success: true, share });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -2424,7 +2458,7 @@ CRITICAL RULES:
         theirSharedData,
       });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -2474,7 +2508,7 @@ CRITICAL RULES:
 
       return res.json({ success: true, location });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -2508,7 +2542,7 @@ CRITICAL RULES:
 
       return res.json({ success: true, location: updated });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -2524,7 +2558,7 @@ CRITICAL RULES:
 
       return res.json({ locations });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -2541,7 +2575,7 @@ CRITICAL RULES:
       await storage.deleteLocationShare(locationShareId);
       return res.json({ success: true });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -2749,7 +2783,7 @@ CRITICAL RULES:
 
       return res.json({ style: result.style, traits: result.traits });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -2766,7 +2800,7 @@ CRITICAL RULES:
         completedAt: profile.quizCompletedAt,
       });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -2784,7 +2818,7 @@ CRITICAL RULES:
         completedAt: profile.quizCompletedAt,
       });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -2833,7 +2867,7 @@ CRITICAL RULES:
                  "Different styles can create exciting dynamics!",
       });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -2848,7 +2882,7 @@ CRITICAL RULES:
       } as any);
       return res.json({ success: true });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -2871,7 +2905,7 @@ CRITICAL RULES:
       }
       return res.json({ plans });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -2884,7 +2918,7 @@ CRITICAL RULES:
       const plan = await storage.createMembershipPlan({ tier, name, description, priceMonthly: priceMonthly || "0", priceYearly: priceYearly || "0", durationDays: durationDays || 30, dailyLikesLimit: dailyLikesLimit || 50, superLikesPerDay: superLikesPerDay || 1, showAds: showAds !== false, isActive: isActive !== false, sortOrder: sortOrder || 0, color: color || "#6b7280", features: features || [] });
       return res.json({ plan });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -2894,7 +2928,7 @@ CRITICAL RULES:
       if (!plan) return res.status(404).json({ message: "Plan not found" });
       return res.json({ plan });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -2903,7 +2937,7 @@ CRITICAL RULES:
       await storage.deleteMembershipPlan(req.params.id);
       return res.json({ success: true });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -2927,7 +2961,7 @@ CRITICAL RULES:
         isExpired: !!isExpired,
       });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -2962,7 +2996,7 @@ CRITICAL RULES:
       await logActivity(userId, "membership_subscribed", "account", { tier, price, days }, req);
       return res.json({ success: true, tier, expiresAt });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -2984,7 +3018,7 @@ CRITICAL RULES:
       await logActivity(req.session.adminUserId!, "membership_assigned", "admin", { userId, tier, days }, req);
       return res.json({ success: true });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -3054,7 +3088,7 @@ CRITICAL RULES:
 
       return res.json({ matchId: match.id, alreadyMatched: false });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -3074,7 +3108,7 @@ CRITICAL RULES:
       const showAds = plan?.showAds !== false;
       return res.json({ tier, features, showAds, plan });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -3096,7 +3130,7 @@ CRITICAL RULES:
         interstitialFrequency: adSettings.has("ads_interstitial_frequency") ? parseInt(adSettings.get("ads_interstitial_frequency")!) : 10,
       });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -3113,7 +3147,7 @@ CRITICAL RULES:
       await logActivity(req.session.adminUserId!, "ad_settings_updated", "admin", req.body, req);
       return res.json({ success: true });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -3124,7 +3158,7 @@ CRITICAL RULES:
       const maxHours = await storage.getAppSetting("bot_mode_max_hours");
       return res.json({ maxHours: maxHours ? parseInt(maxHours) : 12 });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -3137,7 +3171,7 @@ CRITICAL RULES:
       await logActivity(req.session.adminUserId!, "bot_mode_settings_updated", "admin", { maxHours }, req);
       return res.json({ success: true });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -3154,7 +3188,7 @@ CRITICAL RULES:
       }
       return res.json({ deactivated, maxHours });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -3165,7 +3199,7 @@ CRITICAL RULES:
       const revenue = await storage.getMembershipRevenue();
       return res.json(revenue);
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
@@ -3175,7 +3209,7 @@ CRITICAL RULES:
       const transactions = await storage.getMembershipTransactions(userId);
       return res.json({ transactions });
     } catch (err: any) {
-      return res.status(500).json({ message: err.message });
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
