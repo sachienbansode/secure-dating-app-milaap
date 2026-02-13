@@ -707,7 +707,7 @@ export async function registerRoutes(
       return res.json({
         ...profile,
         respectScore: user?.respectScore,
-        isOnline: user?.isOnline || profile.aiProxyEnabled,
+        isOnline: user?.isOnline || false,
         lastSeenAt: user?.lastSeenAt,
       });
     } catch (err: any) {
@@ -819,7 +819,7 @@ export async function registerRoutes(
         return {
           ...p,
           respectScore: user?.respectScore,
-          isOnline: user?.isOnline || p.aiProxyEnabled,
+          isOnline: user?.isOnline || false,
           lastSeenAt: user?.lastSeenAt,
         };
       });
@@ -944,7 +944,7 @@ export async function registerRoutes(
           : lastMsg || companionLastMsg;
         return {
           ...match,
-          profile: profile ? { ...profile, respectScore: user?.respectScore, isOnline: user?.isOnline || profile.aiProxyEnabled, lastSeenAt: user?.lastSeenAt } : null,
+          profile: profile ? { ...profile, respectScore: user?.respectScore, isOnline: user?.isOnline || false, lastSeenAt: user?.lastSeenAt } : null,
           lastMessage: bestLastMsg ? { content: bestLastMsg.content, createdAt: bestLastMsg.createdAt, senderId: bestLastMsg.senderId } : null,
         };
       });
@@ -1013,7 +1013,7 @@ export async function registerRoutes(
         const user = usersMap.get(match.targetUserId);
         return {
           ...match,
-          profile: profile ? { ...profile, respectScore: user?.respectScore, isOnline: user?.isOnline || profile.aiProxyEnabled, lastSeenAt: user?.lastSeenAt } : null,
+          profile: profile ? { ...profile, respectScore: user?.respectScore, isOnline: user?.isOnline || false, lastSeenAt: user?.lastSeenAt } : null,
         };
       });
       return res.json(enriched);

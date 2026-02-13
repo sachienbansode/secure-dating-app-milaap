@@ -714,10 +714,16 @@ export default function Chat() {
         </div>
       </header>
 
-      {hasAiProxyMessages && (
+      {messages.some(m => m.isAiProxy && m.senderId === currentUserId) && (
         <div className="bg-blue-900/20 px-4 py-2 flex items-center gap-2 text-xs text-blue-400 border-b border-blue-900/30">
           <Bot size={14} />
-          <span className="font-medium">Some replies may be AI-assisted (sent while user was offline)</span>
+          <span className="font-medium">Your AI proxy sent replies on your behalf while you were offline. Look for the blue "Sent by AI" labels below.</span>
+        </div>
+      )}
+      {messages.some(m => m.isAiProxy && m.senderId !== currentUserId) && (
+        <div className="bg-blue-900/10 px-4 py-2 flex items-center gap-2 text-xs text-blue-400/70 border-b border-blue-900/20">
+          <Bot size={14} />
+          <span className="font-medium">Some replies from your match may be AI-assisted</span>
         </div>
       )}
 
@@ -1013,26 +1019,33 @@ export default function Chat() {
                   {msg.attachmentUrl && !msg.isOneTimeView && (
                     <div className="px-3 pb-2 pt-1 text-xs opacity-80">{msg.content}</div>
                   )}
-                  {msg.isAiProxy && (
-                    <span className="inline-flex items-center gap-0.5 ml-1 opacity-70">
-                      <Bot size={10} />
-                    </span>
-                  )}
                   {msg.isAiGenerated && !msg.isAiProxy && (
                     <Sparkles size={10} className="inline-block ml-1 opacity-60" />
                   )}
-                  {isMe && (
+                  {isMe && !msg.isAiProxy && (
                     <div className="absolute bottom-1 right-2 opacity-70">
                       <CheckCheck size={12} className={msg.isRead ? "text-white" : "text-white/50"} />
                     </div>
                   )}
                 </div>
+                {msg.isAiProxy && isMe && (
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 border-t border-blue-500/20 rounded-b-2xl rounded-br-sm" data-testid={`proxy-label-${msg.id}`}>
+                    <Bot size={12} className="text-blue-400" />
+                    <span className="text-[10px] text-blue-400 font-medium">Sent by AI on your behalf</span>
+                  </div>
+                )}
+                {msg.isAiProxy && !isMe && (
+                  <div className="flex items-center gap-1 px-3 py-1 bg-blue-500/5 border-t border-blue-500/10 rounded-b-2xl rounded-bl-sm">
+                    <Bot size={10} className="text-blue-400/70" />
+                    <span className="text-[9px] text-blue-400/70">AI-assisted</span>
+                  </div>
+                )}
                 <div className="flex items-center gap-1 mt-1 px-1">
                   <span className="text-[10px] text-muted-foreground">
                     {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                   </span>
-                  {msg.isAiProxy && (
-                    <span className="text-[9px] text-blue-400 font-medium bg-blue-900/20 px-1.5 py-0.5 rounded-full">AI-assisted</span>
+                  {msg.isAiProxy && isMe && (
+                    <span className="text-[9px] text-blue-400 font-medium bg-blue-900/20 px-1.5 py-0.5 rounded-full flex items-center gap-1"><Bot size={8} /> AI Proxy</span>
                   )}
                 </div>
               </motion.div>
