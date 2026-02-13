@@ -755,15 +755,17 @@ export async function registerRoutes(
         }
       }
 
-      const enrichedProfiles = await Promise.all(profilesList.map(async (p) => {
-        const user = await storage.getUser(p.userId);
+      const userIds = profilesList.map(p => p.userId);
+      const usersMap = await storage.getUsersByIds(userIds);
+      const enrichedProfiles = profilesList.map((p) => {
+        const user = usersMap.get(p.userId);
         return {
           ...p,
           respectScore: user?.respectScore,
           isOnline: user?.isOnline || p.aiProxyEnabled,
           lastSeenAt: user?.lastSeenAt,
         };
-      }));
+      });
 
       return res.json(enrichedProfiles);
     } catch (err: any) {
@@ -846,17 +848,20 @@ export async function registerRoutes(
     try {
       const userId = req.session.userId!;
       const mutualMatches = await storage.getMutualMatches(userId);
-      
-      const enriched = await Promise.all(
-        mutualMatches.map(async (match) => {
-          const profile = await storage.getProfile(match.targetUserId);
-          const user = await storage.getUser(match.targetUserId);
-          return {
-            ...match,
-            profile: profile ? { ...profile, respectScore: user?.respectScore, isOnline: user?.isOnline || profile.aiProxyEnabled, lastSeenAt: user?.lastSeenAt } : null,
-          };
-        })
-      );
+      const targetIds = mutualMatches.map(m => m.targetUserId);
+      const [profilesMap, usersMap] = await Promise.all([
+        storage.getProfilesByUserIds(targetIds),
+        storage.getUsersByIds(targetIds),
+      ]);
+
+      const enriched = mutualMatches.map((match) => {
+        const profile = profilesMap.get(match.targetUserId);
+        const user = usersMap.get(match.targetUserId);
+        return {
+          ...match,
+          profile: profile ? { ...profile, respectScore: user?.respectScore, isOnline: user?.isOnline || profile.aiProxyEnabled, lastSeenAt: user?.lastSeenAt } : null,
+        };
+      });
 
       return res.json(enriched);
     } catch (err: any) {
@@ -906,16 +911,19 @@ export async function registerRoutes(
     try {
       const userId = req.session.userId!;
       const archivedMatches = await storage.getArchivedMatches(userId);
-      const enriched = await Promise.all(
-        archivedMatches.map(async (match) => {
-          const profile = await storage.getProfile(match.targetUserId);
-          const user = await storage.getUser(match.targetUserId);
-          return {
-            ...match,
-            profile: profile ? { ...profile, respectScore: user?.respectScore, isOnline: user?.isOnline || profile.aiProxyEnabled, lastSeenAt: user?.lastSeenAt } : null,
-          };
-        })
-      );
+      const targetIds = archivedMatches.map(m => m.targetUserId);
+      const [profilesMap, usersMap] = await Promise.all([
+        storage.getProfilesByUserIds(targetIds),
+        storage.getUsersByIds(targetIds),
+      ]);
+      const enriched = archivedMatches.map((match) => {
+        const profile = profilesMap.get(match.targetUserId);
+        const user = usersMap.get(match.targetUserId);
+        return {
+          ...match,
+          profile: profile ? { ...profile, respectScore: user?.respectScore, isOnline: user?.isOnline || profile.aiProxyEnabled, lastSeenAt: user?.lastSeenAt } : null,
+        };
+      });
       return res.json(enriched);
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
@@ -2138,36 +2146,32 @@ CRITICAL RULES:
         "Built on trust, not swipes.",
         "Clarity before chemistry.",
       ];
-      const taglines = await storage.getAppSetting("welcome_taglines");
+      const settingsMap = await storage.getAppSettings([
+        "welcome_taglines", "global_screenshot_protection", "feature_chat_cooldown",
+        "feature_enhanced_report", "feature_no_phone_number", "feature_photo_authenticity",
+        "feature_date_readiness", "feature_couple_profiles", "feature_attachments",
+        "attachment_extensions", "bot_mode_max_hours", "selected_logo"
+      ]);
+      const taglines = settingsMap.get("welcome_taglines");
       let parsedTaglines = defaultTaglines;
       if (taglines) {
         try { parsedTaglines = JSON.parse(taglines); } catch { parsedTaglines = defaultTaglines; }
       }
-      const screenshotProtection = await storage.getAppSetting("global_screenshot_protection");
-      const chatCooldown = await storage.getAppSetting("feature_chat_cooldown");
-      const enhancedReport = await storage.getAppSetting("feature_enhanced_report");
-      const noPhoneNumber = await storage.getAppSetting("feature_no_phone_number");
-      const photoAuthenticity = await storage.getAppSetting("feature_photo_authenticity");
-      const dateReadiness = await storage.getAppSetting("feature_date_readiness");
-      const coupleProfiles = await storage.getAppSetting("feature_couple_profiles");
-      const attachments = await storage.getAppSetting("feature_attachments");
-      const attachmentExtensions = await storage.getAppSetting("attachment_extensions");
-      const botModeMaxHours = await storage.getAppSetting("bot_mode_max_hours");
-      const selectedLogo = await storage.getAppSetting("selected_logo");
+      const toBool = (key: string, def = true) => { const v = settingsMap.get(key); return v !== undefined ? v === "true" : def; };
 
       return res.json({
         welcome_taglines: parsedTaglines,
-        global_screenshot_protection: screenshotProtection !== null ? screenshotProtection === "true" : true,
-        feature_chat_cooldown: chatCooldown !== null ? chatCooldown === "true" : true,
-        feature_enhanced_report: enhancedReport !== null ? enhancedReport === "true" : true,
-        feature_no_phone_number: noPhoneNumber !== null ? noPhoneNumber === "true" : true,
-        feature_photo_authenticity: photoAuthenticity !== null ? photoAuthenticity === "true" : true,
-        feature_date_readiness: dateReadiness !== null ? dateReadiness === "true" : true,
-        feature_couple_profiles: coupleProfiles !== null ? coupleProfiles === "true" : true,
-        feature_attachments: attachments !== null ? attachments === "true" : true,
-        attachment_extensions: attachmentExtensions || ".jpg,.jpeg,.png,.webp,.gif,.mp4,.mov,.avi,.mkv",
-        bot_mode_max_hours: botModeMaxHours ? parseInt(botModeMaxHours) : 12,
-        selected_logo: selectedLogo || "new",
+        global_screenshot_protection: toBool("global_screenshot_protection"),
+        feature_chat_cooldown: toBool("feature_chat_cooldown"),
+        feature_enhanced_report: toBool("feature_enhanced_report"),
+        feature_no_phone_number: toBool("feature_no_phone_number"),
+        feature_photo_authenticity: toBool("feature_photo_authenticity"),
+        feature_date_readiness: toBool("feature_date_readiness"),
+        feature_couple_profiles: toBool("feature_couple_profiles"),
+        feature_attachments: toBool("feature_attachments"),
+        attachment_extensions: settingsMap.get("attachment_extensions") || ".jpg,.jpeg,.png,.webp,.gif,.mp4,.mov,.avi,.mkv",
+        bot_mode_max_hours: settingsMap.has("bot_mode_max_hours") ? parseInt(settingsMap.get("bot_mode_max_hours")!) : 12,
+        selected_logo: settingsMap.get("selected_logo") || "new",
       });
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
@@ -2196,10 +2200,9 @@ CRITICAL RULES:
 
   app.get("/api/terms", async (_req: Request, res: Response) => {
     try {
-      const content = await storage.getAppSetting("terms_and_conditions");
-      const versionStr = await storage.getAppSetting("terms_version");
-      const version = versionStr ? parseInt(versionStr) : 1;
-      return res.json({ content: content || DEFAULT_TERMS, version });
+      const termsSettings = await storage.getAppSettings(["terms_and_conditions", "terms_version"]);
+      const version = termsSettings.has("terms_version") ? parseInt(termsSettings.get("terms_version")!) : 1;
+      return res.json({ content: termsSettings.get("terms_and_conditions") || DEFAULT_TERMS, version });
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
     }
@@ -3069,21 +3072,18 @@ CRITICAL RULES:
 
   app.get("/api/ad-settings", async (_req: Request, res: Response) => {
     try {
-      const adEnabled = await storage.getAppSetting("ads_enabled");
-      const adFrequency = await storage.getAppSetting("ads_frequency");
-      const adPlacement = await storage.getAppSetting("ads_placement");
-      const adPublisherId = await storage.getAppSetting("ads_publisher_id");
-      const adSlotId = await storage.getAppSetting("ads_slot_id");
-      const adBannerSlotId = await storage.getAppSetting("ads_banner_slot_id");
-      const adInterstitialFreq = await storage.getAppSetting("ads_interstitial_frequency");
+      const adSettings = await storage.getAppSettings([
+        "ads_enabled", "ads_frequency", "ads_placement", "ads_publisher_id",
+        "ads_slot_id", "ads_banner_slot_id", "ads_interstitial_frequency"
+      ]);
       return res.json({
-        enabled: adEnabled !== null ? adEnabled === "true" : true,
-        frequency: adFrequency ? parseInt(adFrequency) : 5,
-        placement: adPlacement || "discover,matches,profile",
-        publisherId: adPublisherId || "",
-        slotId: adSlotId || "",
-        bannerSlotId: adBannerSlotId || "",
-        interstitialFrequency: adInterstitialFreq ? parseInt(adInterstitialFreq) : 10,
+        enabled: adSettings.has("ads_enabled") ? adSettings.get("ads_enabled") === "true" : true,
+        frequency: adSettings.has("ads_frequency") ? parseInt(adSettings.get("ads_frequency")!) : 5,
+        placement: adSettings.get("ads_placement") || "discover,matches,profile",
+        publisherId: adSettings.get("ads_publisher_id") || "",
+        slotId: adSettings.get("ads_slot_id") || "",
+        bannerSlotId: adSettings.get("ads_banner_slot_id") || "",
+        interstitialFrequency: adSettings.has("ads_interstitial_frequency") ? parseInt(adSettings.get("ads_interstitial_frequency")!) : 10,
       });
     } catch (err: any) {
       return res.status(500).json({ message: err.message });

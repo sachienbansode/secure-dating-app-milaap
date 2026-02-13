@@ -35,6 +35,9 @@ export interface IStorage {
   setUserOnlineStatus(id: string, isOnline: boolean): Promise<void>;
 
   getProfile(userId: string): Promise<Profile | undefined>;
+  getProfilesByUserIds(userIds: string[]): Promise<Map<string, Profile>>;
+  getUsersByIds(userIds: string[]): Promise<Map<string, User>>;
+  getAppSettings(keys: string[]): Promise<Map<string, string>>;
   createProfile(profile: InsertProfile): Promise<Profile>;
   updateProfile(userId: string, data: Partial<InsertProfile>): Promise<Profile | undefined>;
   getDiscoverProfiles(userId: string, limit?: number, filters?: { gender?: string; ageMin?: number; ageMax?: number; city?: string; intent?: string; familyMode?: boolean }): Promise<Profile[]>;
@@ -156,6 +159,36 @@ export class DatabaseStorage implements IStorage {
     return profile ? decryptProfile(profile) : undefined;
   }
 
+  async getProfilesByUserIds(userIds: string[]): Promise<Map<string, Profile>> {
+    if (userIds.length === 0) return new Map();
+    const result = await db.select().from(profiles).where(inArray(profiles.userId, userIds));
+    const map = new Map<string, Profile>();
+    for (const p of result) {
+      map.set(p.userId, decryptProfile(p));
+    }
+    return map;
+  }
+
+  async getUsersByIds(userIds: string[]): Promise<Map<string, User>> {
+    if (userIds.length === 0) return new Map();
+    const result = await db.select().from(users).where(inArray(users.id, userIds));
+    const map = new Map<string, User>();
+    for (const u of result) {
+      map.set(u.id, u);
+    }
+    return map;
+  }
+
+  async getAppSettings(keys: string[]): Promise<Map<string, string>> {
+    if (keys.length === 0) return new Map();
+    const result = await db.select().from(appSettings).where(inArray(appSettings.key, keys));
+    const map = new Map<string, string>();
+    for (const s of result) {
+      map.set(s.key, s.value);
+    }
+    return map;
+  }
+
   async createProfile(profile: InsertProfile): Promise<Profile> {
     const encrypted = encryptProfile(profile);
     const [created] = await db.insert(profiles).values(encrypted).returning();
@@ -175,18 +208,18 @@ export class DatabaseStorage implements IStorage {
 
   async getDiscoverProfiles(userId: string, limit = 500, filters?: { gender?: string; ageMin?: number; ageMax?: number; city?: string; intent?: string; familyMode?: boolean }): Promise<Profile[]> {
     const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000);
-    const recentSwipes = await db.select({ targetUserId: matches.targetUserId })
-      .from(matches)
-      .where(and(eq(matches.userId, userId), gt(matches.createdAt, fourHoursAgo)));
+    const [recentSwipes, blocked, deactivatedUsers] = await Promise.all([
+      db.select({ targetUserId: matches.targetUserId })
+        .from(matches)
+        .where(and(eq(matches.userId, userId), gt(matches.createdAt, fourHoursAgo))),
+      this.getBlockedUsers(userId),
+      db.select({ id: users.id }).from(users)
+        .where(or(eq(users.isDeactivated, true), eq(users.isBanned, true))),
+    ]);
     const recentlySwipedIds = recentSwipes.map(m => m.targetUserId);
 
     const excludeIds: string[] = [userId, ...recentlySwipedIds];
-
-    const blocked = await this.getBlockedUsers(userId);
     for (const b of blocked) excludeIds.push(b.blockedUserId);
-
-    const deactivatedUsers = await db.select({ id: users.id }).from(users)
-      .where(or(eq(users.isDeactivated, true), eq(users.isBanned, true)));
     for (const u of deactivatedUsers) excludeIds.push(u.id);
 
     const finalExcluded = [...new Set(excludeIds)];
