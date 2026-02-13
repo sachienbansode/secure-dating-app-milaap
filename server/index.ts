@@ -63,7 +63,11 @@ app.use((req, res, next) => {
 (async () => {
   await registerRoutes(httpServer, app);
 
-  autoSeedProfiles().catch((err) => console.error("Auto-seed error:", err));
+  try {
+    await autoSeedProfiles();
+  } catch (err) {
+    console.error("Auto-seed error:", err);
+  }
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

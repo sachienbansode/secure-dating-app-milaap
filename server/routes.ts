@@ -3777,5 +3777,16 @@ MESSAGE LENGTH - THIS IS EXTREMELY IMPORTANT:
     }
   }, 5 * 60 * 1000);
 
+  app.post("/api/auto-seed-profiles", async (_req: Request, res: Response) => {
+    try {
+      const { autoSeedProfiles } = await import("./auto-seed");
+      await autoSeedProfiles();
+      res.json({ message: "Seed complete" });
+    } catch (err: any) {
+      console.error("Manual seed error:", err);
+      res.status(500).json({ message: err.message || "Seed failed" });
+    }
+  });
+
   return httpServer;
 }
