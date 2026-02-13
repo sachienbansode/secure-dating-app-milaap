@@ -99,9 +99,10 @@ export default function Chat() {
     queryFn: getMe,
   });
 
-  const { data: matchesAll = [] } = useQuery<any[]>({
-    queryKey: ["/api/matches"],
-    enabled: !!session?.user,
+  const { data: matchDetail } = useQuery<any>({
+    queryKey: [`/api/match-detail/${matchId}`],
+    enabled: !!matchId && !!session?.user,
+    refetchInterval: 15000,
   });
 
   const { data: appSettings } = useQuery<any>({
@@ -109,7 +110,7 @@ export default function Chat() {
     enabled: !!session?.user,
   });
 
-  const matchData = matchesAll?.find((m: any) => m.id === matchId);
+  const matchData = matchDetail;
   const profile = matchData?.profile;
 
   const { data: messages = [], isLoading: loadingMessages } = useQuery<ChatMessage[]>({
@@ -439,7 +440,7 @@ export default function Chat() {
   }
 
   const currentUserId = session.user.id;
-  const otherUserId = matchData ? (matchData.userId === currentUserId ? matchData.targetUserId : matchData.userId) : null;
+  const otherUserId = matchData?.otherUserId || (matchData ? (matchData.userId === currentUserId ? matchData.targetUserId : matchData.userId) : null);
   const hasAiProxyMessages = messages.some(m => m.isAiProxy);
   const otherIsOnline = profile?.isOnline;
   const otherRespectScore = profile?.respectScore ?? 85;

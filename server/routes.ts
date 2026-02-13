@@ -961,6 +961,28 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/match-detail/:matchId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const matchId = req.params.matchId as string;
+      const match = await storage.getMatchById(matchId);
+      if (!match) return res.status(404).json({ message: "Match not found" });
+      if (match.userId !== userId && match.targetUserId !== userId) {
+        return res.status(403).json({ message: "Not part of this match" });
+      }
+      const otherUserId = match.userId === userId ? match.targetUserId : match.userId;
+      const profile = await storage.getProfile(otherUserId);
+      const user = await storage.getUser(otherUserId);
+      return res.json({
+        ...match,
+        otherUserId,
+        profile: profile ? { ...profile, respectScore: user?.respectScore, isOnline: user?.isOnline || false, lastSeenAt: user?.lastSeenAt } : null,
+      });
+    } catch (err: any) {
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
+    }
+  });
+
   // ==================== ARCHIVE & DELETE CHAT ====================
 
   app.post("/api/matches/:matchId/archive", requireAuth, async (req: Request, res: Response) => {
