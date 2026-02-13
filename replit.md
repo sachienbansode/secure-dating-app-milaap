@@ -26,6 +26,8 @@ The application incorporates a 4-tier membership system (Basic, Silver, Gold, Pl
 - **Expectations Field**: Mandatory profile field with 3 options (Paid benefits/FWB, Strict NO to paid benefits/FWB, Okay with both); "Strict NO" users only see "Strict NO" profiles; others see the other two options; 5 seed profiles marked as "Strict NO", rest as "Okay with both"
 - **Chat Optimistic Updates**: Messages appear immediately in chat using TanStack Query optimistic updates with rollback on error
 - **Chat Profile Fix**: Dedicated /api/match-detail/:matchId endpoint for reliable profile display in chat
+- **Admin User Lookup**: Comprehensive admin user search by name/phone/email with tabbed detail view (Profile, Activity, Chats, Reports & Blocks, Analytics, Export); JSON export for legal compliance; all actions logged for audit trail
+- **T&C Legal Update**: Updated Terms & Conditions with 8 comprehensive clauses including data sharing with legal authorities, data retention, privacy & data collection
 
 ## External Dependencies
 - **OpenAI**: Used for AI-assisted messaging, chat suggestions, AI proxy replies, tone analysis, and green flag analysis.

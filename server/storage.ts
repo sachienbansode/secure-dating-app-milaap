@@ -130,6 +130,13 @@ export interface IStorage {
   getChaiDateForMatch(matchId: string, status?: string): Promise<ChaiDate | undefined>;
   updateChaiDate(id: string, data: Partial<ChaiDate>): Promise<ChaiDate | undefined>;
   getChaiDateHistory(userId: string): Promise<ChaiDate[]>;
+
+  searchUsersAdmin(query: string): Promise<{ user: User; profile?: Profile }[]>;
+  getAdminUserDetail(userId: string): Promise<{ user: User; profile?: Profile; matches: Match[]; sessions: UserSession[] } | null>;
+  getReportsByUser(userId: string): Promise<Report[]>;
+  getBlocksInvolving(userId: string): Promise<BlockedUser[]>;
+  getUserMessages(userId: string, limit?: number): Promise<{ message: Message; matchId: string }[]>;
+  getUserMembershipTransactions(userId: string): Promise<MembershipTransaction[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -867,6 +874,80 @@ export class DatabaseStorage implements IStorage {
       .where(or(eq(chaiDates.requesterId, userId), eq(chaiDates.recipientId, userId)))
       .orderBy(desc(chaiDates.createdAt))
       .limit(20);
+  }
+
+  async searchUsersAdmin(query: string): Promise<{ user: User; profile?: Profile }[]> {
+    const trimmed = query.trim();
+    if (!trimmed) return [];
+    const allUsers = await db.select().from(users).orderBy(desc(users.createdAt));
+    const allProfiles = await db.select().from(profiles);
+    const profileMap = new Map<string, Profile>();
+    for (const p of allProfiles) {
+      profileMap.set(p.userId, p);
+    }
+    const results: { user: User; profile?: Profile }[] = [];
+    const lowerQuery = trimmed.toLowerCase();
+    for (const u of allUsers) {
+      const profile = profileMap.get(u.id);
+      let decryptedName = "";
+      if (profile) {
+        try {
+          const decrypted = decryptProfile(profile);
+          decryptedName = (decrypted.name || "").toLowerCase();
+        } catch { decryptedName = ""; }
+      }
+      const phoneMatch = u.phone && u.phone.includes(trimmed);
+      const emailMatch = u.email && u.email.toLowerCase().includes(lowerQuery);
+      const nameMatch = decryptedName.includes(lowerQuery);
+      if (phoneMatch || emailMatch || nameMatch) {
+        results.push({ user: u, profile: profile ? decryptProfile(profile) : undefined });
+      }
+    }
+    return results.slice(0, 50);
+  }
+
+  async getAdminUserDetail(userId: string): Promise<{ user: User; profile?: Profile; matches: Match[]; sessions: UserSession[] } | null> {
+    const user = await this.getUser(userId);
+    if (!user) return null;
+    const profile = await this.getProfile(userId);
+    const decryptedProfile = profile ? decryptProfile(profile) : undefined;
+    const userMatches = await db.select().from(matches)
+      .where(or(eq(matches.userId, userId), eq(matches.targetUserId, userId)))
+      .orderBy(desc(matches.createdAt));
+    const sessions = await db.select().from(userSessions)
+      .where(eq(userSessions.userId, userId))
+      .orderBy(desc(userSessions.createdAt))
+      .limit(20);
+    return { user, profile: decryptedProfile, matches: userMatches, sessions };
+  }
+
+  async getReportsByUser(userId: string): Promise<Report[]> {
+    return db.select().from(reports)
+      .where(or(eq(reports.reporterId, userId), eq(reports.reportedUserId, userId)))
+      .orderBy(desc(reports.createdAt));
+  }
+
+  async getBlocksInvolving(userId: string): Promise<BlockedUser[]> {
+    return db.select().from(blockedUsers)
+      .where(or(eq(blockedUsers.blockerId, userId), eq(blockedUsers.blockedUserId, userId)))
+      .orderBy(desc(blockedUsers.createdAt));
+  }
+
+  async getUserMessages(userId: string, limit: number = 100): Promise<{ message: Message; matchId: string }[]> {
+    const rawMessages = await db.select().from(messages)
+      .where(eq(messages.senderId, userId))
+      .orderBy(desc(messages.createdAt))
+      .limit(limit);
+    return rawMessages.map(m => ({
+      message: { ...m, content: decryptMessage(m.content) },
+      matchId: m.matchId,
+    }));
+  }
+
+  async getUserMembershipTransactions(userId: string): Promise<MembershipTransaction[]> {
+    return db.select().from(membershipTransactions)
+      .where(eq(membershipTransactions.userId, userId))
+      .orderBy(desc(membershipTransactions.createdAt));
   }
 }
 

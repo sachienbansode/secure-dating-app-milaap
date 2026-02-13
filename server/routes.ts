@@ -2527,7 +2527,25 @@ MESSAGE LENGTH - THIS IS EXTREMELY IMPORTANT:
 
   // ==================== TERMS & CONDITIONS ====================
 
-  const DEFAULT_TERMS = "Welcome to Milaap. By using this application, you agree to treat all users with respect and dignity. You must be 18 years or older to use this service. We are committed to creating a safe and inclusive dating environment for everyone.";
+  const DEFAULT_TERMS = `Welcome to Milaap. By using this application, you agree to the following Terms & Conditions:
+
+1. ELIGIBILITY: You must be 18 years or older to use this service. By registering, you confirm that you meet this age requirement.
+
+2. USER CONDUCT: You agree to treat all users with respect and dignity. Harassment, abuse, hate speech, or any form of inappropriate behavior is strictly prohibited and may result in account suspension or permanent ban.
+
+3. PRIVACY & DATA COLLECTION: Milaap collects and stores your personal information including but not limited to: name, phone number, email address, profile photos, location data, chat messages, activity logs, device information, and IP addresses. This data is encrypted and stored securely.
+
+4. DATA SHARING WITH AUTHORITIES: By using Milaap, you acknowledge and consent that the application may read, access, process, and share your personal information, profile details, chat messages, activity logs, login history, and any other user data with law enforcement agencies, regulatory bodies, or other legal authorities when requested for legitimate legal purposes. This includes but is not limited to: (a) compliance with valid legal processes such as court orders, subpoenas, or warrants; (b) cooperation with law enforcement investigations; (c) protection of the safety and security of our users and the public; (d) prevention of fraud, abuse, or illegal activities on the platform; (e) compliance with applicable laws and regulations of India.
+
+5. DATA RETENTION: Your data may be retained even after account deactivation or deletion for legal compliance purposes and to assist with any ongoing or future legal inquiries.
+
+6. SAFE DATING: We are committed to creating a safe and inclusive dating environment for everyone. Report any suspicious or inappropriate behavior using the in-app reporting feature.
+
+7. CONTENT RESPONSIBILITY: You are solely responsible for the content you share on the platform. Do not share explicit, illegal, or copyrighted content.
+
+8. MODIFICATIONS: Milaap reserves the right to modify these terms at any time. Continued use of the service after modifications constitutes acceptance of the updated terms.
+
+By continuing to use Milaap, you acknowledge that you have read, understood, and agree to these Terms & Conditions.`;
 
   app.get("/api/terms", async (_req: Request, res: Response) => {
     try {
@@ -3804,6 +3822,168 @@ MESSAGE LENGTH - THIS IS EXTREMELY IMPORTANT:
       });
     } catch (err: any) {
       console.error(err); return res.status(500).json({ message: "Something went wrong" });
+    }
+  });
+
+  // ==================== ADMIN USER LOOKUP ====================
+
+  app.get("/api/admin/user-search", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const q = (req.query.q as string || "").trim();
+      if (!q || q.length < 2) return res.json({ results: [] });
+      const results = await storage.searchUsersAdmin(q);
+      return res.json({ results: results.map(r => ({
+        userId: r.user.id,
+        phone: r.user.phone,
+        email: r.user.email,
+        name: r.profile?.name || "No Profile",
+        city: r.profile?.city || "",
+        gender: r.profile?.gender || "",
+        membershipTier: r.user.membershipTier || "basic",
+        isBanned: r.user.isBanned,
+        isDeactivated: r.user.isDeactivated,
+        createdAt: r.user.createdAt,
+        lastSeenAt: r.user.lastSeenAt,
+        photos: r.profile?.photos || [],
+      }))});
+    } catch (err: any) {
+      console.error(err); return res.status(500).json({ message: "Search failed" });
+    }
+  });
+
+  app.get("/api/admin/user-detail/:userId", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const { userId } = req.params;
+      const detail = await storage.getAdminUserDetail(userId);
+      if (!detail) return res.status(404).json({ message: "User not found" });
+      const reports = await storage.getReportsByUser(userId);
+      const blocks = await storage.getBlocksInvolving(userId);
+      const userMessages = await storage.getUserMessages(userId, 200);
+      const actLogs = await storage.getActivityLogs(100, 0, undefined, userId);
+      const transactions = await storage.getUserMembershipTransactions(userId);
+      const quiz = await storage.getQuizResponses(userId);
+      const chaiDateHistory = await storage.getChaiDateHistory(userId);
+      await logActivity(req.session.adminUserId!, "admin_user_lookup", "admin", { targetUserId: userId }, req);
+      return res.json({
+        user: detail.user,
+        profile: detail.profile,
+        matches: detail.matches,
+        sessions: detail.sessions,
+        reports,
+        blocks,
+        messages: userMessages,
+        activityLogs: actLogs,
+        transactions,
+        quizResponses: quiz,
+        chaiDates: chaiDateHistory,
+      });
+    } catch (err: any) {
+      console.error(err); return res.status(500).json({ message: "Failed to fetch user details" });
+    }
+  });
+
+  app.get("/api/admin/user-export/:userId", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const { userId } = req.params;
+      const detail = await storage.getAdminUserDetail(userId);
+      if (!detail) return res.status(404).json({ message: "User not found" });
+      const reports = await storage.getReportsByUser(userId);
+      const blocks = await storage.getBlocksInvolving(userId);
+      const userMessages = await storage.getUserMessages(userId, 500);
+      const actLogs = await storage.getActivityLogs(500, 0, undefined, userId);
+      const transactions = await storage.getUserMembershipTransactions(userId);
+      const quiz = await storage.getQuizResponses(userId);
+      const chaiDates = await storage.getChaiDateHistory(userId);
+      await logActivity(req.session.adminUserId!, "admin_user_export", "admin", { targetUserId: userId }, req);
+      const exportData = {
+        exportedAt: new Date().toISOString(),
+        exportedBy: req.session.adminUserId,
+        platform: "Milaap Dating App",
+        user: {
+          id: detail.user.id,
+          phone: detail.user.phone,
+          email: detail.user.email,
+          membershipTier: detail.user.membershipTier,
+          respectScore: detail.user.respectScore,
+          reportCount: detail.user.reportCount,
+          isBanned: detail.user.isBanned,
+          isDeactivated: detail.user.isDeactivated,
+          createdAt: detail.user.createdAt,
+          lastSeenAt: detail.user.lastSeenAt,
+          termsAcceptedAt: detail.user.termsAcceptedAt,
+          termsAcceptedVersion: detail.user.termsAcceptedVersion,
+        },
+        profile: detail.profile ? {
+          name: detail.profile.name,
+          age: detail.profile.age,
+          gender: detail.profile.gender,
+          bio: detail.profile.bio,
+          city: detail.profile.city,
+          location: detail.profile.location,
+          interests: detail.profile.interests,
+          intent: detail.profile.intent,
+          expectations: detail.profile.expectations,
+          dateOfBirth: detail.profile.dateOfBirth,
+          zodiacSign: detail.profile.zodiacSign,
+          isVerified: detail.profile.isVerified,
+          photos: detail.profile.photos,
+        } : null,
+        matches: detail.matches.map(m => ({
+          id: m.id,
+          withUserId: m.userId === userId ? m.targetUserId : m.userId,
+          action: m.action,
+          isMatched: m.isMatched,
+          createdAt: m.createdAt,
+        })),
+        messages: userMessages.map(um => ({
+          matchId: um.matchId,
+          content: um.message.content,
+          isAiGenerated: um.message.isAiGenerated,
+          createdAt: um.message.createdAt,
+        })),
+        reports: reports.map(r => ({
+          id: r.id,
+          role: r.reporterId === userId ? "reporter" : "reported",
+          reason: r.reason,
+          details: r.details,
+          status: r.status,
+          actionTaken: r.actionTaken,
+          createdAt: r.createdAt,
+        })),
+        blocks: blocks.map(b => ({
+          role: b.blockerId === userId ? "blocker" : "blocked",
+          otherUserId: b.blockerId === userId ? b.blockedUserId : b.blockerId,
+          createdAt: b.createdAt,
+        })),
+        sessions: detail.sessions.map(s => ({
+          ipAddress: s.ipAddress,
+          location: s.location,
+          userAgent: s.userAgent,
+          isActive: s.isActive,
+          createdAt: s.createdAt,
+          lastActivityAt: s.lastActivityAt,
+        })),
+        activityLogs: actLogs.map(l => ({
+          action: l.action,
+          category: l.category,
+          details: l.details,
+          ipAddress: l.ipAddress,
+          createdAt: l.createdAt,
+        })),
+        transactions: transactions.map(t => ({
+          planTier: t.planTier,
+          amount: t.amount,
+          status: t.status,
+          createdAt: t.createdAt,
+        })),
+        quizResponses: quiz,
+        chaiDates: chaiDates,
+      };
+      res.setHeader("Content-Type", "application/json");
+      res.setHeader("Content-Disposition", `attachment; filename="milaap-user-${userId}-export-${new Date().toISOString().split("T")[0]}.json"`);
+      return res.json(exportData);
+    } catch (err: any) {
+      console.error(err); return res.status(500).json({ message: "Export failed" });
     }
   });
 

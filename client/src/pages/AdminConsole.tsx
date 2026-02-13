@@ -8,6 +8,8 @@ import {
   Settings, Shield, Clock, ShieldAlert, ShieldCheck,
   Lock, EyeOff, Trash2, Plus, ChevronRight, ArrowLeft,
   Activity, Heart, Paperclip, Crown, DollarSign, Bot, Megaphone, Image,
+  Search, Download, AlertTriangle, Phone, MapPin, Calendar, Eye, Ban, FileText,
+  MessageCircle, BarChart3, UserSearch,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import type { AuthResponse } from "@/lib/auth";
@@ -65,6 +67,7 @@ export default function AdminConsole() {
           </button>
         </div>
         <div className="flex-1 overflow-y-auto p-4">
+          {activeSection === "User Lookup" && <UserLookup />}
           {activeSection === "All Profiles" && <AllProfilesViewer />}
           {activeSection === "Activity Logs" && <ActivityLogsViewer />}
           {activeSection === "Terms & Conditions" && <TermsEditor />}
@@ -130,6 +133,7 @@ export default function AdminConsole() {
       </div>
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {[
+          { id: "User Lookup", icon: UserSearch, color: "bg-orange-100 text-orange-600", desc: "Search & inspect any user (legal compliance)" },
           { id: "All Profiles", icon: Users, color: "bg-indigo-100 text-indigo-600", desc: "View all registered profiles" },
           { id: "Activity Logs", icon: Activity, color: "bg-slate-100 text-slate-600", desc: "View all user activity logs" },
           { id: "Terms & Conditions", icon: Shield, color: "bg-cyan-100 text-cyan-600", desc: "Edit T&C with versioning" },
@@ -2022,6 +2026,569 @@ function LogoSelector() {
       </div>
       {saved && (
         <div className="text-center text-sm text-green-400 font-medium py-2">Logo updated successfully!</div>
+      )}
+    </div>
+  );
+}
+
+function UserLookup() {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState("profile");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(searchQuery), 400);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const { data: searchResults, isLoading: searching } = useQuery({
+    queryKey: ["/api/admin/user-search", debouncedQuery],
+    queryFn: async () => {
+      if (!debouncedQuery || debouncedQuery.length < 2) return { results: [] };
+      const res = await fetch(`/api/admin/user-search?q=${encodeURIComponent(debouncedQuery)}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Search failed");
+      return res.json();
+    },
+    enabled: debouncedQuery.length >= 2,
+  });
+
+  const { data: userDetail, isLoading: loadingDetail, isError: detailError } = useQuery({
+    queryKey: ["/api/admin/user-detail", selectedUserId],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/user-detail/${selectedUserId}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: !!selectedUserId,
+    retry: 1,
+  });
+
+  const handleExport = async () => {
+    if (!selectedUserId) return;
+    try {
+      const res = await fetch(`/api/admin/user-export/${selectedUserId}`, { credentials: "include" });
+      const data = await res.json();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `milaap-user-${selectedUserId}-export-${new Date().toISOString().split("T")[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error("Export failed:", e);
+    }
+  };
+
+  const formatDate = (d: string | null | undefined) => {
+    if (!d) return "N/A";
+    return new Date(d).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
+  };
+
+  const tierColors: Record<string, string> = {
+    basic: "bg-slate-500", silver: "bg-slate-400", gold: "bg-yellow-500", platinum: "bg-purple-500",
+  };
+
+  if (selectedUserId && userDetail) {
+    const { user, profile, matches, sessions, reports, blocks, messages, activityLogs, transactions, quizResponses, chaiDates } = userDetail;
+    const tabs = [
+      { id: "profile", label: "Profile", icon: Eye },
+      { id: "activity", label: "Activity", icon: Activity },
+      { id: "chats", label: "Chats", icon: MessageCircle },
+      { id: "reports", label: "Reports & Blocks", icon: AlertTriangle },
+      { id: "analytics", label: "Analytics", icon: BarChart3 },
+      { id: "export", label: "Export", icon: Download },
+    ];
+
+    return (
+      <div className="space-y-4" data-testid="admin-user-detail-view">
+        <button
+          onClick={() => { setSelectedUserId(null); setActiveTab("profile"); }}
+          className="flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+          data-testid="button-back-to-search"
+        >
+          <ArrowLeft size={16} /> Back to search
+        </button>
+
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+          <div className="flex items-center gap-4">
+            {profile?.photos?.[0] ? (
+              <img src={profile.photos[0]} alt="" className="w-16 h-16 rounded-full object-cover border-2 border-slate-200" />
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-slate-200 flex items-center justify-center">
+                <Users size={24} className="text-slate-400" />
+              </div>
+            )}
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-bold text-slate-900" data-testid="text-user-name">{profile?.name || "No Profile"}</h2>
+                <span className={`text-xs px-2 py-0.5 rounded-full text-white ${tierColors[user.membershipTier] || "bg-slate-500"}`}>
+                  {user.membershipTier}
+                </span>
+                {user.isBanned && <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-600">Banned</span>}
+                {user.isDeactivated && <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">Deactivated</span>}
+              </div>
+              <div className="text-xs text-slate-500 mt-1 space-y-0.5">
+                <div className="flex items-center gap-1"><Phone size={12} /> {user.phone || "N/A"}</div>
+                <div className="flex items-center gap-1"><Mail size={12} /> {user.email || "N/A"}</div>
+                <div className="flex items-center gap-1"><Calendar size={12} /> Joined: {formatDate(user.createdAt)}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-1 overflow-x-auto pb-1">
+          {tabs.map(t => (
+            <button
+              key={t.id}
+              onClick={() => setActiveTab(t.id)}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-colors ${
+                activeTab === t.id ? "bg-indigo-600 text-white" : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"
+              }`}
+              data-testid={`tab-${t.id}`}
+            >
+              <t.icon size={14} /> {t.label}
+            </button>
+          ))}
+        </div>
+
+        {activeTab === "profile" && (
+          <div className="space-y-3" data-testid="tab-content-profile">
+            <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+              <h3 className="font-bold text-sm text-slate-800 mb-3">User Account</h3>
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div><span className="text-slate-400">User ID</span><p className="font-mono text-slate-700 break-all">{user.id}</p></div>
+                <div><span className="text-slate-400">Respect Score</span><p className="font-semibold text-slate-700">{user.respectScore}/100</p></div>
+                <div><span className="text-slate-400">Report Count</span><p className="font-semibold text-slate-700">{user.reportCount}</p></div>
+                <div><span className="text-slate-400">Last Seen</span><p className="text-slate-700">{formatDate(user.lastSeenAt)}</p></div>
+                <div><span className="text-slate-400">Online</span><p className="text-slate-700">{user.isOnline ? "Yes" : "No"}</p></div>
+                <div><span className="text-slate-400">Terms Accepted</span><p className="text-slate-700">v{user.termsAcceptedVersion || "N/A"} at {formatDate(user.termsAcceptedAt)}</p></div>
+                <div><span className="text-slate-400">Membership Expires</span><p className="text-slate-700">{formatDate(user.membershipExpiresAt)}</p></div>
+                <div><span className="text-slate-400">Daily Likes Used</span><p className="text-slate-700">{user.dailyLikesUsed}/{user.dailyLikesLimit}</p></div>
+              </div>
+            </div>
+            {profile && (
+              <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+                <h3 className="font-bold text-sm text-slate-800 mb-3">Profile Details</h3>
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div><span className="text-slate-400">Age</span><p className="text-slate-700">{profile.age}</p></div>
+                  <div><span className="text-slate-400">Gender</span><p className="text-slate-700">{profile.gender}</p></div>
+                  <div><span className="text-slate-400">City</span><p className="text-slate-700">{profile.city}</p></div>
+                  <div><span className="text-slate-400">Location</span><p className="text-slate-700">{profile.location}</p></div>
+                  <div><span className="text-slate-400">DOB</span><p className="text-slate-700">{profile.dateOfBirth || "N/A"}</p></div>
+                  <div><span className="text-slate-400">Zodiac</span><p className="text-slate-700">{profile.zodiacSign || "N/A"}</p></div>
+                  <div><span className="text-slate-400">Intent</span><p className="text-slate-700">{profile.intent || "N/A"}</p></div>
+                  <div><span className="text-slate-400">Expectations</span><p className="text-slate-700">{profile.expectations || "N/A"}</p></div>
+                  <div><span className="text-slate-400">Date Readiness</span><p className="text-slate-700">{profile.dateReadiness || "N/A"}</p></div>
+                  <div><span className="text-slate-400">Verified</span><p className="text-slate-700">{profile.isVerified ? "Yes" : "No"}</p></div>
+                  <div><span className="text-slate-400">Interested In</span><p className="text-slate-700">{profile.interestedIn?.join(", ") || "N/A"}</p></div>
+                  <div><span className="text-slate-400">Dating Style</span><p className="text-slate-700">{profile.datingStyle || "N/A"}</p></div>
+                </div>
+                {profile.bio && (
+                  <div className="mt-3"><span className="text-slate-400 text-xs">Bio</span><p className="text-xs text-slate-700 mt-1">{profile.bio}</p></div>
+                )}
+                {profile.interests?.length > 0 && (
+                  <div className="mt-3">
+                    <span className="text-slate-400 text-xs">Interests</span>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {profile.interests.map((i: string, idx: number) => (
+                        <span key={idx} className="text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full">{i}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {profile.photos?.length > 0 && (
+                  <div className="mt-3">
+                    <span className="text-slate-400 text-xs">Photos ({profile.photos.length})</span>
+                    <div className="flex gap-2 mt-1 overflow-x-auto">
+                      {profile.photos.map((p: string, idx: number) => (
+                        <img key={idx} src={p} alt="" className="w-16 h-16 rounded-lg object-cover border border-slate-200 flex-shrink-0" />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            {sessions?.length > 0 && (
+              <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+                <h3 className="font-bold text-sm text-slate-800 mb-3">Login Sessions ({sessions.length})</h3>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {sessions.map((s: any, idx: number) => (
+                    <div key={idx} className="text-xs bg-slate-50 rounded-xl p-2 flex items-center justify-between">
+                      <div>
+                        <div className="text-slate-700 font-medium">{s.ipAddress || "Unknown IP"}</div>
+                        <div className="text-slate-400">{s.location || "Unknown location"} | {s.userAgent?.substring(0, 40) || "Unknown"}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className={`text-xs font-medium ${s.isActive ? "text-green-600" : "text-slate-400"}`}>
+                          {s.isActive ? "Active" : "Expired"}
+                        </div>
+                        <div className="text-slate-400">{formatDate(s.lastActivityAt)}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {matches?.length > 0 && (
+              <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+                <h3 className="font-bold text-sm text-slate-800 mb-3">Matches ({matches.length})</h3>
+                <div className="space-y-1 max-h-48 overflow-y-auto">
+                  {matches.map((m: any, idx: number) => (
+                    <div key={idx} className="text-xs bg-slate-50 rounded-lg p-2 flex items-center justify-between">
+                      <div>
+                        <span className="font-mono text-slate-500">{m.userId === selectedUserId ? m.targetUserId : m.userId}</span>
+                        <span className={`ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium ${m.action === "like" ? "bg-green-100 text-green-700" : m.action === "dislike" ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700"}`}>
+                          {m.action}
+                        </span>
+                        {m.isMatched && <span className="ml-1 px-1.5 py-0.5 rounded bg-pink-100 text-pink-700 text-[10px] font-medium">Mutual</span>}
+                      </div>
+                      <span className="text-slate-400">{formatDate(m.createdAt)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === "activity" && (
+          <div className="space-y-3" data-testid="tab-content-activity">
+            <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+              <h3 className="font-bold text-sm text-slate-800 mb-3">Activity Logs ({activityLogs?.length || 0})</h3>
+              {activityLogs?.length > 0 ? (
+                <div className="space-y-1.5 max-h-96 overflow-y-auto">
+                  {activityLogs.map((log: any, idx: number) => (
+                    <div key={idx} className="text-xs bg-slate-50 rounded-xl p-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-slate-700">{log.action}</span>
+                        <span className="text-slate-400">{formatDate(log.createdAt)}</span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="px-1.5 py-0.5 rounded bg-slate-200 text-slate-600 text-[10px] font-medium">{log.category}</span>
+                        {log.ipAddress && <span className="text-slate-400">{log.ipAddress}</span>}
+                      </div>
+                      {log.details && (
+                        <div className="mt-1 text-slate-500 font-mono text-[10px] break-all">{JSON.stringify(log.details)}</div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-slate-400">No activity logs found.</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === "chats" && (
+          <div className="space-y-3" data-testid="tab-content-chats">
+            <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+              <h3 className="font-bold text-sm text-slate-800 mb-3">Messages Sent ({messages?.length || 0})</h3>
+              {messages?.length > 0 ? (
+                <div className="space-y-1.5 max-h-96 overflow-y-auto">
+                  {messages.map((m: any, idx: number) => (
+                    <div key={idx} className="text-xs bg-slate-50 rounded-xl p-2.5">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-slate-400 font-mono text-[10px]">Match: {m.matchId?.substring(0, 8)}...</span>
+                        <span className="text-slate-400">{formatDate(m.message?.createdAt)}</span>
+                      </div>
+                      <p className="text-slate-700">{m.message?.content}</p>
+                      {m.message?.isAiGenerated && <span className="text-[10px] bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded mt-1 inline-block">AI Generated</span>}
+                      {m.message?.attachmentUrl && <span className="text-[10px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded mt-1 inline-block ml-1">Attachment</span>}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-slate-400">No messages found.</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === "reports" && (
+          <div className="space-y-3" data-testid="tab-content-reports">
+            <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+              <h3 className="font-bold text-sm text-slate-800 mb-3 flex items-center gap-2">
+                <AlertTriangle size={16} className="text-red-500" /> Reports ({reports?.length || 0})
+              </h3>
+              {reports?.length > 0 ? (
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {reports.map((r: any, idx: number) => (
+                    <div key={idx} className="text-xs bg-red-50 rounded-xl p-3 border border-red-100">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${r.reporterId === selectedUserId ? "bg-orange-100 text-orange-700" : "bg-red-100 text-red-700"}`}>
+                          {r.reporterId === selectedUserId ? "Filed by user" : "Against user"}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${r.status === "resolved" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>
+                          {r.status}
+                        </span>
+                      </div>
+                      <p className="text-slate-700 font-medium mt-1">{r.reason}</p>
+                      {r.details && <p className="text-slate-500 mt-0.5">{r.details}</p>}
+                      {r.actionTaken && r.actionTaken !== "pending" && <p className="text-slate-600 mt-1">Action: {r.actionTaken}</p>}
+                      <p className="text-slate-400 mt-1">{formatDate(r.createdAt)}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-slate-400">No reports found.</p>
+              )}
+            </div>
+
+            <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+              <h3 className="font-bold text-sm text-slate-800 mb-3 flex items-center gap-2">
+                <Ban size={16} className="text-slate-500" /> Blocks ({blocks?.length || 0})
+              </h3>
+              {blocks?.length > 0 ? (
+                <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                  {blocks.map((b: any, idx: number) => (
+                    <div key={idx} className="text-xs bg-slate-50 rounded-xl p-2.5 flex items-center justify-between">
+                      <div>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${b.blockerId === selectedUserId ? "bg-orange-100 text-orange-700" : "bg-red-100 text-red-700"}`}>
+                          {b.blockerId === selectedUserId ? "Blocked by user" : "User was blocked"}
+                        </span>
+                        <span className="ml-2 font-mono text-slate-500">{b.blockerId === selectedUserId ? b.blockedUserId : b.blockerId}</span>
+                      </div>
+                      <span className="text-slate-400">{formatDate(b.createdAt)}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-slate-400">No blocks found.</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === "analytics" && (
+          <div className="space-y-3" data-testid="tab-content-analytics">
+            <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+              <h3 className="font-bold text-sm text-slate-800 mb-3">User Analytics Summary</h3>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { label: "Total Matches", value: matches?.length || 0, color: "text-pink-600" },
+                  { label: "Mutual Matches", value: matches?.filter((m: any) => m.isMatched).length || 0, color: "text-green-600" },
+                  { label: "Messages Sent", value: messages?.length || 0, color: "text-blue-600" },
+                  { label: "Reports Filed", value: reports?.filter((r: any) => r.reporterId === selectedUserId).length || 0, color: "text-orange-600" },
+                  { label: "Reports Against", value: reports?.filter((r: any) => r.reportedUserId === selectedUserId).length || 0, color: "text-red-600" },
+                  { label: "Users Blocked", value: blocks?.filter((b: any) => b.blockerId === selectedUserId).length || 0, color: "text-slate-600" },
+                  { label: "Blocked By Others", value: blocks?.filter((b: any) => b.blockedUserId === selectedUserId).length || 0, color: "text-slate-500" },
+                  { label: "Login Sessions", value: sessions?.length || 0, color: "text-indigo-600" },
+                ].map((stat, idx) => (
+                  <div key={idx} className="bg-slate-50 rounded-xl p-3 text-center">
+                    <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
+                    <p className="text-[10px] text-slate-500 mt-0.5">{stat.label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {transactions?.length > 0 && (
+              <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+                <h3 className="font-bold text-sm text-slate-800 mb-3">Membership Transactions ({transactions.length})</h3>
+                <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                  {transactions.map((t: any, idx: number) => (
+                    <div key={idx} className="text-xs bg-slate-50 rounded-xl p-2.5 flex items-center justify-between">
+                      <div>
+                        <span className="font-medium text-slate-700">{t.planTier}</span>
+                        <span className="ml-2 text-slate-500">INR {t.amount}</span>
+                      </div>
+                      <div className="text-right">
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${t.status === "completed" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>{t.status}</span>
+                        <div className="text-slate-400 mt-0.5">{formatDate(t.createdAt)}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {quizResponses?.length > 0 && (
+              <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+                <h3 className="font-bold text-sm text-slate-800 mb-3">Quiz Responses ({quizResponses.length})</h3>
+                <div className="space-y-1 max-h-48 overflow-y-auto">
+                  {quizResponses.map((q: any, idx: number) => (
+                    <div key={idx} className="text-xs bg-slate-50 rounded-lg p-2">
+                      <span className="text-slate-500">Q{q.questionId}:</span> <span className="text-slate-700 font-medium">{q.answer}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {chaiDates?.length > 0 && (
+              <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+                <h3 className="font-bold text-sm text-slate-800 mb-3">Chai Dates ({chaiDates.length})</h3>
+                <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                  {chaiDates.map((cd: any, idx: number) => (
+                    <div key={idx} className="text-xs bg-slate-50 rounded-xl p-2.5 flex items-center justify-between">
+                      <div>
+                        <span className="text-slate-500">With: </span>
+                        <span className="font-mono text-slate-700">{cd.requesterId === selectedUserId ? cd.recipientId : cd.requesterId}</span>
+                      </div>
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${cd.status === "completed" ? "bg-green-100 text-green-700" : cd.status === "active" ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-600"}`}>
+                        {cd.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === "export" && (
+          <div className="space-y-3" data-testid="tab-content-export">
+            <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+              <h3 className="font-bold text-sm text-slate-800 mb-3 flex items-center gap-2">
+                <FileText size={16} className="text-indigo-500" /> Legal Data Export
+              </h3>
+              <p className="text-xs text-slate-500 mb-4">
+                Export all user data as a JSON file for legal compliance purposes. This includes profile information, 
+                messages, activity logs, reports, blocks, session history, and membership transactions. 
+                This action is logged for audit purposes.
+              </p>
+              <div className="bg-amber-50 rounded-xl p-3 mb-4 border border-amber-200">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle size={16} className="text-amber-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-xs text-amber-800">
+                    <p className="font-medium">Legal Notice</p>
+                    <p className="mt-1">Data exports are permitted under Milaap's Terms & Conditions for legitimate legal purposes only. 
+                    All export actions are logged with admin ID, timestamp, and IP address for audit trail compliance.</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-slate-50 rounded-xl p-3 mb-4">
+                <h4 className="text-xs font-semibold text-slate-700 mb-2">Export Contents:</h4>
+                <ul className="text-xs text-slate-600 space-y-1">
+                  <li>- User account details (phone, email, membership, respect score)</li>
+                  <li>- Profile information (name, age, gender, city, bio, interests, photos)</li>
+                  <li>- Match history (all likes, dislikes, mutual matches)</li>
+                  <li>- Messages sent by user (up to 500 most recent)</li>
+                  <li>- Reports filed by and against user</li>
+                  <li>- Block actions (initiated and received)</li>
+                  <li>- Login session history (IP addresses, locations, devices)</li>
+                  <li>- Activity logs (up to 500 most recent)</li>
+                  <li>- Membership transactions</li>
+                  <li>- Quiz responses & Chai Date history</li>
+                </ul>
+              </div>
+              <button
+                onClick={handleExport}
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
+                data-testid="button-export-user-data"
+              >
+                <Download size={16} /> Download User Data Export (JSON)
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (selectedUserId && loadingDetail) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="animate-pulse text-slate-400 text-sm">Loading user details...</div>
+      </div>
+    );
+  }
+
+  if (selectedUserId && detailError) {
+    return (
+      <div className="space-y-4">
+        <button
+          onClick={() => { setSelectedUserId(null); setActiveTab("profile"); }}
+          className="flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+        >
+          <ArrowLeft size={16} /> Back to search
+        </button>
+        <div className="bg-red-50 rounded-2xl p-6 text-center border border-red-100">
+          <AlertTriangle size={32} className="mx-auto text-red-400 mb-2" />
+          <p className="text-sm text-red-600 font-medium">Failed to load user details</p>
+          <p className="text-xs text-red-400 mt-1">The user may not exist or there was a server error.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4" data-testid="admin-user-search-view">
+      <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+        <h3 className="font-bold text-sm text-slate-800 mb-3 flex items-center gap-2">
+          <UserSearch size={16} className="text-orange-500" /> User Lookup
+        </h3>
+        <p className="text-xs text-slate-500 mb-3">
+          Search by name, mobile number, or email address. Minimum 2 characters required.
+        </p>
+        <div className="relative">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search by name, phone (+91...), or email..."
+            className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+            data-testid="input-user-search"
+          />
+        </div>
+      </div>
+
+      {searching && (
+        <div className="text-center py-4">
+          <div className="animate-pulse text-sm text-slate-400">Searching...</div>
+        </div>
+      )}
+
+      {searchResults?.results?.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs text-slate-500 font-medium">{searchResults.results.length} result(s) found</p>
+          {searchResults.results.map((r: any) => (
+            <button
+              key={r.userId}
+              onClick={() => setSelectedUserId(r.userId)}
+              className="w-full bg-white rounded-2xl p-3 shadow-sm border border-slate-100 hover:bg-slate-50 transition-colors text-left flex items-center gap-3"
+              data-testid={`search-result-${r.userId}`}
+            >
+              {r.photos?.[0] ? (
+                <img src={r.photos[0]} alt="" className="w-12 h-12 rounded-full object-cover border border-slate-200" />
+              ) : (
+                <div className="w-12 h-12 rounded-full bg-slate-200 flex items-center justify-center">
+                  <Users size={18} className="text-slate-400" />
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-sm text-slate-800 truncate">{r.name}</span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full text-white ${tierColors[r.membershipTier] || "bg-slate-500"}`}>
+                    {r.membershipTier}
+                  </span>
+                  {r.isBanned && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-100 text-red-600">Banned</span>}
+                </div>
+                <div className="text-xs text-slate-500 mt-0.5">
+                  {r.phone && <span className="mr-3">{r.phone}</span>}
+                  {r.email && <span>{r.email}</span>}
+                </div>
+                <div className="text-xs text-slate-400 mt-0.5">
+                  {r.city && <span>{r.city}</span>}
+                  {r.gender && <span className="ml-2">{r.gender}</span>}
+                  {r.lastSeenAt && <span className="ml-2">Last seen: {formatDate(r.lastSeenAt)}</span>}
+                </div>
+              </div>
+              <ChevronRight size={18} className="text-slate-300 flex-shrink-0" />
+            </button>
+          ))}
+        </div>
+      )}
+
+      {debouncedQuery.length >= 2 && !searching && searchResults?.results?.length === 0 && (
+        <div className="text-center py-8">
+          <UserSearch size={32} className="mx-auto text-slate-300 mb-2" />
+          <p className="text-sm text-slate-400">No users found for "{debouncedQuery}"</p>
+        </div>
       )}
     </div>
   );
