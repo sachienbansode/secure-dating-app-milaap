@@ -234,6 +234,18 @@ export default function ViewProfile() {
                     </div>
                   )}
                 </div>
+                {!profile.isOnline && profile.lastSeenAt && (
+                  <div className="flex items-center gap-1.5 mt-1 text-xs text-muted-foreground">
+                    <Clock size={12} />
+                    Last seen {new Date(profile.lastSeenAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                  </div>
+                )}
+                {profile.isOnline && (
+                  <div className="flex items-center gap-1.5 mt-1 text-xs text-green-400">
+                    <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                    Online now
+                  </div>
+                )}
                 <div className="flex items-center gap-1.5 mt-1">
                   <MapPin size={13} className="text-muted-foreground" />
                   <span className="text-muted-foreground text-sm">{profile.city}</span>
@@ -398,12 +410,6 @@ export default function ViewProfile() {
             </div>
           )}
 
-          {!profile.isOnline && profile.lastSeenAt && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground px-1">
-              <Clock size={12} />
-              Last seen {new Date(profile.lastSeenAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-            </div>
-          )}
         </div>
       </div>
 

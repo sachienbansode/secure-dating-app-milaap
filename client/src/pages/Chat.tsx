@@ -626,13 +626,13 @@ export default function Chat() {
           <div className="relative shrink-0">
             <Avatar className="w-9 h-9 border border-border">
               <AvatarImage src={profile?.photos?.[0] || "/profiles/generic_indian_1.jpg"} />
-              <AvatarFallback>{profile?.name?.[0] || "?"}</AvatarFallback>
+              <AvatarFallback>{"?"}</AvatarFallback>
             </Avatar>
             <div className={`absolute bottom-0 right-0 w-2.5 h-2.5 ${otherIsOnline ? "bg-green-500 animate-pulse" : "bg-muted-foreground"} border-2 border-card rounded-full`}></div>
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-1">
-              <h3 className="font-heading font-bold text-sm truncate" data-testid="text-chat-name">{profile?.name || "Match"}</h3>
+              <h3 className="font-heading font-bold text-sm truncate" data-testid="text-chat-name">Match</h3>
               {(profile?.isVerified || profile?.photoVerifiedAt) && <ShieldCheck size={11} className="text-blue-500 shrink-0" />}
               <div className={`w-2 h-2 rounded-full shrink-0 ${getRespectColor(otherRespectScore)}`} title={`Respect: ${otherRespectScore}`} />
             </div>
@@ -735,7 +735,7 @@ export default function Chat() {
       {phoneUnlockStatus?.theirRequest?.status === "pending" && !phoneUnlockStatus?.myRequest && (
         <div className="bg-blue-900/20 px-4 py-3 flex items-center gap-2 text-xs text-blue-400 border-b border-blue-900/30">
           <Unlock size={14} />
-          <span className="font-medium flex-1">{profile?.name} wants to share contact details.</span>
+          <span className="font-medium flex-1">Your match wants to share contact details.</span>
           <button className="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold" onClick={() => phoneUnlockRespondMutation.mutate(true)} data-testid="button-approve-unlock">Approve</button>
           <button className="bg-muted text-muted-foreground px-3 py-1 rounded-full text-xs font-bold ml-1" onClick={() => phoneUnlockRespondMutation.mutate(false)} data-testid="button-decline-unlock">Decline</button>
         </div>
@@ -752,7 +752,7 @@ export default function Chat() {
         <div className="bg-blue-900/20 px-4 py-3 border-b border-blue-900/30 space-y-1.5" data-testid="shared-contact-card">
           <div className="flex items-center gap-2 text-xs font-bold text-blue-300">
             <Share2 size={12} />
-            {profile?.name}'s shared contact info
+            Match's shared contact info
           </div>
           {contactShareStatus.theirSharedData.phone && (
             <div className="flex items-center gap-2">
@@ -773,7 +773,7 @@ export default function Chat() {
         <div className="bg-green-900/20 px-4 py-3 border-b border-green-900/30 space-y-2" data-testid="shared-location-card">
           <div className="flex items-center gap-2 text-xs font-bold text-green-300">
             <MapPin size={12} />
-            {profile?.name}'s shared location
+            Match's shared location
           </div>
           {theirLocations.map((loc: any) => {
             const isExpired = loc.isLive && loc.expiresAt && new Date(loc.expiresAt) < new Date();
@@ -843,16 +843,22 @@ export default function Chat() {
                 const isRequester = msg.senderId === currentUserId;
                 return (
                   <div key={msg.id} className="flex justify-center my-4" data-testid={`message-chai-request-${msg.id}`}>
-                    <div className="rounded-2xl p-4 max-w-[85%] text-center" style={{ background: "linear-gradient(135deg, rgba(245,158,11,0.15), rgba(220,38,38,0.1))", border: "1px solid rgba(245,158,11,0.3)" }}>
+                    <div
+                      className="rounded-2xl p-4 max-w-[85%] text-center cursor-pointer"
+                      style={{ background: "linear-gradient(135deg, rgba(245,158,11,0.15), rgba(220,38,38,0.1))", border: "1px solid rgba(245,158,11,0.3)" }}
+                      onClick={() => {
+                        if (chaiDateStatus?.active?.id === cdId) setLocation(`/chai-date/${cdId}`);
+                      }}
+                    >
                       <div className="text-3xl mb-2">☕</div>
                       <p className="text-amber-400 font-bold text-sm mb-1">
-                        {isRequester ? "You invited for a Chai Date!" : `${profile?.name || "Someone"} invited you for a Chai Date!`}
+                        {isRequester ? "You invited for a Chai Date!" : "You're invited for a Chai Date!"}
                       </p>
                       <p className="text-gray-400 text-xs mb-3">5-minute timed virtual meetup with icebreakers</p>
                       {!isRequester && chaiDateStatus?.pending?.id === cdId && (
                         <div className="flex gap-2 justify-center">
                           <button
-                            onClick={() => chaiDateRespondMutation.mutate({ chaiDateId: cdId, action: "accept" })}
+                            onClick={(e) => { e.stopPropagation(); chaiDateRespondMutation.mutate({ chaiDateId: cdId, action: "accept" }); }}
                             className="px-4 py-2 rounded-xl text-white text-xs font-bold"
                             style={{ background: "linear-gradient(135deg, #16a34a, #15803d)" }}
                             data-testid="button-accept-chai-date"
@@ -860,7 +866,7 @@ export default function Chat() {
                             <Check size={14} className="inline mr-1" /> Accept
                           </button>
                           <button
-                            onClick={() => chaiDateRespondMutation.mutate({ chaiDateId: cdId, action: "decline" })}
+                            onClick={(e) => { e.stopPropagation(); chaiDateRespondMutation.mutate({ chaiDateId: cdId, action: "decline" }); }}
                             className="px-4 py-2 rounded-xl text-white text-xs font-bold bg-gray-700"
                             data-testid="button-decline-chai-date"
                           >
@@ -868,7 +874,17 @@ export default function Chat() {
                           </button>
                         </div>
                       )}
-                      {isRequester && <span className="text-xs text-gray-500">Waiting for response...</span>}
+                      {chaiDateStatus?.active?.id === cdId && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setLocation(`/chai-date/${cdId}`); }}
+                          className="px-5 py-2 rounded-xl text-white text-xs font-bold mt-2"
+                          style={{ background: "linear-gradient(135deg, #f59e0b, #dc2626)" }}
+                          data-testid="button-join-chai-date-from-request"
+                        >
+                          <Coffee size={14} className="inline mr-1" /> Join Chai Date
+                        </button>
+                      )}
+                      {isRequester && !chaiDateStatus?.active && <span className="text-xs text-gray-500">Waiting for response...</span>}
                     </div>
                   </div>
                 );
@@ -1206,7 +1222,7 @@ export default function Chat() {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center" onClick={(e) => { if (e.target === e.currentTarget) setShowReport(false); }}>
             <motion.div initial={{ y: 300 }} animate={{ y: 0 }} exit={{ y: 300 }} className="bg-card w-full max-w-lg rounded-t-3xl p-6 space-y-4">
               <h3 className="text-lg font-heading font-bold text-center text-foreground">Report & Block User</h3>
-              <p className="text-sm text-muted-foreground text-center">Why are you reporting {profile?.name || "this user"}?</p>
+              <p className="text-sm text-muted-foreground text-center">Why are you reporting this user?</p>
               {appSettings?.feature_enhanced_report && (
                 <p className="text-xs text-blue-400 text-center bg-blue-900/20 px-3 py-2 rounded-lg">AI will analyze the chat history for evidence-based review.</p>
               )}
@@ -1258,7 +1274,7 @@ export default function Chat() {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center" onClick={(e) => { if (e.target === e.currentTarget) setShowContactShare(false); }}>
             <motion.div initial={{ y: 300 }} animate={{ y: 0 }} exit={{ y: 300 }} className="bg-card w-full max-w-lg rounded-t-3xl p-6 space-y-4">
               <h3 className="text-lg font-heading font-bold text-center text-foreground">Share Contact Info</h3>
-              <p className="text-sm text-muted-foreground text-center">Choose what you want to share with {profile?.name}</p>
+              <p className="text-sm text-muted-foreground text-center">Choose what you want to share with your match</p>
 
               <div className="space-y-3">
                 <button
@@ -1332,7 +1348,7 @@ export default function Chat() {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center" onClick={(e) => { if (e.target === e.currentTarget) setShowLocationShare(false); }}>
             <motion.div initial={{ y: 300 }} animate={{ y: 0 }} exit={{ y: 300 }} className="bg-card w-full max-w-lg rounded-t-3xl p-6 space-y-4">
               <h3 className="text-lg font-heading font-bold text-center text-foreground">Share Location</h3>
-              <p className="text-sm text-muted-foreground text-center">Share your location with {profile?.name}</p>
+              <p className="text-sm text-muted-foreground text-center">Share your location with your match</p>
 
               <div className="space-y-3">
                 <button

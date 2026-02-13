@@ -283,12 +283,21 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(profiles.familyMode, true));
     }
 
-    const result = await db.select().from(profiles)
+    const result = await db.select({
+      profile: profiles,
+      isOnline: users.isOnline,
+      lastSeenAt: users.lastSeenAt,
+    }).from(profiles)
+      .leftJoin(users, eq(profiles.userId, users.id))
       .where(and(...conditions))
-      .orderBy(sql`RANDOM()`)
+      .orderBy(
+        sql`${users.isOnline} DESC NULLS LAST`,
+        sql`${users.lastSeenAt} DESC NULLS LAST`,
+        sql`RANDOM()`
+      )
       .limit(limit);
 
-    return result.map(decryptProfile);
+    return result.map(r => decryptProfile(r.profile));
   }
 
   async createMatch(match: InsertMatch): Promise<Match> {
