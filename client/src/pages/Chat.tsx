@@ -16,6 +16,28 @@ const triggerHaptic = (style: 'light' | 'medium' | 'heavy' = 'light') => {
   }
 };
 
+const FESTIVAL_CARDS: { name: string; emoji: string; greeting: string; colors: [string, string] }[] = [
+  { name: "Diwali", emoji: "🪔", greeting: "Happy Diwali! May this festival of lights brighten your life with joy and love!", colors: ["#F59E0B", "#DC2626"] },
+  { name: "Holi", emoji: "🎨", greeting: "Happy Holi! May your life be as colorful and vibrant as this beautiful festival!", colors: ["#EC4899", "#8B5CF6"] },
+  { name: "Eid", emoji: "🌙", greeting: "Eid Mubarak! Wishing you peace, happiness, and blessings on this special day!", colors: ["#10B981", "#065F46"] },
+  { name: "Navratri", emoji: "🔱", greeting: "Happy Navratri! May Maa Durga bless you with strength and happiness!", colors: ["#EF4444", "#F97316"] },
+  { name: "Christmas", emoji: "🎄", greeting: "Merry Christmas! Wishing you love, joy, and magical moments this holiday!", colors: ["#DC2626", "#166534"] },
+  { name: "Ganesh Chaturthi", emoji: "🐘", greeting: "Ganpati Bappa Morya! May Lord Ganesha remove all obstacles from your path!", colors: ["#F97316", "#EAB308"] },
+  { name: "Onam", emoji: "🌸", greeting: "Happy Onam! May King Mahabali bring prosperity and joy to your life!", colors: ["#EAB308", "#16A34A"] },
+  { name: "Pongal", emoji: "🌾", greeting: "Happy Pongal! Wishing you a harvest of love, happiness, and sweet moments!", colors: ["#F97316", "#84CC16"] },
+  { name: "Baisakhi", emoji: "🌻", greeting: "Happy Baisakhi! May this new year bring abundance and joy to your life!", colors: ["#EAB308", "#F97316"] },
+  { name: "Durga Puja", emoji: "🙏", greeting: "Shubho Bijoya! May Maa Durga's blessings fill your life with love and light!", colors: ["#DC2626", "#EAB308"] },
+  { name: "Raksha Bandhan", emoji: "🧵", greeting: "Happy Raksha Bandhan! Celebrating the beautiful bond of love and protection!", colors: ["#8B5CF6", "#EC4899"] },
+  { name: "Makar Sankranti", emoji: "🪁", greeting: "Happy Makar Sankranti! May your life soar high like a kite with joy!", colors: ["#3B82F6", "#06B6D4"] },
+];
+
+function isFestivalCard(content: string): { isFestival: boolean; festival?: typeof FESTIVAL_CARDS[0] } {
+  const match = content.match(/^\[FESTIVAL_CARD:(.+?)\]$/);
+  if (!match) return { isFestival: false };
+  const card = FESTIVAL_CARDS.find(f => f.name === match[1]);
+  return card ? { isFestival: true, festival: card } : { isFestival: false };
+}
+
 interface ChatMessage {
   id: string;
   matchId: string;
@@ -63,9 +85,12 @@ export default function Chat() {
   const [sharePhone, setSharePhone] = useState(false);
   const [shareEmail, setShareEmail] = useState(false);
   const [showLocationShare, setShowLocationShare] = useState(false);
+  const [showFestivalCards, setShowFestivalCards] = useState(false);
   const [sharingLiveLocation, setSharingLiveLocation] = useState(false);
   const [liveLocationId, setLiveLocationId] = useState<string | null>(null);
+  const [otherTyping, setOtherTyping] = useState(false);
   const liveLocationIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -121,6 +146,20 @@ export default function Chat() {
     enabled: !!matchId && !!session?.user,
     refetchInterval: 5000,
   });
+
+  useEffect(() => {
+    if (!matchId || !session?.user) return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/typing/${matchId}`, { credentials: "include" });
+        if (res.ok) {
+          const data = await res.json();
+          setOtherTyping(data.typing);
+        }
+      } catch {}
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [matchId, session?.user]);
 
   const noScreenshotActive = (screenshotSetting as any)?.enabled || profile?.noScreenshotMode || session?.profile?.noScreenshotMode;
 
@@ -601,6 +640,9 @@ export default function Chat() {
                   <button className="w-full text-left px-4 py-3 text-sm text-foreground hover:bg-muted flex items-center gap-2.5" onClick={() => { setShowLocationShare(true); setShowMenu(false); }} data-testid="button-location-share">
                     <MapPin size={15} className="text-green-400" /> Share Location
                   </button>
+                  <button className="w-full text-left px-4 py-3 text-sm text-foreground hover:bg-muted flex items-center gap-2.5" onClick={() => { setShowFestivalCards(true); setShowMenu(false); }} data-testid="button-festival-cards">
+                    <span className="text-base">🎉</span> Send Festival Greeting
+                  </button>
                   {appSettings?.feature_no_phone_number && !phoneUnlockStatus?.unlocked && (
                     <button className="w-full text-left px-4 py-3 text-sm text-foreground hover:bg-muted flex items-center gap-2.5" onClick={() => { setShowPhoneUnlock(true); setShowMenu(false); }} data-testid="button-phone-unlock">
                       <Unlock size={15} className="text-blue-400" /> Request Contact Sharing
@@ -756,6 +798,40 @@ export default function Chat() {
               );
             }
 
+            const festivalCheck = isFestivalCard(msg.content);
+
+            if (festivalCheck.isFestival && festivalCheck.festival) {
+              const fc = festivalCheck.festival;
+              return (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  key={msg.id}
+                  className={`flex flex-col ${isMe ? "items-end" : "items-start"} mb-4`}
+                  data-testid={`message-festival-${msg.id}`}
+                >
+                  <div className="w-64 rounded-2xl overflow-hidden shadow-lg border border-white/10" style={{ background: `linear-gradient(135deg, ${fc.colors[0]}, ${fc.colors[1]})` }}>
+                    <div className="p-4 text-center">
+                      <div className="text-4xl mb-2">{fc.emoji}</div>
+                      <h4 className="text-white font-bold text-lg mb-1">Happy {fc.name}!</h4>
+                      <p className="text-white/90 text-xs leading-relaxed">{fc.greeting}</p>
+                      <div className="mt-3 flex justify-center gap-1">
+                        {["✨", fc.emoji, "✨"].map((e, i) => (
+                          <span key={i} className="text-lg animate-bounce" style={{ animationDelay: `${i * 150}ms` }}>{e}</span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="px-3 py-1.5 bg-black/20 flex items-center justify-between">
+                      <span className="text-white/60 text-[10px]">{isMe ? "You sent a greeting" : "Sent you a greeting"}</span>
+                      <span className="text-white/50 text-[10px]">
+                        {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : ""}
+                      </span>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            }
+
             return (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
@@ -847,6 +923,21 @@ export default function Chat() {
           )}
         </AnimatePresence>
 
+        {otherTyping && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="flex items-center gap-2 px-4 py-2"
+          >
+            <div className="bg-card rounded-2xl px-4 py-3 flex items-center gap-1.5">
+              <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+              <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+              <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+              <span className="text-xs text-gray-400 ml-2">typing...</span>
+            </div>
+          </motion.div>
+        )}
         <div ref={messagesEndRef} />
       </div>
 
@@ -909,7 +1000,13 @@ export default function Chat() {
           <Paperclip size={20} />
         </Button>
         <div className="flex-1 bg-background border border-border rounded-[1.5rem] flex items-end min-h-[44px] focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-all">
-          <Input data-testid="input-message" value={input} onChange={(e) => setInput(e.target.value)} placeholder={isChatCooledDown ? "Chat paused..." : "Type a message..."} className="border-0 bg-transparent focus-visible:ring-0 px-4 py-3 min-h-[44px] max-h-32 resize-none" onKeyDown={(e) => e.key === "Enter" && handleSend()} disabled={isChatCooledDown} />
+          <Input data-testid="input-message" value={input} onChange={(e) => {
+            setInput(e.target.value);
+            if (matchId && !typingTimeoutRef.current) {
+              fetch("/api/typing", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ matchId }) }).catch(() => {});
+              typingTimeoutRef.current = setTimeout(() => { typingTimeoutRef.current = null; }, 3000);
+            }
+          }} placeholder={isChatCooledDown ? "Chat paused..." : "Type a message..."} className="border-0 bg-transparent focus-visible:ring-0 px-4 py-3 min-h-[44px] max-h-32 resize-none" onKeyDown={(e) => e.key === "Enter" && handleSend()} disabled={isChatCooledDown} />
           <Button variant="ghost" size="icon" className={`mr-1 mb-1 h-8 w-8 rounded-full transition-colors ${aiMode ? "bg-blue-900/30 text-blue-400" : "text-muted-foreground hover:text-blue-400"}`} onClick={() => setAiMode(!aiMode)} data-testid="button-ai-toggle" disabled={isChatCooledDown}>
             <Sparkles size={18} />
           </Button>
@@ -1155,6 +1252,40 @@ export default function Chat() {
               <div className="flex gap-3 pt-2">
                 <Button variant="ghost" className="flex-1 rounded-xl" onClick={() => setShowLocationShare(false)}>Close</Button>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {showFestivalCards && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center" onClick={(e) => { if (e.target === e.currentTarget) setShowFestivalCards(false); }}>
+            <motion.div initial={{ y: 400 }} animate={{ y: 0 }} exit={{ y: 400 }} className="bg-card w-full max-w-lg rounded-t-3xl p-5 max-h-[70vh] flex flex-col">
+              <h3 className="text-lg font-heading font-bold text-center text-foreground mb-1">Festival Greetings</h3>
+              <p className="text-xs text-muted-foreground text-center mb-4">Send a beautiful greeting card</p>
+              <div className="flex-1 overflow-y-auto grid grid-cols-2 gap-3 pb-4">
+                {FESTIVAL_CARDS.map((fc) => (
+                  <button
+                    key={fc.name}
+                    className="rounded-xl overflow-hidden shadow-md border border-white/10 hover:scale-105 transition-transform active:scale-95"
+                    style={{ background: `linear-gradient(135deg, ${fc.colors[0]}, ${fc.colors[1]})` }}
+                    onClick={() => {
+                      if (matchId) {
+                        sendMutation.mutate({ matchId, content: `[FESTIVAL_CARD:${fc.name}]` });
+                        triggerHaptic("medium");
+                        setShowFestivalCards(false);
+                      }
+                    }}
+                    data-testid={`button-send-festival-${fc.name}`}
+                  >
+                    <div className="p-3 text-center">
+                      <div className="text-3xl mb-1">{fc.emoji}</div>
+                      <p className="text-white font-bold text-sm">{fc.name}</p>
+                      <p className="text-white/70 text-[10px] mt-0.5 line-clamp-2">{fc.greeting}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+              <Button variant="ghost" className="w-full rounded-xl mt-2" onClick={() => setShowFestivalCards(false)}>Close</Button>
             </motion.div>
           </motion.div>
         )}

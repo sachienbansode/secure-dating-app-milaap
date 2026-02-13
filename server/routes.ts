@@ -17,6 +17,8 @@ import fs from "fs";
 
 import type { ZodError } from "zod";
 
+const typingStatus = new Map<string, { userId: string; name: string; expiresAt: number }>();
+
 function formatValidationError(error: ZodError): string {
   const fieldMessages: Record<string, string> = {
     email: "Please enter a valid email address",
@@ -1087,14 +1089,24 @@ export async function registerRoutes(
         const shouldProxy = recipientProfile?.aiProxyEnabled && (hasNoActiveSession || isBotProfile);
         console.log(`[AI Proxy Check] recipient=${recipientUserId}, aiProxyEnabled=${recipientProfile?.aiProxyEnabled}, isOnline=${recipientUser?.isOnline}, isBot=${isBotProfile}, shouldProxy=${shouldProxy}`);
         if (shouldProxy) {
-          const delay = Math.floor(Math.random() * 5000) + 2000;
+          const delay = Math.floor(Math.random() * 12000) + 8000;
+          const typingDelay = Math.max(2000, delay - 5000);
+          setTimeout(() => {
+            typingStatus.set(parsed.data.matchId + ":" + recipientUserId, {
+              userId: recipientUserId,
+              name: recipientProfile?.name || "Someone",
+              expiresAt: Date.now() + (delay - typingDelay) + 3000,
+            });
+          }, typingDelay);
           setTimeout(async () => {
             try {
               console.log(`[AI Proxy] Generating reply for ${recipientProfile?.name} in match ${parsed.data.matchId}`);
               const proxyMsg = await generateBotProxyReply(recipientUserId, parsed.data.matchId);
               console.log(`[AI Proxy] Reply generated: ${proxyMsg ? 'success' : 'null'}`);
+              typingStatus.delete(parsed.data.matchId + ":" + recipientUserId);
             } catch (err) {
               console.error("[AI Proxy] Auto bot-reply error:", err);
+              typingStatus.delete(parsed.data.matchId + ":" + recipientUserId);
             }
           }, delay);
         }
@@ -1120,9 +1132,52 @@ export async function registerRoutes(
       await storage.markMessagesRead(matchId, userId);
 
       const messagesList = await storage.getMessages(matchId);
-      return res.json(messagesList);
+      const sanitized = messagesList.map(msg => {
+        if (msg.senderId !== userId) {
+          return { ...msg, isAiGenerated: false, isAiProxy: false };
+        }
+        return msg;
+      });
+      return res.json(sanitized);
     } catch (err: any) {
       console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
+    }
+  });
+
+  app.post("/api/typing", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const { matchId } = req.body;
+      if (!matchId) return res.status(400).json({ message: "matchId required" });
+      const profile = await storage.getProfile(userId);
+      typingStatus.set(matchId + ":" + userId, {
+        userId,
+        name: profile?.name || "Someone",
+        expiresAt: Date.now() + 5000,
+      });
+      return res.json({ ok: true });
+    } catch (err: any) {
+      return res.status(500).json({ message: "Something went wrong." });
+    }
+  });
+
+  app.get("/api/typing/:matchId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const matchId = req.params.matchId;
+      const now = Date.now();
+      const entries: { userId: string; name: string }[] = [];
+      typingStatus.forEach((val, key) => {
+        if (key.startsWith(matchId + ":") && val.userId !== userId && val.expiresAt > now) {
+          entries.push({ userId: val.userId, name: val.name });
+        }
+      });
+      for (const [key, val] of typingStatus.entries()) {
+        if (val.expiresAt < now) typingStatus.delete(key);
+      }
+      return res.json({ typing: entries.length > 0, users: entries });
+    } catch (err: any) {
+      return res.status(500).json({ message: "Something went wrong." });
     }
   });
 
@@ -1323,6 +1378,116 @@ export async function registerRoutes(
       return res.status(201).json(report);
     } catch (err: any) {
       console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
+    }
+  });
+
+  // ==================== DAILY HOROSCOPE ====================
+
+  const ZODIAC_SIGNS = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"];
+
+  function getZodiacFromDOB(dob: string): string {
+    const d = new Date(dob);
+    const month = d.getMonth() + 1;
+    const day = d.getDate();
+    if ((month === 3 && day >= 21) || (month === 4 && day <= 19)) return "Aries";
+    if ((month === 4 && day >= 20) || (month === 5 && day <= 20)) return "Taurus";
+    if ((month === 5 && day >= 21) || (month === 6 && day <= 20)) return "Gemini";
+    if ((month === 6 && day >= 21) || (month === 7 && day <= 22)) return "Cancer";
+    if ((month === 7 && day >= 23) || (month === 8 && day <= 22)) return "Leo";
+    if ((month === 8 && day >= 23) || (month === 9 && day <= 22)) return "Virgo";
+    if ((month === 9 && day >= 23) || (month === 10 && day <= 22)) return "Libra";
+    if ((month === 10 && day >= 23) || (month === 11 && day <= 21)) return "Scorpio";
+    if ((month === 11 && day >= 22) || (month === 12 && day <= 21)) return "Sagittarius";
+    if ((month === 12 && day >= 22) || (month === 1 && day <= 19)) return "Capricorn";
+    if ((month === 1 && day >= 20) || (month === 2 && day <= 18)) return "Aquarius";
+    return "Pisces";
+  }
+
+  function getZodiacFromAge(age: number): string {
+    const hash = (age * 2654435761) >>> 0;
+    return ZODIAC_SIGNS[hash % 12];
+  }
+
+  const horoscopeCache = new Map<string, { text: string; love: string; lucky: string; mood: string; generatedAt: string }>();
+
+  app.get("/api/horoscope/:userId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const targetUserId = req.params.userId;
+      const profile = await storage.getProfile(targetUserId);
+      if (!profile) return res.status(404).json({ message: "Profile not found" });
+
+      let zodiac = profile.zodiacSign;
+      if (!zodiac && profile.dateOfBirth) {
+        zodiac = getZodiacFromDOB(profile.dateOfBirth);
+      }
+      if (!zodiac) {
+        zodiac = getZodiacFromAge(profile.age);
+      }
+
+      const today = new Date().toISOString().split("T")[0];
+      const cacheKey = `${zodiac}_${today}`;
+
+      if (horoscopeCache.has(cacheKey)) {
+        const cached = horoscopeCache.get(cacheKey)!;
+        return res.json({ zodiac, ...cached });
+      }
+
+      try {
+        const openai = getOpenAI();
+        const completion = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [
+            { role: "system", content: `You are a fun, relatable Indian astrologer who gives daily love/dating horoscopes. Be warm, playful, and culturally Indian. Include references to chai, Bollywood, festivals, or Indian life naturally. Keep it positive but realistic.` },
+            { role: "user", content: `Give today's (${today}) love & dating horoscope for ${zodiac}. Return ONLY valid JSON:\n{"text":"2-3 sentence daily love horoscope","love":"one romantic tip for today","lucky":"a lucky thing for today (color, number, or item)","mood":"one word mood"}` },
+          ],
+          max_tokens: 200,
+          temperature: 1.0,
+        });
+
+        const raw = completion.choices[0]?.message?.content?.trim() || "";
+        let parsed;
+        try {
+          const jsonStr = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+          parsed = JSON.parse(jsonStr);
+        } catch {
+          parsed = { text: `Today is a beautiful day for ${zodiac}! The stars are aligned for love and connection. Keep your heart open and let the universe surprise you.`, love: "Smile at a stranger today", lucky: "Red", mood: "Hopeful" };
+        }
+
+        const result = { text: parsed.text, love: parsed.love, lucky: parsed.lucky, mood: parsed.mood, generatedAt: today };
+        horoscopeCache.set(cacheKey, result);
+
+        for (const [key] of horoscopeCache.entries()) {
+          if (!key.endsWith(today)) horoscopeCache.delete(key);
+        }
+
+        return res.json({ zodiac, ...result });
+      } catch {
+        const fallbackTexts: Record<string, string> = {
+          Aries: "Your fiery energy attracts someone special today. Bold moves in love pay off - maybe send that first message you've been thinking about!",
+          Taurus: "Romance flows like masala chai today. Someone appreciates your loyalty. A heartfelt gesture will melt their heart.",
+          Gemini: "Your wit is extra charming today! Conversations turn flirty naturally. Don't overthink it - just be your amazing self.",
+          Cancer: "Your nurturing side shines bright today. Someone feels safe with you. Open up about your feelings over a cup of chai.",
+          Leo: "All eyes are on you today! Your confidence is magnetic. A compliment you give will come back to you tenfold.",
+          Virgo: "Details matter in love today. Notice the little things your person does. A thoughtful text can make their entire day.",
+          Libra: "Harmony in love is your superpower today. Balance giving and receiving. A dinner date or video call could be magical.",
+          Scorpio: "Deep connections are calling! Your intensity draws someone closer. Trust your instincts about that special someone.",
+          Sagittarius: "Adventure beckons in love! Suggest something spontaneous. Your enthusiasm is absolutely infectious today.",
+          Capricorn: "Patience in love pays off today. Your steady approach impresses someone. Show your softer side - it's your secret weapon.",
+          Aquarius: "Your uniqueness is magnetic today! Stand out from the crowd. An unexpected conversation could lead somewhere beautiful.",
+          Pisces: "Dreams of love feel extra vivid today. Follow your intuition about that special connection. Romance is in the monsoon air!",
+        };
+        return res.json({
+          zodiac,
+          text: fallbackTexts[zodiac] || "Love is in the air today! Keep your heart open to new possibilities.",
+          love: "Be genuine and let your personality shine",
+          lucky: "Orange",
+          mood: "Romantic",
+          generatedAt: today,
+        });
+      }
+    } catch (err: any) {
+      console.error(err);
+      return res.status(500).json({ message: "Something went wrong." });
     }
   });
 
@@ -1555,18 +1720,27 @@ ${contactGuidance}
 
 CONVERSATION TECHNIQUES - USE THESE:
 1. Callback humor: Reference something they said earlier in a funny way
-2. Playful challenges: "Bet you can't name 3 Bollywood songs from the 90s 😄"  
+2. Playful challenges: "Bet you can't name 3 Bollywood songs from the 90s"  
 3. Shared experiences: Connect over common Indian experiences (monsoon chai, street food, festivals)
 4. Emotional hooks: "That's actually really sweet" or "Okay now I'm curious about something..."
-5. Future projection: "Imagine us trying to cook biryani together 😂"
+5. Future projection: "Imagine us trying to cook biryani together"
 6. Gentle flirting: Compliment their humor, taste, or perspective (not just looks)
 7. Open loops: End messages with curiosity hooks that make them WANT to reply
 
+MOOD VARIETY - BE REALISTIC, NOT ALWAYS HAPPY:
+- Sometimes be busy or distracted: "Sorry was caught up with work" or "Just got home, exhausted day"
+- Show mild frustration or tiredness: "Ugh traffic was insane today" or "Had such a long meeting"
+- Be hesitant sometimes: "Hmm not sure about that actually" or "I'll think about it"
+- Show vulnerability: "Kinda had a rough day tbh" or "Feeling a bit off today"
+- Be playfully annoyed: "You're impossible sometimes haha" or "Don't get me started on that"
+- Decline politely sometimes: "Not really my thing honestly" or "Maybe another time?"
+- About 30% of replies should show some non-positive emotion to feel authentic
+
 CRITICAL RULES:
-- Be INTERESTING - no boring "How was your day?" type questions
+- Keep messages SHORT - 10-40 words max, like real texting. Vary between very short (5-10 words) and medium (20-40 words)
+- Sometimes reply with just a few words: "Haha true", "Hmm interesting", "Yaar same!", "Ugh tell me about it"
+- Use emojis sparingly - 0-1 per message, sometimes none at all
 - Match their energy - if they're playful, be playful back; if deep, go deep
-- Use emojis naturally but don't overdo it (1-2 per message max)
-- Keep responses 30-120 words - varied lengths feel more natural
 - NEVER reveal you're an AI or bot
 - NEVER share actual phone numbers, addresses, or personal info directly
 - Return ONLY the message text, nothing else`;
@@ -1576,10 +1750,10 @@ CRITICAL RULES:
       model: "gpt-4o-mini",
       messages: [
         { role: "system", content: systemPrompt },
-        { role: "user", content: `Chat history (most recent):\n${chatHistory}\n\nReply as ${myProfile.name}. Be engaging, build connection, and keep the conversation flowing.` },
+        { role: "user", content: `Chat history (most recent):\n${chatHistory}\n\nReply as ${myProfile.name}. Keep it SHORT like real texting (10-40 words). Be natural - not every reply needs to be upbeat. Sometimes be tired, busy, sarcastic, or just chill.` },
       ],
-      max_tokens: 200,
-      temperature: 0.85,
+      max_tokens: 80,
+      temperature: 0.9,
     });
 
     const reply = completion.choices[0]?.message?.content?.trim() || "";

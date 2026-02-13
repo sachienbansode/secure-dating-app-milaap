@@ -2,10 +2,20 @@ import { useState } from "react";
 import { useLocation, useParams } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, MessageCircle, MapPin, Heart, Sparkles, Shield, CheckCircle, Mic, Users, Clock, X, ChevronLeft, ChevronRight, Maximize2, Crown, Lock } from "lucide-react";
+import { ArrowLeft, MessageCircle, MapPin, Heart, Sparkles, Shield, CheckCircle, Mic, Users, Clock, X, ChevronLeft, ChevronRight, Maximize2, Crown, Lock, Star, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiRequest } from "@/lib/queryClient";
 import { getMe } from "@/lib/auth";
+
+function getCompatibility(myId: string, theirId: string): number {
+  let hash = 0;
+  const combined = myId < theirId ? myId + theirId : theirId + myId;
+  for (let i = 0; i < combined.length; i++) {
+    hash = ((hash << 5) - hash) + combined.charCodeAt(i);
+    hash |= 0;
+  }
+  return 85 + (Math.abs(hash) % 11);
+}
 
 const INTENT_ICONS: Record<string, string> = { Casual: "☕", Dating: "💕", Serious: "💎", Marriage: "💍" };
 const DATE_READINESS_LABELS: Record<string, { label: string; color: string; icon: string }> = {
@@ -84,6 +94,11 @@ export default function ViewProfile() {
   const { data: myMembership } = useQuery<any>({
     queryKey: ["/api/membership/my"],
     enabled: !!session?.user,
+  });
+
+  const { data: horoscope } = useQuery<any>({
+    queryKey: [`/api/horoscope/${userId}`],
+    enabled: !!userId && !!session?.user,
   });
 
   const matchWithUser = matches?.find(
@@ -219,12 +234,21 @@ export default function ViewProfile() {
                   <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">{profile.gender}</span>
                 </div>
               </div>
-              {profile.respectScore != null && (
-                <div className="flex items-center gap-1.5 bg-green-500/10 px-2.5 py-1 rounded-full border border-green-500/20">
-                  <Shield size={13} className="text-green-400" />
-                  <span className="text-sm font-bold text-green-400" data-testid="text-respect-score">{profile.respectScore}</span>
-                </div>
-              )}
+              <div className="flex flex-col items-end gap-1.5">
+                {session?.user?.id && userId && session.user.id !== userId && (
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-pink-500/30" style={{ background: "linear-gradient(135deg, rgba(220,38,38,0.15), rgba(168,85,247,0.15))" }} data-testid="text-match-compatibility">
+                    <Heart size={13} className="text-pink-400" />
+                    <span className="text-sm font-bold text-pink-400">{getCompatibility(session.user.id, userId)}%</span>
+                    <span className="text-[10px] text-pink-400/70">Match</span>
+                  </div>
+                )}
+                {profile.respectScore != null && (
+                  <div className="flex items-center gap-1.5 bg-green-500/10 px-2.5 py-1 rounded-full border border-green-500/20">
+                    <Shield size={13} className="text-green-400" />
+                    <span className="text-sm font-bold text-green-400" data-testid="text-respect-score">{profile.respectScore}</span>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="flex flex-wrap gap-2 mt-3">
@@ -274,6 +298,36 @@ export default function ViewProfile() {
                     {interest}
                   </span>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {horoscope && (
+            <div className="bg-card rounded-2xl p-4 border border-purple-500/20" style={{ background: "linear-gradient(135deg, rgba(139,92,246,0.08), rgba(236,72,153,0.08))" }} data-testid="card-horoscope">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Star size={14} className="text-purple-400" />
+                  <h3 className="text-xs font-bold text-purple-400 uppercase tracking-wider">Daily Horoscope</h3>
+                </div>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300 font-medium">{horoscope.zodiac}</span>
+              </div>
+              <p className="text-sm text-foreground leading-relaxed mb-3">{horoscope.text}</p>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="bg-pink-500/10 rounded-xl p-2 text-center border border-pink-500/15">
+                  <Heart size={12} className="text-pink-400 mx-auto mb-1" />
+                  <p className="text-[10px] text-muted-foreground">Love Tip</p>
+                  <p className="text-xs text-pink-300 font-medium mt-0.5">{horoscope.love}</p>
+                </div>
+                <div className="bg-yellow-500/10 rounded-xl p-2 text-center border border-yellow-500/15">
+                  <Sun size={12} className="text-yellow-400 mx-auto mb-1" />
+                  <p className="text-[10px] text-muted-foreground">Lucky</p>
+                  <p className="text-xs text-yellow-300 font-medium mt-0.5">{horoscope.lucky}</p>
+                </div>
+                <div className="bg-blue-500/10 rounded-xl p-2 text-center border border-blue-500/15">
+                  <Sparkles size={12} className="text-blue-400 mx-auto mb-1" />
+                  <p className="text-[10px] text-muted-foreground">Mood</p>
+                  <p className="text-xs text-blue-300 font-medium mt-0.5">{horoscope.mood}</p>
+                </div>
               </div>
             </div>
           )}
@@ -351,11 +405,11 @@ export default function ViewProfile() {
           {matchWithUser ? (
             <Button
               onClick={handleChat}
-              className="w-full h-14 rounded-2xl font-bold text-lg text-white shadow-xl"
+              className="w-full h-11 rounded-2xl font-bold text-sm text-white shadow-xl"
               style={{ background: "linear-gradient(135deg, #dc2626, #2563eb)" }}
               data-testid="button-chat-with-user"
             >
-              <MessageCircle size={20} className="mr-2" /> Chat with {profile.name}
+              <MessageCircle size={16} className="mr-2" /> Chat with {profile.name}
             </Button>
           ) : canDirectChat ? (
             <div className="space-y-2">
@@ -367,12 +421,12 @@ export default function ViewProfile() {
               <Button
                 onClick={handleChat}
                 disabled={directChatMutation.isPending}
-                className="w-full h-14 rounded-2xl font-bold text-lg text-white shadow-xl"
+                className="w-full h-11 rounded-2xl font-bold text-sm text-white shadow-xl"
                 style={{ background: "linear-gradient(135deg, #F59E0B, #8B5CF6)" }}
                 data-testid="button-direct-chat"
               >
-                <Crown size={20} className="mr-2" />
-                {directChatMutation.isPending ? "Connecting..." : `Direct Chat with ${profile.name}`}
+                <Crown size={16} className="mr-2" />
+                {directChatMutation.isPending ? "Connecting..." : `Chat with ${profile.name}`}
               </Button>
             </div>
           ) : session?.user?.id !== userId ? (
