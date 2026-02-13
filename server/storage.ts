@@ -4,7 +4,7 @@ import {
   users, profiles, matches, messages, reports, screenshotAlerts, appSettings,
   chatCooldowns, phoneUnlockRequests, blockedUsers, activityLogs,
   adminUsers, userSessions, contactShares, locationShares,
-  membershipPlans, membershipTransactions, quizResponses,
+  membershipPlans, membershipTransactions, quizResponses, chaiDates,
   type User, type InsertUser,
   type Profile, type InsertProfile,
   type Match, type InsertMatch,
@@ -23,6 +23,7 @@ import {
   type MembershipPlan, type InsertMembershipPlan,
   type MembershipTransaction, type InsertMembershipTransaction,
   type QuizResponse, type InsertQuizResponse,
+  type ChaiDate, type InsertChaiDate,
 } from "@shared/schema";
 import { encryptProfile, decryptProfile, encryptMessage, decryptMessage } from "./encryption";
 
@@ -120,6 +121,12 @@ export interface IStorage {
   saveQuizResponses(userId: string, responses: InsertQuizResponse[]): Promise<QuizResponse[]>;
   getQuizResponses(userId: string): Promise<QuizResponse[]>;
   deleteQuizResponses(userId: string): Promise<void>;
+
+  createChaiDate(data: InsertChaiDate): Promise<ChaiDate>;
+  getChaiDate(id: string): Promise<ChaiDate | undefined>;
+  getChaiDateForMatch(matchId: string, status?: string): Promise<ChaiDate | undefined>;
+  updateChaiDate(id: string, data: Partial<ChaiDate>): Promise<ChaiDate | undefined>;
+  getChaiDateHistory(userId: string): Promise<ChaiDate[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -775,6 +782,40 @@ export class DatabaseStorage implements IStorage {
 
   async deleteQuizResponses(userId: string): Promise<void> {
     await db.delete(quizResponses).where(eq(quizResponses.userId, userId));
+  }
+
+  async createChaiDate(data: InsertChaiDate): Promise<ChaiDate> {
+    const [created] = await db.insert(chaiDates).values(data).returning();
+    return created;
+  }
+
+  async getChaiDate(id: string): Promise<ChaiDate | undefined> {
+    const [found] = await db.select().from(chaiDates).where(eq(chaiDates.id, id));
+    return found;
+  }
+
+  async getChaiDateForMatch(matchId: string, status?: string): Promise<ChaiDate | undefined> {
+    const conditions = [eq(chaiDates.matchId, matchId)];
+    if (status) {
+      conditions.push(eq(chaiDates.status, status));
+    }
+    const [found] = await db.select().from(chaiDates)
+      .where(and(...conditions))
+      .orderBy(desc(chaiDates.createdAt))
+      .limit(1);
+    return found;
+  }
+
+  async updateChaiDate(id: string, data: Partial<ChaiDate>): Promise<ChaiDate | undefined> {
+    const [updated] = await db.update(chaiDates).set(data).where(eq(chaiDates.id, id)).returning();
+    return updated;
+  }
+
+  async getChaiDateHistory(userId: string): Promise<ChaiDate[]> {
+    return db.select().from(chaiDates)
+      .where(or(eq(chaiDates.requesterId, userId), eq(chaiDates.recipientId, userId)))
+      .orderBy(desc(chaiDates.createdAt))
+      .limit(20);
   }
 }
 
