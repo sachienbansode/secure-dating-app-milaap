@@ -626,7 +626,7 @@ export default function Chat() {
           <div className="relative shrink-0">
             <Avatar className="w-9 h-9 border border-border">
               <AvatarImage src={profile?.photos?.[0] || "/profiles/generic_indian_1.jpg"} />
-              <AvatarFallback>{"?"}</AvatarFallback>
+              <AvatarFallback>{profile?.name?.[0] || "?"}</AvatarFallback>
             </Avatar>
             <div className={`absolute bottom-0 right-0 w-2.5 h-2.5 ${otherIsOnline ? "bg-green-500 animate-pulse" : "bg-muted-foreground"} border-2 border-card rounded-full`}></div>
           </div>
