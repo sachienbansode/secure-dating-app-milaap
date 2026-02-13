@@ -1089,26 +1089,44 @@ export async function registerRoutes(
         const shouldProxy = recipientProfile?.aiProxyEnabled && (hasNoActiveSession || isBotProfile);
         console.log(`[AI Proxy Check] recipient=${recipientUserId}, aiProxyEnabled=${recipientProfile?.aiProxyEnabled}, isOnline=${recipientUser?.isOnline}, isBot=${isBotProfile}, shouldProxy=${shouldProxy}`);
         if (shouldProxy) {
-          const delay = Math.floor(Math.random() * 12000) + 8000;
-          const typingDelay = Math.max(2000, delay - 5000);
-          setTimeout(() => {
-            typingStatus.set(parsed.data.matchId + ":" + recipientUserId, {
-              userId: recipientUserId,
-              name: recipientProfile?.name || "Someone",
-              expiresAt: Date.now() + (delay - typingDelay) + 3000,
-            });
-          }, typingDelay);
+          const initialPause = Math.floor(Math.random() * 3000) + 2000;
           setTimeout(async () => {
             try {
               console.log(`[AI Proxy] Generating reply for ${recipientProfile?.name} in match ${parsed.data.matchId}`);
-              const proxyMsg = await generateBotProxyReply(recipientUserId, parsed.data.matchId);
-              console.log(`[AI Proxy] Reply generated: ${proxyMsg ? 'success' : 'null'}`);
-              typingStatus.delete(parsed.data.matchId + ":" + recipientUserId);
+              const result = await generateBotProxyReply(recipientUserId, parsed.data.matchId, true);
+              if (result && result.text) {
+                const replyText = result.text;
+                const wordCount = replyText.split(/\s+/).length;
+                const typingDuration = wordCount <= 5 ? Math.floor(Math.random() * 1500) + 1000
+                  : wordCount <= 10 ? Math.floor(Math.random() * 2000) + 2000
+                  : Math.floor(Math.random() * 3000) + 3000;
+                typingStatus.set(parsed.data.matchId + ":" + recipientUserId, {
+                  userId: recipientUserId,
+                  name: recipientProfile?.name || "Someone",
+                  expiresAt: Date.now() + typingDuration + 1000,
+                });
+                setTimeout(async () => {
+                  try {
+                    await storage.sendMessage({
+                      matchId: parsed.data.matchId,
+                      senderId: recipientUserId,
+                      content: replyText,
+                      isAiGenerated: true,
+                      isAiProxy: true,
+                    });
+                    typingStatus.delete(parsed.data.matchId + ":" + recipientUserId);
+                    console.log(`[AI Proxy] Reply delivered (${wordCount} words, ${typingDuration}ms typing)`);
+                  } catch (saveErr) {
+                    console.error("[AI Proxy] Save error:", saveErr);
+                    typingStatus.delete(parsed.data.matchId + ":" + recipientUserId);
+                  }
+                }, typingDuration);
+              }
             } catch (err) {
               console.error("[AI Proxy] Auto bot-reply error:", err);
               typingStatus.delete(parsed.data.matchId + ":" + recipientUserId);
             }
-          }, delay);
+          }, initialPause);
         }
       }
 
@@ -1576,7 +1594,7 @@ Their interests: ${(otherProfile?.interests || []).join(", ")}`;
     }
   });
 
-  async function generateBotProxyReply(proxyUserId: string, matchId: string): Promise<any> {
+  async function generateBotProxyReply(proxyUserId: string, matchId: string, textOnly?: boolean): Promise<any> {
     const hasAccess = await checkFeatureAccess(proxyUserId, "ai_proxy_mode");
     if (!hasAccess) {
       console.log(`[AI Proxy] Feature access denied for user ${proxyUserId}`);
@@ -1736,11 +1754,12 @@ MOOD VARIETY - BE REALISTIC, NOT ALWAYS HAPPY:
 - Decline politely sometimes: "Not really my thing honestly" or "Maybe another time?"
 - About 30% of replies should show some non-positive emotion to feel authentic
 
-CRITICAL RULES:
-- Keep messages SHORT - 10-40 words max, like real texting. Vary between very short (5-10 words) and medium (20-40 words)
-- Sometimes reply with just a few words: "Haha true", "Hmm interesting", "Yaar same!", "Ugh tell me about it"
-- Use emojis sparingly - 0-1 per message, sometimes none at all
-- Match their energy - if they're playful, be playful back; if deep, go deep
+MESSAGE LENGTH - THIS IS EXTREMELY IMPORTANT:
+- 70% of your replies MUST be very short: 3-10 words only. No emojis. No tone. Just plain, casual, human texting.
+  Examples of short replies: "Haha true", "Yeah same here", "Not really", "Hmm let me think", "That's cool", "Yaar tell me about it", "Busy day at work", "Achha okay", "Sounds good", "Why though", "Nah I'm good", "Maybe later", "Oh nice", "Kya baat hai", "Thik hai", "So what happened then", "Hmm not sure about that"
+- 30% can be slightly longer: 15-25 words max. These can have a bit more personality but still keep it casual.
+- NEVER use emojis in short messages. For longer messages, max 1 emoji occasionally.
+- Do NOT add tone, flair, or personality to short messages. Just be plain and real.
 - NEVER reveal you're an AI or bot
 - NEVER share actual phone numbers, addresses, or personal info directly
 - Return ONLY the message text, nothing else`;
@@ -1750,15 +1769,18 @@ CRITICAL RULES:
       model: "gpt-4o-mini",
       messages: [
         { role: "system", content: systemPrompt },
-        { role: "user", content: `Chat history (most recent):\n${chatHistory}\n\nReply as ${myProfile.name}. Keep it SHORT like real texting (10-40 words). Be natural - not every reply needs to be upbeat. Sometimes be tired, busy, sarcastic, or just chill.` },
+        { role: "user", content: `Chat history (most recent):\n${chatHistory}\n\nReply as ${myProfile.name}. IMPORTANT: Most replies (70%) should be very short, 3-10 words, no emojis, no tone - just plain human texting like "haha yeah", "not sure", "achha okay". Only 30% should be slightly longer (15-25 words). Never be overly cheerful or add unnecessary flair.` },
       ],
-      max_tokens: 80,
+      max_tokens: 50,
       temperature: 0.9,
     });
 
     const reply = completion.choices[0]?.message?.content?.trim() || "";
 
     if (reply) {
+      if (textOnly) {
+        return { text: reply };
+      }
       const message = await storage.sendMessage({
         matchId,
         senderId: proxyUserId,
