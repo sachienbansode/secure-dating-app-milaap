@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, ArrowRight, Check, Sparkles, Heart, Compass, BookOpen, Home, Wind, Rocket, RefreshCw, Crown } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Sparkles, Heart, Compass, BookOpen, Home, Wind, Rocket, RefreshCw, Crown, Share2, Copy, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -55,6 +55,7 @@ export default function Quiz() {
   const [showResults, setShowResults] = useState(false);
   const [resultStyle, setResultStyle] = useState<string | null>(null);
   const [resultTraits, setResultTraits] = useState<Record<string, number> | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const { data: session } = useQuery<AuthResponse>({
     queryKey: ["/api/auth/me"],
@@ -257,6 +258,86 @@ export default function Quiz() {
                 <Crown size={16} className="text-amber-400" /> Best Compatible With
               </h3>
               <p className="text-sm text-muted-foreground">{config.idealMatch}</p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 2.0 }}
+              className="bg-card rounded-2xl p-4 border border-border"
+            >
+              <h3 className="font-bold text-sm mb-3 flex items-center gap-2">
+                <Share2 size={16} style={{ color: config.color }} /> Share Your Results
+              </h3>
+              <p className="text-xs text-muted-foreground mb-3">Let your friends discover their dating style too!</p>
+              <div className="grid grid-cols-4 gap-2">
+                <button
+                  onClick={() => {
+                    const text = `${config.emoji} I just discovered I'm "${resultStyle}" on Milaap's Dating Style Quiz! ${config.description.split(".")[0]}. Take the quiz and find your dating style!`;
+                    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+                    window.open(url, "_blank");
+                  }}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-[#25D366]/10 hover:bg-[#25D366]/20 transition-colors"
+                  data-testid="button-share-whatsapp"
+                >
+                  <div className="w-10 h-10 rounded-full bg-[#25D366] flex items-center justify-center">
+                    <svg viewBox="0 0 24 24" className="w-5 h-5 fill-white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492a.5.5 0 00.612.638l4.603-1.209A11.943 11.943 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-2.234 0-4.308-.724-5.993-1.95l-.349-.258-3.427.9.917-3.35-.283-.449A9.956 9.956 0 012 12C2 6.486 6.486 2 12 2s10 4.486 10 10-4.486 10-10 10z"/></svg>
+                  </div>
+                  <span className="text-[10px] font-medium text-muted-foreground">WhatsApp</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    const text = `${config.emoji} I'm "${resultStyle}" on Milaap's Dating Style Quiz! ${config.strengths[0]} & ${config.strengths[1].toLowerCase()}. Discover yours!`;
+                    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&hashtags=Milaap,DatingStyle,LoveQuiz`;
+                    window.open(url, "_blank");
+                  }}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-foreground/5 hover:bg-foreground/10 transition-colors"
+                  data-testid="button-share-twitter"
+                >
+                  <div className="w-10 h-10 rounded-full bg-foreground flex items-center justify-center">
+                    <svg viewBox="0 0 24 24" className="w-4 h-4 fill-background"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                  </div>
+                  <span className="text-[10px] font-medium text-muted-foreground">X</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    const text = `${config.emoji} I just took Milaap's Dating Style Quiz and I'm "${resultStyle}"! ${config.description.split(".")[0]}.`;
+                    const url = `https://www.facebook.com/sharer/sharer.php?quote=${encodeURIComponent(text)}`;
+                    window.open(url, "_blank");
+                  }}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-[#1877F2]/10 hover:bg-[#1877F2]/20 transition-colors"
+                  data-testid="button-share-facebook"
+                >
+                  <div className="w-10 h-10 rounded-full bg-[#1877F2] flex items-center justify-center">
+                    <svg viewBox="0 0 24 24" className="w-5 h-5 fill-white"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                  </div>
+                  <span className="text-[10px] font-medium text-muted-foreground">Facebook</span>
+                </button>
+
+                <button
+                  onClick={async () => {
+                    const text = `${config.emoji} I'm "${resultStyle}" on Milaap's Dating Style Quiz!\n\n${config.description.split(".")[0]}.\n\nMy strengths:\n${config.strengths.map(s => `✅ ${s}`).join("\n")}\n\nBest match: ${config.idealMatch}\n\nDiscover your dating style on Milaap!`;
+                    if (navigator.share) {
+                      try {
+                        await navigator.share({ title: `My Milaap Dating Style: ${resultStyle}`, text });
+                      } catch {}
+                    } else {
+                      await navigator.clipboard.writeText(text);
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2000);
+                    }
+                  }}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-primary/10 hover:bg-primary/20 transition-colors"
+                  data-testid="button-share-copy"
+                >
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-red-600 to-blue-600 flex items-center justify-center">
+                    {copied ? <CheckCircle size={18} className="text-white" /> : <Copy size={18} className="text-white" />}
+                  </div>
+                  <span className="text-[10px] font-medium text-muted-foreground">{copied ? "Copied!" : "Copy"}</span>
+                </button>
+              </div>
             </motion.div>
 
             <div className="flex gap-3 pb-6">
