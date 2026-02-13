@@ -3415,6 +3415,290 @@ MESSAGE LENGTH - THIS IS EXTREMELY IMPORTANT:
     }
   });
 
+  // ==================== CHAI DATE ROUTES ====================
+
+  app.post("/api/chai-date/request", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const { matchId } = req.body;
+      if (!matchId) return res.status(400).json({ message: "Match ID is required" });
+
+      const match = await storage.getMatchById(matchId);
+      if (!match || !match.isMatched) return res.status(404).json({ message: "Match not found" });
+
+      const recipientId = match.userId === userId ? match.targetUserId : match.userId;
+
+      const existing = await storage.getChaiDateForMatch(matchId, "pending");
+      if (existing) return res.status(400).json({ message: "A Chai Date request is already pending" });
+      const activeDate = await storage.getChaiDateForMatch(matchId, "active");
+      if (activeDate) return res.status(400).json({ message: "A Chai Date is already in progress" });
+
+      const chaiDate = await storage.createChaiDate({
+        matchId,
+        requesterId: userId,
+        recipientId,
+        status: "pending",
+        durationMinutes: 5,
+      });
+
+      await storage.sendMessage({
+        matchId,
+        senderId: userId,
+        content: `[CHAI_DATE_REQUEST:${chaiDate.id}]`,
+        isSystemMessage: true,
+      });
+
+      return res.status(201).json(chaiDate);
+    } catch (err: any) {
+      console.error(err); return res.status(500).json({ message: "Something went wrong" });
+    }
+  });
+
+  app.post("/api/chai-date/:id/respond", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const { id } = req.params;
+      const { action } = req.body;
+
+      const chaiDate = await storage.getChaiDate(id);
+      if (!chaiDate) return res.status(404).json({ message: "Chai Date not found" });
+      if (chaiDate.recipientId !== userId) return res.status(403).json({ message: "Not authorized" });
+      if (chaiDate.status !== "pending") return res.status(400).json({ message: "This request is no longer pending" });
+
+      if (action === "accept") {
+        const updated = await storage.updateChaiDate(id, {
+          status: "active",
+          startedAt: new Date(),
+        });
+
+        await storage.sendMessage({
+          matchId: chaiDate.matchId,
+          senderId: userId,
+          content: `[CHAI_DATE_ACCEPTED:${chaiDate.id}]`,
+          isSystemMessage: true,
+        });
+
+        return res.json(updated);
+      } else {
+        const updated = await storage.updateChaiDate(id, {
+          status: "declined",
+          endReason: "declined",
+        });
+
+        await storage.sendMessage({
+          matchId: chaiDate.matchId,
+          senderId: userId,
+          content: `[CHAI_DATE_DECLINED:${chaiDate.id}]`,
+          isSystemMessage: true,
+        });
+
+        return res.json(updated);
+      }
+    } catch (err: any) {
+      console.error(err); return res.status(500).json({ message: "Something went wrong" });
+    }
+  });
+
+  app.post("/api/chai-date/:id/extend", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const { id } = req.params;
+      const chaiDate = await storage.getChaiDate(id);
+      if (!chaiDate) return res.status(404).json({ message: "Chai Date not found" });
+      if (chaiDate.requesterId !== userId && chaiDate.recipientId !== userId) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      if (chaiDate.status !== "active") return res.status(400).json({ message: "Chai Date is not active" });
+      if (chaiDate.extended) return res.status(400).json({ message: "Already extended once" });
+
+      const updated = await storage.updateChaiDate(id, {
+        extended: true,
+        durationMinutes: (chaiDate.durationMinutes || 5) + 3,
+      });
+
+      return res.json(updated);
+    } catch (err: any) {
+      console.error(err); return res.status(500).json({ message: "Something went wrong" });
+    }
+  });
+
+  app.post("/api/chai-date/:id/end", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const { id } = req.params;
+      const { reason } = req.body;
+      const chaiDate = await storage.getChaiDate(id);
+      if (!chaiDate) return res.status(404).json({ message: "Chai Date not found" });
+      if (chaiDate.requesterId !== userId && chaiDate.recipientId !== userId) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+
+      const updated = await storage.updateChaiDate(id, {
+        status: "completed",
+        endedAt: new Date(),
+        endReason: reason || "ended",
+      });
+
+      await storage.sendMessage({
+        matchId: chaiDate.matchId,
+        senderId: userId,
+        content: `[CHAI_DATE_ENDED:${chaiDate.id}]`,
+        isSystemMessage: true,
+      });
+
+      return res.json(updated);
+    } catch (err: any) {
+      console.error(err); return res.status(500).json({ message: "Something went wrong" });
+    }
+  });
+
+  app.get("/api/chai-date/match/:matchId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { matchId } = req.params;
+      const pending = await storage.getChaiDateForMatch(matchId, "pending");
+      const active = await storage.getChaiDateForMatch(matchId, "active");
+      return res.json({ pending: pending || null, active: active || null });
+    } catch (err: any) {
+      console.error(err); return res.status(500).json({ message: "Something went wrong" });
+    }
+  });
+
+  app.get("/api/chai-date/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const chaiDate = await storage.getChaiDate(req.params.id);
+      if (!chaiDate) return res.status(404).json({ message: "Not found" });
+      return res.json(chaiDate);
+    } catch (err: any) {
+      console.error(err); return res.status(500).json({ message: "Something went wrong" });
+    }
+  });
+
+  // ==================== PROFILE VERIFICATION ROUTES ====================
+
+  app.get("/api/verification/pose", requireAuth, async (_req: Request, res: Response) => {
+    const poses = [
+      { id: "thumbs_up", label: "Thumbs Up", instruction: "Show a thumbs up with your right hand near your face", emoji: "👍" },
+      { id: "peace_sign", label: "Peace Sign", instruction: "Make a peace/victory sign with your fingers", emoji: "✌️" },
+      { id: "wave", label: "Wave Hello", instruction: "Wave with your hand raised near your face", emoji: "👋" },
+      { id: "hand_on_chin", label: "Hand on Chin", instruction: "Rest your chin on your hand thoughtfully", emoji: "🤔" },
+    ];
+    const randomPose = poses[Math.floor(Math.random() * poses.length)];
+    return res.json(randomPose);
+  });
+
+  app.post("/api/verification/submit", requireAuth, upload.single("selfie"), async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const { poseId } = req.body;
+
+      if (!req.file) return res.status(400).json({ message: "Selfie is required" });
+      if (!poseId) return res.status(400).json({ message: "Pose ID is required" });
+
+      const profile = await storage.getProfile(userId);
+      if (!profile) return res.status(404).json({ message: "Profile not found" });
+      if (profile.isVerified) return res.status(400).json({ message: "Already verified" });
+
+      const poseLabels: Record<string, string> = {
+        thumbs_up: "thumbs up gesture",
+        peace_sign: "peace/victory sign with fingers",
+        wave: "waving hand near face",
+        hand_on_chin: "hand resting on chin",
+      };
+      const expectedPose = poseLabels[poseId] || "a gesture";
+
+      const selfieUrl = `/uploads/${req.file.filename}`;
+
+      const fs = await import("fs");
+      const imagePath = req.file.path;
+      const imageBuffer = fs.readFileSync(imagePath);
+      const base64Image = imageBuffer.toString("base64");
+      const mimeType = req.file.mimetype || "image/jpeg";
+
+      let isVerified = false;
+      let verificationMessage = "";
+
+      try {
+        const openai = getOpenAI();
+        const response = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [
+            {
+              role: "system",
+              content: "You are a profile verification assistant. You must verify that the image shows a real person (not a drawing, AI-generated image, or photo of a photo/screen) performing a specific pose. Respond with JSON: {\"isReal\": boolean, \"poseMatch\": boolean, \"confidence\": number (0-100), \"reason\": string}"
+            },
+            {
+              role: "user",
+              content: [
+                {
+                  type: "text",
+                  text: `Verify this selfie. Expected pose: "${expectedPose}". Check: 1) Is this a real person in a live selfie (not a photo of a photo, drawing, or AI image)? 2) Is the person performing the expected pose? Respond with JSON only.`
+                },
+                {
+                  type: "image_url",
+                  image_url: {
+                    url: `data:${mimeType};base64,${base64Image}`,
+                    detail: "low"
+                  }
+                }
+              ]
+            }
+          ],
+          max_tokens: 200,
+        });
+
+        const content = response.choices[0]?.message?.content || "";
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const result = JSON.parse(jsonMatch[0]);
+          isVerified = result.isReal && result.poseMatch && (result.confidence >= 60);
+          verificationMessage = result.reason || "";
+        }
+      } catch (aiErr: any) {
+        console.error("AI verification error:", aiErr);
+        isVerified = false;
+        verificationMessage = "Verification service unavailable. Please try again.";
+        return res.status(503).json({ verified: false, message: verificationMessage });
+      }
+
+      if (isVerified) {
+        await storage.updateProfile(userId, {
+          isVerified: true,
+          verifiedAt: new Date(),
+          verificationSelfieUrl: selfieUrl,
+          verificationPose: poseId,
+        } as any);
+
+        await storage.logActivity({
+          userId,
+          action: "profile_verified",
+          category: "verification",
+          details: { poseId, message: verificationMessage },
+        });
+
+        return res.json({ verified: true, message: "Profile verified successfully! Your badge is now visible." });
+      } else {
+        return res.json({ verified: false, message: verificationMessage || "Verification failed. Make sure you're showing the correct pose clearly in good lighting." });
+      }
+    } catch (err: any) {
+      console.error(err); return res.status(500).json({ message: "Something went wrong" });
+    }
+  });
+
+  app.get("/api/verification/status", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const profile = await storage.getProfile(userId);
+      if (!profile) return res.status(404).json({ message: "Profile not found" });
+      return res.json({
+        isVerified: profile.isVerified || false,
+        verifiedAt: profile.verifiedAt || null,
+        verificationPose: profile.verificationPose || null,
+      });
+    } catch (err: any) {
+      console.error(err); return res.status(500).json({ message: "Something went wrong" });
+    }
+  });
+
   // ==================== BOT MODE TIMER (periodic check) ====================
 
   setInterval(async () => {
