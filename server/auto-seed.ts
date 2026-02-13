@@ -80,7 +80,8 @@ export async function autoSeedProfiles() {
   const seedUsers = await db.select({ count: sql<number>`count(*)` }).from(users).where(sql`phone LIKE '+91990000%'`);
   const seedCount = Number(seedUsers[0].count);
   if (seedCount >= 20) {
-    console.log(`Auto-seed: ${seedCount} seed profiles already exist, skipping.`);
+    console.log(`Auto-seed: ${seedCount} seed profiles already exist, skipping seed profiles.`);
+    await seedFounderProfiles();
     return;
   }
   if (seedCount > 0) {
@@ -184,7 +185,91 @@ export async function autoSeedProfiles() {
 
     await createProfiles(coupleNames, "Couple", couplePhotos, coupleBios);
     console.log("Auto-seed: Created 5 couple profiles");
+
+    await seedFounderProfiles(tx);
+    console.log("Auto-seed: Created founder profiles (Ithan & Rekha)");
   });
 
-  console.log("Auto-seed: Complete! 20 profiles created.");
+  console.log("Auto-seed: Complete! 22 profiles created (20 seed + 2 founders).");
+}
+
+async function seedFounderProfiles(dbOrTx: any = db) {
+  const existingIthan = await dbOrTx.select({ id: users.id }).from(users).where(sql`phone = '+919820098200'`);
+  if (existingIthan.length === 0) {
+    const [ithanUser] = await dbOrTx
+      .insert(users)
+      .values({
+        phone: "+919820098200",
+        isVerified: true,
+        respectScore: 67,
+        membershipTier: "platinum",
+        membershipExpiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      })
+      .returning();
+
+    await dbOrTx.insert(profiles).values({
+      userId: ithanUser.id,
+      name: encrypt("Ithan Hunt"),
+      age: 38,
+      gender: "Male",
+      bio: encrypt("Cricket lover and Bollywood fan. Always up for chai and good conversations."),
+      city: "Mumbai",
+      location: "Mumbai",
+      interests: ["Cricket", "Chai", "Bollywood", "Music", "Travel", "Dancing"],
+      photos: ["/uploads/photo-1770750512396-756030314.jpeg"],
+      isVisible: true,
+      aiPersonaEnabled: false,
+      aiTone: "Friendly",
+      aiLanguage: "Hinglish",
+      aiProxyEnabled: false,
+      aiChatPace: "Normal",
+      intent: "Casual",
+      intentLockedAt: new Date(),
+      familyMode: false,
+      festivalPrefs: [],
+      hometownForFestivals: "Mumbai",
+      interestedIn: ["Female"],
+      dateReadiness: "Meet-ready",
+      datingStyle: "The Adventurer",
+    });
+  }
+
+  const existingRekha = await dbOrTx.select({ id: users.id }).from(users).where(sql`phone = '+917950903063'`);
+  if (existingRekha.length === 0) {
+    const [rekhaUser] = await dbOrTx
+      .insert(users)
+      .values({
+        phone: "+917950903063",
+        isVerified: true,
+        respectScore: 93,
+        membershipTier: "platinum",
+        membershipExpiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      })
+      .returning();
+
+    await dbOrTx.insert(profiles).values({
+      userId: rekhaUser.id,
+      name: encrypt("Rekha"),
+      age: 30,
+      gender: "Female",
+      bio: encrypt("Bollywood enthusiast with a passion for art and fashion. Looking for meaningful connections."),
+      city: "Hyderabad",
+      location: "Jubilee Hills, Hyderabad",
+      interests: ["Bollywood", "Art", "Fashion"],
+      photos: ["/profiles/indian_female_1_5.jpg"],
+      isVisible: true,
+      aiPersonaEnabled: true,
+      aiTone: "Witty",
+      aiLanguage: "English",
+      aiProxyEnabled: false,
+      aiChatPace: "Normal",
+      intent: "Casual",
+      intentLockedAt: new Date(),
+      familyMode: false,
+      festivalPrefs: ["Ganesh Chaturthi", "Christmas"],
+      hometownForFestivals: "Hyderabad",
+      interestedIn: ["Male", "Trans"],
+      dateReadiness: "Chat-only",
+    });
+  }
 }
