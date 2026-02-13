@@ -463,11 +463,9 @@ export async function registerRoutes(
       const otp = generateOtp();
       otpStore.set(`admin:${email}`, { otp, expiresAt: Date.now() + 5 * 60 * 1000 });
 
-      const isDev = process.env.NODE_ENV !== "production";
-      if (isDev) {
-        console.log(`[ADMIN OTP] ${email}: ${otp}`);
-      }
+      console.log(`[ADMIN OTP] ${email}: ${otp}`);
 
+      let emailSent = false;
       if (process.env.RESEND_API_KEY) {
         try {
           const response = await fetch("https://api.resend.com/emails", {
@@ -483,19 +481,21 @@ export async function registerRoutes(
               html: `<h2>Your Admin Login OTP</h2><p>Your OTP is: <strong>${otp}</strong></p><p>This OTP expires in 5 minutes.</p>`,
             }),
           });
-          if (!response.ok) {
-            console.log(`[ADMIN EMAIL] Failed to send email, OTP logged to console`);
+          if (response.ok) {
+            emailSent = true;
+          } else {
+            console.log(`[ADMIN EMAIL] Failed to send email, showing OTP in app`);
           }
         } catch {
-          console.log(`[ADMIN EMAIL] Email service unavailable, OTP logged to console`);
+          console.log(`[ADMIN EMAIL] Email service unavailable, showing OTP in app`);
         }
       }
 
       await logActivity(admin.id, "admin_otp_sent", "admin", { email }, req);
 
       return res.json({
-        message: "Password verified. OTP sent to your email.",
-        ...(isDev ? { otp_hint: otp } : {}),
+        message: emailSent ? "Password verified. OTP sent to your email." : "Password verified. Use the OTP shown below.",
+        otp_hint: emailSent ? undefined : otp,
       });
     } catch (err: any) {
       console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
