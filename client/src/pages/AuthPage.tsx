@@ -173,7 +173,7 @@ export default function AuthPage() {
 
   if (method === "splash") {
     return (
-      <div className="h-full flex flex-col items-center justify-between p-8 text-white relative overflow-hidden" style={{ background: "linear-gradient(160deg, #0a0a1a 0%, #1a0a2e 25%, #2d0a0a 50%, #0a1a3d 75%, #0a0a1a 100%)" }}>
+      <div className="h-full flex flex-col items-center justify-between p-8 text-white relative overflow-y-auto" style={{ background: "linear-gradient(160deg, #0a0a1a 0%, #1a0a2e 25%, #2d0a0a 50%, #0a1a3d 75%, #0a0a1a 100%)" }}>
         <motion.div
           animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }}
           transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
@@ -195,15 +195,15 @@ export default function AuthPage() {
 
         <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, white 1px, transparent 0)", backgroundSize: "40px 40px" }} />
 
-        <div className="mt-16 flex flex-col items-center text-center z-10">
+        <div className="mt-8 flex flex-col items-center text-center z-10">
           <motion.div
             initial={{ scale: 0, rotate: -180 }}
             animate={{ scale: 1, rotate: 0 }}
             transition={{ type: "spring", stiffness: 200, damping: 15, duration: 0.8 }}
-            className="relative mb-8"
+            className="relative mb-5"
           >
-            <div className="absolute inset-0 w-36 h-36 rounded-3xl blur-xl opacity-50" style={{ background: "linear-gradient(135deg, #dc2626, #2563eb)" }} />
-            <div className="relative w-36 h-36 rounded-3xl flex items-center justify-center p-4 border border-white/10" style={{ background: "linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05))", backdropFilter: "blur(20px)" }}>
+            <div className="absolute inset-0 w-28 h-28 rounded-3xl blur-xl opacity-50" style={{ background: "linear-gradient(135deg, #dc2626, #2563eb)" }} />
+            <div className="relative w-28 h-28 rounded-3xl flex items-center justify-center p-3 border border-white/10" style={{ background: "linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05))", backdropFilter: "blur(20px)" }}>
               <img src={logo} alt="Milaap Logo" className="w-full h-full object-contain drop-shadow-2xl" />
             </div>
           </motion.div>
@@ -211,7 +211,7 @@ export default function AuthPage() {
             initial={{ y: 30, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.3, duration: 0.6 }}
-            className="text-6xl font-heading font-extrabold mb-4 tracking-tight"
+            className="text-5xl font-heading font-extrabold mb-3 tracking-tight"
             style={{ background: "linear-gradient(135deg, #ffffff 0%, #ff6b6b 50%, #4dabf7 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}
           >
             Milaap
@@ -232,7 +232,7 @@ export default function AuthPage() {
           initial={{ y: 60, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.7 }}
-          className="w-full space-y-4 z-10 pb-4"
+          className="w-full space-y-3 z-10 pb-4"
         >
           <Button
             data-testid="button-login-phone"
@@ -251,13 +251,13 @@ export default function AuthPage() {
           >
             <Mail className="mr-3 h-5 w-5" /> Login with Email
           </Button>
-          <p className="text-xs text-center mt-4 font-medium" style={{ color: "rgba(255,255,255,0.4)" }}>
+          <p className="text-xs text-center mt-2 font-medium" style={{ color: "rgba(255,255,255,0.4)" }}>
             By continuing, you agree to our Terms & Privacy Policy.
           </p>
           <button
             data-testid="button-view-features"
             onClick={() => setShowFeatures(true)}
-            className="flex items-center justify-center gap-2 mt-4 mx-auto text-sm font-semibold py-3 px-6 rounded-2xl transition-all active:scale-95"
+            className="flex items-center justify-center gap-2 mx-auto text-sm font-semibold py-2.5 px-6 rounded-2xl transition-all active:scale-95"
             style={{ color: "#f59e0b", background: "linear-gradient(135deg, rgba(245,158,11,0.2), rgba(139,92,246,0.15))", border: "1px solid rgba(245,158,11,0.4)", boxShadow: "0 0 20px rgba(245,158,11,0.15)" }}
           >
             <Play size={16} /> Watch Feature Tour
@@ -265,7 +265,7 @@ export default function AuthPage() {
           <button
             data-testid="button-admin-portal"
             onClick={() => setLocation("/admin")}
-            className="flex items-center justify-center gap-2 mt-3 mx-auto text-sm font-semibold py-3 px-6 rounded-2xl transition-all active:scale-95"
+            className="flex items-center justify-center gap-2 mx-auto text-sm font-semibold py-2.5 px-6 rounded-2xl transition-all active:scale-95"
             style={{ color: "#34d399", background: "linear-gradient(135deg, rgba(5,150,105,0.2), rgba(14,165,233,0.15))", border: "1px solid rgba(5,150,105,0.4)", boxShadow: "0 0 20px rgba(5,150,105,0.15)" }}
           >
             <Shield size={16} /> Admin Portal
