@@ -113,12 +113,17 @@ export default function ViewProfile() {
   const directChatMutation = useMutation({
     mutationFn: async () => {
       setDirectChatError(null);
-      const res = await apiRequest("POST", "/api/direct-chat", { targetUserId: userId });
+      const res = await fetch("/api/direct-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetUserId: userId }),
+        credentials: "include",
+      });
+      const data = await res.json();
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message || "Failed to start direct chat");
+        throw new Error(data.message || "Failed to start direct chat");
       }
-      return res.json();
+      return data;
     },
     onSuccess: (data: any) => {
       if (data.matchId) {

@@ -3344,11 +3344,16 @@ MESSAGE LENGTH - THIS IS EXTREMELY IMPORTANT:
         });
       }
 
-      await logActivity(userId, "direct_chat_initiated", "chat", { targetUserId }, req);
+      try {
+        await logActivity(userId, "direct_chat_initiated", "chat", { targetUserId }, req);
+      } catch (logErr) {
+        console.error("Activity log error (non-fatal):", logErr);
+      }
 
       return res.json({ matchId: match.id, alreadyMatched: false });
     } catch (err: any) {
-      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
+      console.error("Direct chat error:", err);
+      return res.status(500).json({ message: err.message || "Something went wrong. Please try again." });
     }
   });
 
