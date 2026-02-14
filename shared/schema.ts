@@ -261,6 +261,17 @@ export const membershipTransactions = pgTable("membership_transactions", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const otpCodes = pgTable("otp_codes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  identifier: text("identifier").notNull(),
+  code: text("code").notNull(),
+  type: text("type").notNull().default("user"),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertOtpCodeSchema = createInsertSchema(otpCodes).omit({ id: true, createdAt: true });
+
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertProfileSchema = createInsertSchema(profiles).omit({ id: true, updatedAt: true });
 export const insertMatchSchema = createInsertSchema(matches).omit({ id: true, createdAt: true });
@@ -313,6 +324,8 @@ export type MembershipPlan = typeof membershipPlans.$inferSelect;
 export type InsertMembershipPlan = z.infer<typeof insertMembershipPlanSchema>;
 export type MembershipTransaction = typeof membershipTransactions.$inferSelect;
 export type InsertMembershipTransaction = z.infer<typeof insertMembershipTransactionSchema>;
+export type OtpCode = typeof otpCodes.$inferSelect;
+export type InsertOtpCode = z.infer<typeof insertOtpCodeSchema>;
 
 export const quizResponses = pgTable("quiz_responses", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

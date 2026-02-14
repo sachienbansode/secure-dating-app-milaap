@@ -107,8 +107,6 @@ const chatAttachmentUpload = multer({
   limits: { fileSize: 5 * 1024 * 1024 },
 });
 
-const otpStore = new Map<string, { otp: string; expiresAt: number }>();
-
 function generateOtp(): string {
   return randomInt(100000, 999999).toString();
 }
@@ -260,7 +258,8 @@ export async function registerRoutes(
       const key = phone || email || "";
       const otp = generateOtp();
       
-      otpStore.set(key, { otp, expiresAt: Date.now() + 5 * 60 * 1000 });
+      const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+      await storage.storeOtp(key, otp, "user", expiresAt);
       console.log(`[OTP] ${key}: ${otp}`);
       
       return res.json({ message: "OTP sent successfully", otp_hint: otp });
@@ -278,13 +277,11 @@ export async function registerRoutes(
 
       const { phone, email, otp } = parsed.data;
       const key = phone || email || "";
-      const stored = otpStore.get(key);
+      const valid = await storage.verifyOtp(key, otp, "user");
 
-      if (!stored || stored.otp !== otp || Date.now() > stored.expiresAt) {
+      if (!valid) {
         return res.status(401).json({ message: "Invalid or expired OTP" });
       }
-
-      otpStore.delete(key);
 
       let user = phone
         ? await storage.getUserByPhone(phone)
@@ -461,7 +458,8 @@ export async function registerRoutes(
       }
 
       const otp = generateOtp();
-      otpStore.set(`admin:${email}`, { otp, expiresAt: Date.now() + 5 * 60 * 1000 });
+      const adminOtpExpires = new Date(Date.now() + 5 * 60 * 1000);
+      await storage.storeOtp(`admin:${email}`, otp, "admin", adminOtpExpires);
 
       console.log(`[ADMIN OTP] ${email}: ${otp}`);
 
@@ -509,12 +507,11 @@ export async function registerRoutes(
         return res.status(400).json({ message: formatValidationError(parsed.error) });
       }
       const { email, otp } = parsed.data;
-      const stored = otpStore.get(`admin:${email}`);
-      if (!stored || stored.otp !== otp || Date.now() > stored.expiresAt) {
+      const adminOtpValid = await storage.verifyOtp(`admin:${email}`, otp, "admin");
+      if (!adminOtpValid) {
         await logActivity(null, "admin_otp_failed", "security", { email }, req);
         return res.status(401).json({ message: "Invalid or expired OTP" });
       }
-      otpStore.delete(`admin:${email}`);
 
       const admin = await storage.getAdminUserByEmail(email);
       if (!admin) {
@@ -4002,6 +3999,14 @@ By continuing to use Milaap, you acknowledge that you have read, understood, and
       console.error("Bot mode auto-offline check error:", err);
     }
   }, 5 * 60 * 1000);
+
+  setInterval(async () => {
+    try {
+      await storage.cleanupExpiredOtps();
+    } catch (err) {
+      console.error("OTP cleanup error:", err);
+    }
+  }, 10 * 60 * 1000);
 
   app.post("/api/auto-seed-profiles", async (_req: Request, res: Response) => {
     try {

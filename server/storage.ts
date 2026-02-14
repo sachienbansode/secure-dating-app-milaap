@@ -4,7 +4,7 @@ import {
   users, profiles, matches, messages, reports, screenshotAlerts, appSettings,
   chatCooldowns, phoneUnlockRequests, blockedUsers, activityLogs,
   adminUsers, userSessions, contactShares, locationShares,
-  membershipPlans, membershipTransactions, quizResponses, chaiDates,
+  membershipPlans, membershipTransactions, quizResponses, chaiDates, otpCodes,
   type User, type InsertUser,
   type Profile, type InsertProfile,
   type Match, type InsertMatch,
@@ -24,6 +24,7 @@ import {
   type MembershipTransaction, type InsertMembershipTransaction,
   type QuizResponse, type InsertQuizResponse,
   type ChaiDate, type InsertChaiDate,
+  type OtpCode,
 } from "@shared/schema";
 import { encryptProfile, decryptProfile, encryptMessage, decryptMessage } from "./encryption";
 
@@ -130,6 +131,10 @@ export interface IStorage {
   getChaiDateForMatch(matchId: string, status?: string): Promise<ChaiDate | undefined>;
   updateChaiDate(id: string, data: Partial<ChaiDate>): Promise<ChaiDate | undefined>;
   getChaiDateHistory(userId: string): Promise<ChaiDate[]>;
+
+  storeOtp(identifier: string, code: string, type: string, expiresAt: Date): Promise<void>;
+  verifyOtp(identifier: string, code: string, type: string): Promise<boolean>;
+  cleanupExpiredOtps(): Promise<void>;
 
   searchUsersAdmin(query: string): Promise<{ user: User; profile?: Profile }[]>;
   getAdminUserDetail(userId: string): Promise<{ user: User; profile?: Profile; matches: Match[]; sessions: UserSession[] } | null>;
@@ -874,6 +879,26 @@ export class DatabaseStorage implements IStorage {
       .where(or(eq(chaiDates.requesterId, userId), eq(chaiDates.recipientId, userId)))
       .orderBy(desc(chaiDates.createdAt))
       .limit(20);
+  }
+
+  async storeOtp(identifier: string, code: string, type: string, expiresAt: Date): Promise<void> {
+    await db.delete(otpCodes).where(and(eq(otpCodes.identifier, identifier), eq(otpCodes.type, type)));
+    await db.insert(otpCodes).values({ identifier, code, type, expiresAt });
+  }
+
+  async verifyOtp(identifier: string, code: string, type: string): Promise<boolean> {
+    const [stored] = await db.select().from(otpCodes)
+      .where(and(eq(otpCodes.identifier, identifier), eq(otpCodes.type, type)))
+      .limit(1);
+    if (!stored || stored.code !== code || new Date() > stored.expiresAt) {
+      return false;
+    }
+    await db.delete(otpCodes).where(eq(otpCodes.id, stored.id));
+    return true;
+  }
+
+  async cleanupExpiredOtps(): Promise<void> {
+    await db.delete(otpCodes).where(sql`${otpCodes.expiresAt} < NOW()`);
   }
 
   async searchUsersAdmin(query: string): Promise<{ user: User; profile?: Profile }[]> {
