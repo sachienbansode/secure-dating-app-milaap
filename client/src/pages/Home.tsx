@@ -207,7 +207,7 @@ export default function Home() {
   ].filter(Boolean).length;
 
   return (
-    <div className="h-full flex flex-col bg-background">
+    <div className="h-full flex flex-col bg-background overflow-hidden">
       <header className="px-6 pt-6 pb-2 flex justify-between items-center z-10 shrink-0">
         <div>
           <h1 className="text-2xl font-heading font-bold text-brand-gradient" data-testid="text-discover-title">Discover</h1>

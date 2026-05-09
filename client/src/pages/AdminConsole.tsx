@@ -78,6 +78,7 @@ export default function AdminConsole() {
           {activeSection === "Bot Mode Settings" && <BotModeSettings />}
           {activeSection === "Membership Revenue" && <MembershipRevenue />}
           {activeSection === "App Logo" && <LogoSelector />}
+          {activeSection === "Seed Profiles" && <SeedProfilesViewer />}
         </div>
 
         {showLogoutConfirm && (
@@ -144,6 +145,7 @@ export default function AdminConsole() {
           { id: "Bot Mode Settings", icon: Bot, color: "bg-purple-100 text-purple-600", desc: "Configure bot mode auto-offline" },
           { id: "Membership Revenue", icon: DollarSign, color: "bg-emerald-100 text-emerald-600", desc: "View revenue & transactions" },
           { id: "App Logo", icon: Image, color: "bg-pink-100 text-pink-600", desc: "Choose between logo styles" },
+          { id: "Seed Profiles", icon: Users, color: "bg-teal-100 text-teal-600", desc: "View test/seed profiles with phone numbers" },
         ].map((item) => (
           <button
             key={item.id}
@@ -2588,6 +2590,122 @@ function UserLookup() {
         <div className="text-center py-8">
           <UserSearch size={32} className="mx-auto text-slate-300 mb-2" />
           <p className="text-sm text-slate-400">No users found for "{debouncedQuery}"</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SeedProfilesViewer() {
+  const [copied, setCopied] = useState<string | null>(null);
+
+  const { data: seedProfiles = [], isLoading } = useQuery<any[]>({
+    queryKey: ["/api/admin/seed-profiles"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/seed-profiles", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load seed profiles");
+      return res.json();
+    },
+  });
+
+  const handleCopy = (phone: string) => {
+    navigator.clipboard.writeText(phone).then(() => {
+      setCopied(phone);
+      setTimeout(() => setCopied(null), 1500);
+    });
+  };
+
+  const tierColors: Record<string, string> = {
+    basic: "bg-slate-500",
+    silver: "bg-slate-400",
+    gold: "bg-amber-500",
+    platinum: "bg-violet-600",
+  };
+
+  const genderEmoji: Record<string, string> = {
+    Male: "👨",
+    Female: "👩",
+    Trans: "🏳️‍⚧️",
+    Couple: "👫",
+  };
+
+  const founders = seedProfiles.filter((p) => p.isFounder);
+  const seeds = seedProfiles.filter((p) => !p.isFounder);
+
+  if (isLoading) {
+    return <div className="flex justify-center items-center py-16 text-slate-400 text-sm animate-pulse">Loading seed profiles...</div>;
+  }
+
+  const renderCard = (profile: any) => (
+    <div
+      key={profile.id}
+      className="bg-white rounded-2xl border border-slate-100 p-4 flex items-center gap-3 shadow-sm"
+      data-testid={`seed-profile-${profile.id}`}
+    >
+      <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-xl flex-shrink-0">
+        {genderEmoji[profile.gender] || "👤"}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-semibold text-sm text-slate-800">{profile.name || "—"}</span>
+          {profile.age && <span className="text-xs text-slate-500">{profile.age}y</span>}
+          <span className={`text-[10px] px-1.5 py-0.5 rounded-full text-white ${tierColors[profile.membershipTier] || "bg-slate-500"}`}>
+            {profile.membershipTier}
+          </span>
+          {profile.isFounder && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-bold">Founder</span>
+          )}
+        </div>
+        <div className="text-xs text-slate-500 mt-0.5 truncate">{profile.city || "—"} · Score: {profile.respectScore}</div>
+        <div className="flex items-center gap-1 mt-1">
+          <Phone size={11} className="text-slate-400" />
+          <span className="text-xs font-mono text-slate-700">{profile.phone}</span>
+        </div>
+      </div>
+      <button
+        onClick={() => handleCopy(profile.phone)}
+        className={`flex-shrink-0 text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${
+          copied === profile.phone
+            ? "bg-green-100 text-green-700"
+            : "bg-slate-100 hover:bg-slate-200 text-slate-600"
+        }`}
+        data-testid={`button-copy-phone-${profile.id}`}
+      >
+        {copied === profile.phone ? "Copied!" : "Copy"}
+      </button>
+    </div>
+  );
+
+  return (
+    <div className="p-4 space-y-4">
+      <div className="bg-teal-50 border border-teal-200 rounded-2xl p-4 text-sm text-teal-800">
+        <p className="font-semibold mb-1">Test Login Numbers</p>
+        <p className="text-xs text-teal-700">Use any of these phone numbers to log in as a seed or founder profile. OTP will appear in server logs during development.</p>
+      </div>
+
+      {founders.length > 0 && (
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 px-1">Founder Profiles</p>
+          <div className="space-y-2">
+            {founders.map(renderCard)}
+          </div>
+        </div>
+      )}
+
+      {seeds.length > 0 && (
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 px-1">Seed Profiles ({seeds.length})</p>
+          <div className="space-y-2">
+            {seeds.map(renderCard)}
+          </div>
+        </div>
+      )}
+
+      {seedProfiles.length === 0 && (
+        <div className="text-center py-12">
+          <Users size={36} className="mx-auto text-slate-300 mb-3" />
+          <p className="text-sm text-slate-400">No seed profiles found</p>
+          <p className="text-xs text-slate-300 mt-1">Run auto-seed to create test profiles</p>
         </div>
       )}
     </div>

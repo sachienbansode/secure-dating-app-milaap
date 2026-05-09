@@ -4008,6 +4008,50 @@ By continuing to use Milaap, you acknowledge that you have read, understood, and
     }
   }, 10 * 60 * 1000);
 
+  app.get("/api/admin/seed-profiles", requireAdmin, async (_req: Request, res: Response) => {
+    try {
+      const { decrypt } = await import("./encryption");
+      const { db: dbConn } = await import("./db");
+      const { inArray } = await import("drizzle-orm");
+
+      const seedRows = await dbConn
+        .select({ id: users.id, phone: users.phone, membershipTier: users.membershipTier, respectScore: users.respectScore })
+        .from(users)
+        .where(sql`phone LIKE '+91990000%' OR phone IN ('+919820098200', '+917950903063')`)
+        .orderBy(users.id);
+
+      const seedIds = seedRows.map((r) => r.id);
+      const profileRows = seedIds.length > 0
+        ? await dbConn
+            .select({ userId: profiles.userId, name: profiles.name, gender: profiles.gender, age: profiles.age, city: profiles.city })
+            .from(profiles)
+            .where(inArray(profiles.userId, seedIds))
+        : [];
+
+      const profileMap = Object.fromEntries(profileRows.map((p) => [p.userId, p]));
+
+      const result = seedRows.map((u) => {
+        const p = profileMap[u.id];
+        return {
+          id: u.id,
+          phone: u.phone,
+          membershipTier: u.membershipTier,
+          respectScore: u.respectScore,
+          name: p ? (() => { try { return decrypt(p.name); } catch { return p.name; } })() : null,
+          gender: p?.gender ?? null,
+          age: p?.age ?? null,
+          city: p?.city ?? null,
+          isFounder: u.phone === "+919820098200" || u.phone === "+917950903063",
+        };
+      });
+
+      res.json(result);
+    } catch (err: any) {
+      console.error("Seed profiles fetch error:", err);
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   app.post("/api/auto-seed-profiles", async (_req: Request, res: Response) => {
     try {
       const { autoSeedProfiles } = await import("./auto-seed");
