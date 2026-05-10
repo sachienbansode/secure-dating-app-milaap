@@ -2304,7 +2304,28 @@ MESSAGE LENGTH - THIS IS EXTREMELY IMPORTANT:
   app.get("/api/blocked-users", requireAuth, async (req: Request, res: Response) => {
     try {
       const blocked = await storage.getBlockedUsers(req.session.userId!);
-      return res.json(blocked);
+      const enriched = await Promise.all(blocked.map(async (b) => {
+        const blockedProfile = await storage.getProfile(b.blockedUserId);
+        return { ...b, blockedProfile };
+      }));
+      return res.json(enriched);
+    } catch (err: any) {
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
+    }
+  });
+
+  app.post("/api/unblock-user", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { blockedUserId } = req.body;
+      if (!blockedUserId) return res.status(400).json({ message: "blockedUserId required" });
+      const { db } = await import("./db");
+      const { blockedUsers } = await import("../shared/schema");
+      const { and, eq } = await import("drizzle-orm");
+      await db.delete(blockedUsers).where(
+        and(eq(blockedUsers.blockerId, req.session.userId!), eq(blockedUsers.blockedUserId, blockedUserId))
+      );
+      await logActivity(req.session.userId!, "user_unblocked", "profile", { blockedUserId }, req);
+      return res.json({ success: true });
     } catch (err: any) {
       console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
@@ -3226,8 +3247,29 @@ By continuing to use Milaap, you acknowledge that you have read, understood, and
     return { style: styleMap[maxTrait] || "The Romantic", traits };
   }
 
-  app.get("/api/quiz/questions", requireAuth, async (_req: Request, res: Response) => {
+  app.get("/api/quiz/questions", requireAuth, async (req: Request, res: Response) => {
+    const userId = req.session.userId!;
+    const profile = await storage.getProfile(userId);
+    if (profile?.quizCompletedAt) {
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      if (new Date(profile.quizCompletedAt) < sevenDaysAgo) {
+        await storage.deleteQuizResponses(userId);
+        await storage.updateProfile(userId, { datingStyle: null, datingStyleTraits: null, quizCompletedAt: null } as any);
+      }
+    }
     return res.json({ questions: QUIZ_QUESTIONS });
+  });
+
+  app.post("/api/admin/quiz/reset-all", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const { db } = await import("./db");
+      const { profiles } = await import("../shared/schema");
+      await db.update(profiles).set({ quizCompletedAt: null, datingStyle: null, datingStyleTraits: null });
+      await logActivity(req.session.adminUserId!, "quiz_reset_all", "admin", {}, req);
+      return res.json({ success: true, message: "All quiz completions reset" });
+    } catch (err: any) {
+      console.error(err); return res.status(500).json({ message: "Failed to reset quizzes" });
+    }
   });
 
   app.post("/api/quiz/submit", requireAuth, async (req: Request, res: Response) => {

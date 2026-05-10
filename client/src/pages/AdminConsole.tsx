@@ -9,7 +9,7 @@ import {
   Lock, EyeOff, Trash2, Plus, ChevronRight, ArrowLeft,
   Activity, Heart, Paperclip, Crown, DollarSign, Bot, Megaphone, Image,
   Search, Download, AlertTriangle, Phone, MapPin, Calendar, Eye, Ban, FileText,
-  MessageCircle, BarChart3, UserSearch,
+  MessageCircle, BarChart3, UserSearch, X,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import type { AuthResponse } from "@/lib/auth";
@@ -20,6 +20,7 @@ const NAV_ITEMS = [
   { id: "Analytics Dashboard", icon: BarChart3, color: "text-blue-600", bg: "bg-blue-50", desc: "Onboarding, DAU & usage trends" },
   { id: "Active Duration", icon: Clock, color: "text-cyan-600", bg: "bg-cyan-50", desc: "User daily active time" },
   { id: "User Lookup", icon: UserSearch, color: "text-orange-600", bg: "bg-orange-50", desc: "Search & inspect any user" },
+  { id: "User Memberships", icon: Crown, color: "text-amber-600", bg: "bg-amber-50", desc: "Search & update user memberships" },
   { id: "All Profiles", icon: Users, color: "text-indigo-600", bg: "bg-indigo-50", desc: "View all registered profiles" },
   { id: "Activity Logs", icon: Activity, color: "text-slate-600", bg: "bg-slate-100", desc: "View all user activity logs" },
   { id: "Terms & Conditions", icon: Shield, color: "text-teal-600", bg: "bg-teal-50", desc: "Edit T&C with versioning" },
@@ -142,6 +143,7 @@ export default function AdminConsole() {
             {activeSection === "Analytics Dashboard" && <AnalyticsDashboard />}
             {activeSection === "Active Duration" && <ActiveDurationViewer />}
             {activeSection === "User Lookup" && <UserLookup />}
+            {activeSection === "User Memberships" && <UserMembershipsManager />}
             {activeSection === "All Profiles" && <AllProfilesViewer />}
             {activeSection === "Activity Logs" && <ActivityLogsViewer />}
             {activeSection === "Terms & Conditions" && <TermsEditor />}
@@ -567,6 +569,178 @@ function ActivityLogsViewer() {
             </button>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function UserMembershipsManager() {
+  const queryClient = useQueryClient();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [selectedUser, setSelectedUser] = useState<any | null>(null);
+  const [newTier, setNewTier] = useState("");
+  const [updating, setUpdating] = useState(false);
+  const [quizResetting, setQuizResetting] = useState(false);
+  const [successMsg, setSuccessMsg] = useState("");
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(searchQuery), 400);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
+  const { data: results = [], isLoading: searching } = useQuery<any[]>({
+    queryKey: ["/api/admin/user-search", debouncedQuery],
+    queryFn: async () => {
+      if (!debouncedQuery || debouncedQuery.length < 2) return [];
+      const res = await fetch(`/api/admin/user-search?q=${encodeURIComponent(debouncedQuery)}`, { credentials: "include" });
+      if (!res.ok) return [];
+      const d = await res.json();
+      return d.results || [];
+    },
+    enabled: debouncedQuery.length >= 2,
+  });
+
+  const TIERS = ["basic", "silver", "gold", "platinum"];
+  const TIER_COLORS: Record<string, string> = {
+    basic: "text-slate-400", silver: "text-slate-300", gold: "text-amber-400", platinum: "text-violet-400"
+  };
+
+  const handleAssign = async () => {
+    if (!selectedUser || !newTier) return;
+    setUpdating(true);
+    try {
+      const res = await fetch("/api/admin/membership/assign", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: selectedUser.userId, tier: newTier }),
+      });
+      if (res.ok) {
+        setSuccessMsg(`${selectedUser.name}'s membership updated to ${newTier}`);
+        setSelectedUser({ ...selectedUser, membershipTier: newTier });
+        setNewTier("");
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/user-search"] });
+        setTimeout(() => setSuccessMsg(""), 3000);
+      }
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleQuizResetAll = async () => {
+    if (!confirm("Reset ALL quiz completions for all users?")) return;
+    setQuizResetting(true);
+    try {
+      await fetch("/api/admin/quiz/reset-all", { method: "POST", credentials: "include" });
+      setSuccessMsg("All quiz completions reset successfully");
+      setTimeout(() => setSuccessMsg(""), 3000);
+    } finally {
+      setQuizResetting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-xl font-bold mb-1">User Memberships</h2>
+        <p className="text-sm text-slate-400">Search any user and update their membership tier</p>
+      </div>
+
+      {successMsg && (
+        <div className="bg-green-900/30 border border-green-700 text-green-300 rounded-xl px-4 py-3 text-sm font-medium">{successMsg}</div>
+      )}
+
+      <div className="bg-white/5 rounded-2xl border border-white/10 p-5 space-y-4">
+        <h3 className="font-bold text-sm uppercase tracking-wider text-slate-400">Assign Membership</h3>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+          <input
+            type="text"
+            placeholder="Search by name, phone, email..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            className="w-full pl-9 pr-4 py-2.5 bg-white/10 border border-white/10 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+            data-testid="input-membership-search"
+          />
+        </div>
+
+        {searching && <p className="text-xs text-slate-400 animate-pulse">Searching...</p>}
+
+        {results.length > 0 && !selectedUser && (
+          <div className="border border-white/10 rounded-xl overflow-hidden divide-y divide-white/5">
+            {results.map((u: any) => (
+              <button
+                key={u.userId}
+                onClick={() => { setSelectedUser(u); setNewTier(u.membershipTier); setSearchQuery(u.name); }}
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 text-left transition-colors"
+                data-testid={`button-select-user-${u.userId}`}
+              >
+                <img
+                  src={u.photos?.[0] || `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.userId}`}
+                  alt={u.name}
+                  className="w-9 h-9 rounded-full object-cover border border-white/10"
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm truncate">{u.name}</p>
+                  <p className="text-xs text-slate-400 truncate">{u.phone || u.email || ""} · {u.city}</p>
+                </div>
+                <span className={`text-xs font-bold uppercase ${TIER_COLORS[u.membershipTier] || "text-slate-400"}`}>{u.membershipTier}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {selectedUser && (
+          <div className="bg-white/5 rounded-xl p-4 space-y-3">
+            <div className="flex items-center gap-3">
+              <img
+                src={selectedUser.photos?.[0] || `https://api.dicebear.com/7.x/avataaars/svg?seed=${selectedUser.userId}`}
+                alt={selectedUser.name}
+                className="w-12 h-12 rounded-full object-cover border border-white/10"
+              />
+              <div>
+                <p className="font-bold text-sm">{selectedUser.name}</p>
+                <p className="text-xs text-slate-400">{selectedUser.phone || selectedUser.email}</p>
+                <p className="text-xs">Current: <span className={`font-bold ${TIER_COLORS[selectedUser.membershipTier] || ""}`}>{selectedUser.membershipTier}</span></p>
+              </div>
+              <button onClick={() => { setSelectedUser(null); setSearchQuery(""); }} className="ml-auto p-1 rounded-full hover:bg-white/10"><X size={16} /></button>
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              {TIERS.map(t => (
+                <button
+                  key={t}
+                  onClick={() => setNewTier(t)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase border transition-all ${newTier === t ? "border-amber-500 bg-amber-500/20 text-amber-300" : "border-white/10 text-slate-400 hover:border-white/30"}`}
+                  data-testid={`button-tier-${t}`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={handleAssign}
+              disabled={updating || !newTier || newTier === selectedUser.membershipTier}
+              className="w-full py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+              data-testid="button-assign-membership"
+            >
+              {updating ? "Updating..." : `Assign ${newTier || "..."} to ${selectedUser.name}`}
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="bg-white/5 rounded-2xl border border-white/10 p-5 space-y-3">
+        <h3 className="font-bold text-sm uppercase tracking-wider text-slate-400">Quiz Management</h3>
+        <p className="text-sm text-slate-300">Force-reset all quiz completions (users will need to retake). Quizzes also auto-reset weekly for each user.</p>
+        <button
+          onClick={handleQuizResetAll}
+          disabled={quizResetting}
+          className="px-4 py-2.5 rounded-xl bg-red-800/40 border border-red-700/40 text-red-300 text-sm font-bold hover:bg-red-800/60 disabled:opacity-50"
+          data-testid="button-quiz-reset-all"
+        >
+          {quizResetting ? "Resetting..." : "Reset All Quiz Completions"}
+        </button>
       </div>
     </div>
   );

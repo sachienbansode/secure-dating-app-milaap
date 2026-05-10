@@ -29,7 +29,11 @@ interface MatchWithProfile {
   } | null;
 }
 
-export default function Matches() {
+interface MatchesProps {
+  defaultView?: "matches" | "chats";
+}
+
+export default function Matches({ defaultView = "matches" }: MatchesProps) {
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [tab, setTab] = useState<"active" | "archived">("active");
@@ -104,7 +108,15 @@ export default function Matches() {
     );
   }
 
-  const displayMatches = tab === "active" ? matchesData : archivedData;
+  const activeMatches = tab === "active" ? matchesData : archivedData;
+  // In "chats" view, only show matches that have a last message (real conversations)
+  // In "matches" view, show all matches
+  const displayMatches = defaultView === "chats" && tab === "active"
+    ? activeMatches.filter(m => m.lastMessage)
+    : activeMatches;
+  const newMatchBubbles = defaultView === "matches"
+    ? matchesData.filter(m => !m.lastMessage)
+    : [];
   const filteredMatches = displayMatches.filter((m) =>
     m.profile?.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -127,14 +139,16 @@ export default function Matches() {
   return (
     <div className="h-full flex flex-col bg-background">
       <header className="px-6 pt-6 pb-3 shrink-0">
-        <h1 className="text-2xl font-heading font-bold mb-3" data-testid="text-matches-title">Messages</h1>
+        <h1 className="text-2xl font-heading font-bold mb-3" data-testid="text-matches-title">
+          {defaultView === "chats" ? "Messages" : "Matches"}
+        </h1>
         <div className="flex gap-2 mb-3">
           <button
             data-testid="tab-active"
             onClick={() => setTab("active")}
             className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${tab === "active" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
           >
-            Active
+            {defaultView === "chats" ? "Chats" : "Active"}
           </button>
           <button
             data-testid="tab-archived"
@@ -173,14 +187,14 @@ export default function Matches() {
           </div>
         ) : (
           <div className="flex flex-col">
-            {tab === "active" && matchesData.length > 0 && (
+            {tab === "active" && newMatchBubbles.length > 0 && (
               <>
                 <div className="px-6 py-3 shrink-0">
                   <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">
-                    New Matches ({matchesData.length})
+                    New Matches ({newMatchBubbles.length})
                   </h3>
                   <div className="flex gap-3 overflow-x-auto pb-3 -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
-                    {matchesData.map((match) => (
+                    {newMatchBubbles.map((match) => (
                       <Link key={match.id} href={`/chat/${match.id}`}>
                         <div className="flex flex-col items-center gap-1.5 shrink-0 cursor-pointer" data-testid={`card-match-${match.id}`}>
                           <div className="w-16 h-20 rounded-2xl overflow-hidden relative shadow-md border-2 border-card ring-2 ring-blue-600">

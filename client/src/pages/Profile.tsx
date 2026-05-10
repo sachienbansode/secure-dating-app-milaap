@@ -70,6 +70,7 @@ export default function Profile() {
   const [intentWarning, setIntentWarning] = useState<string | null>(null);
   const [showComparePlans, setShowComparePlans] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showBlockedUsers, setShowBlockedUsers] = useState(false);
 
   const { data: session, isLoading: loadingSession } = useQuery({
     queryKey: ["/api/auth/me"],
@@ -676,7 +677,7 @@ export default function Profile() {
                   <Switch data-testid="switch-privacy-no-screenshot" checked={form.noScreenshotMode} onCheckedChange={(checked) => { if (hasFeature("no_screenshot_mode")) setForm((f) => ({ ...f, noScreenshotMode: checked })); }} disabled={!hasFeature("no_screenshot_mode")} />
                 </div>
                 <div className="pt-2 border-t border-orange-800">
-                  <div className="flex items-center justify-between cursor-pointer hover:bg-orange-900/10 rounded-lg p-2 -mx-2">
+                  <div className="flex items-center justify-between cursor-pointer hover:bg-orange-900/10 rounded-lg p-2 -mx-2" onClick={() => setShowBlockedUsers(true)}>
                     <div>
                       <h5 className="font-semibold text-sm flex items-center gap-1">
                         <Ban size={14} className="text-orange-400" /> Blocked Users
@@ -1383,11 +1384,78 @@ export default function Profile() {
         </div>
       )}
 
+      {/* Blocked Users Modal */}
+      {showBlockedUsers && (
+        <div className="fixed inset-0 z-50 flex flex-col" style={{ background: "rgba(0,0,0,0.6)" }}>
+          <div className="flex-1" onClick={() => setShowBlockedUsers(false)} />
+          <div className="bg-card rounded-t-3xl max-h-[70vh] flex flex-col" style={{ borderTop: "1px solid rgba(255,255,255,0.1)" }}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+              <h3 className="font-bold text-base flex items-center gap-2"><Ban size={16} className="text-orange-400" /> Blocked Users</h3>
+              <button onClick={() => setShowBlockedUsers(false)} className="p-1 rounded-full hover:bg-muted"><X size={18} /></button>
+            </div>
+            <BlockedUsersList />
+          </div>
+        </div>
+      )}
+
       <BottomNav />
     </div>
   );
 }
 
+function BlockedUsersList() {
+  const queryClient = useQueryClient();
+  const { data: blocked = [], isLoading } = useQuery<any[]>({
+    queryKey: ["/api/blocked-users"],
+    queryFn: async () => {
+      const res = await fetch("/api/blocked-users", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
+  const unblockMutation = useMutation({
+    mutationFn: async (blockedUserId: string) => {
+      const res = await apiRequest("POST", "/api/unblock-user", { blockedUserId });
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/blocked-users"] }),
+  });
+
+  if (isLoading) return <div className="p-8 text-center text-muted-foreground animate-pulse">Loading...</div>;
+  if (blocked.length === 0) return (
+    <div className="p-8 text-center">
+      <Ban size={32} className="text-muted-foreground mx-auto mb-3 opacity-30" />
+      <p className="text-muted-foreground text-sm">No blocked users</p>
+    </div>
+  );
+
+  return (
+    <div className="flex-1 overflow-y-auto divide-y divide-border">
+      {blocked.map((b: any) => (
+        <div key={b.id} className="flex items-center gap-3 px-5 py-4">
+          <img
+            src={b.blockedProfile?.photos?.[0] || `https://api.dicebear.com/7.x/avataaars/svg?seed=${b.blockedUserId}`}
+            alt={b.blockedProfile?.name || "Blocked"}
+            className="w-11 h-11 rounded-full object-cover border border-border"
+          />
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-sm truncate">{b.blockedProfile?.name || "Unknown User"}</p>
+            <p className="text-xs text-muted-foreground">{b.blockedProfile?.city || ""}</p>
+          </div>
+          <button
+            onClick={() => unblockMutation.mutate(b.blockedUserId)}
+            disabled={unblockMutation.isPending}
+            className="px-3 py-1.5 rounded-xl bg-orange-500/10 text-orange-400 text-xs font-bold hover:bg-orange-500/20 border border-orange-500/20 disabled:opacity-50"
+            data-testid={`button-unblock-${b.blockedUserId}`}
+          >
+            Unblock
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function PhotoVerifyCard() {
   const { data: auth } = useQuery<AuthResponse>({ queryKey: ["/api/auth/me"] });
@@ -1401,7 +1469,7 @@ function PhotoVerifyCard() {
   const handleVerify = async () => {
     setVerifying(true);
     try {
-      const res = await fetch("/api/photo-verify", { method: "POST", credentials: "include" });
+      const res = await fetch("/api/photo/verify", { method: "POST", credentials: "include" });
       if (res.ok) {
         const data = await res.json();
         setResult(data);

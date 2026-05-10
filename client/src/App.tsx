@@ -24,7 +24,7 @@ function Router() {
       <Route path="/" component={AuthPage} />
       <Route path="/home" component={Home} />
       <Route path="/matches" component={Matches} />
-      <Route path="/chat" component={Matches} />
+      <Route path="/chat" component={() => <Matches defaultView="chats" />} />
       <Route path="/chat/:id" component={Chat} />
       <Route path="/profile" component={Profile} />
       <Route path="/view-profile/:userId" component={ViewProfile} />
