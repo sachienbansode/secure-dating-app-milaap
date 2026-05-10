@@ -362,6 +362,17 @@ export default function Chat() {
     },
   });
 
+  const contactShareApproveMutation = useMutation({
+    mutationFn: async (requesterUserId: string) => {
+      const res = await apiRequest("POST", "/api/contact-share/approve", { matchId, requesterUserId });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/contact-share/${matchId}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/messages/${matchId}`] });
+    },
+  });
+
   const locationShareMutation = useMutation({
     mutationFn: async (data: { latitude: number; longitude: number; isLive: boolean }) => {
       const res = await apiRequest("POST", "/api/location-share", { matchId, ...data });
@@ -831,6 +842,11 @@ export default function Chat() {
           <div className="flex items-center gap-2 text-xs font-bold text-blue-300">
             <Share2 size={12} />
             Match's shared contact info
+            {contactShareStatus.theirShare?.expiresAt && (
+              <span className="text-amber-400/70 font-normal ml-auto">
+                ⏱ Visible for {Math.max(0, Math.ceil((new Date(contactShareStatus.theirShare.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))} day{Math.ceil((new Date(contactShareStatus.theirShare.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) !== 1 ? "s" : ""}
+              </span>
+            )}
           </div>
           {contactShareStatus.theirSharedData.phone && (
             <div className="flex items-center gap-2">
@@ -1009,6 +1025,8 @@ export default function Chat() {
                 const requesterUserId = contactShareRequestMatch[1];
                 const isRequester = requesterUserId === currentUserId;
                 const alreadyShared = !!contactShareStatus?.myShare;
+                const expiresAt = contactShareStatus?.myShare?.expiresAt;
+                const daysLeft = expiresAt ? Math.ceil((new Date(expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null;
                 return (
                   <div key={msg.id} className="flex justify-center my-4" data-testid={`message-contact-request-${msg.id}`}>
                     <div className="rounded-2xl p-4 max-w-[85%] text-center" style={{ background: "linear-gradient(135deg, rgba(59,130,246,0.15), rgba(99,102,241,0.1))", border: "1px solid rgba(59,130,246,0.3)" }}>
@@ -1016,21 +1034,36 @@ export default function Chat() {
                       <p className="text-blue-400 font-bold text-sm mb-1">
                         {isRequester ? "You requested contact sharing" : `${profile?.name || "Your match"} wants to share contacts`}
                       </p>
-                      <p className="text-gray-400 text-xs mb-3">Share phone/email to stay connected outside the app</p>
+                      <p className="text-gray-400 text-xs mb-3">Contacts will be visible for 3 days only after approval</p>
                       {!isRequester && !alreadyShared && (
                         <button
-                          onClick={() => setShowContactShare(true)}
-                          className="px-5 py-2 rounded-xl text-white text-xs font-bold"
-                          style={{ background: "linear-gradient(135deg, #3b82f6, #6366f1)" }}
+                          onClick={() => contactShareApproveMutation.mutate(requesterUserId)}
+                          disabled={contactShareApproveMutation.isPending}
+                          className="px-5 py-2 rounded-xl text-white text-xs font-bold disabled:opacity-60"
+                          style={{ background: "linear-gradient(135deg, #22c55e, #16a34a)" }}
                           data-testid="button-approve-contact-share"
                         >
-                          <Share2 size={12} className="inline mr-1" /> Share My Contact
+                          <Share2 size={12} className="inline mr-1" />
+                          {contactShareApproveMutation.isPending ? "Approving…" : "Approve & Exchange Contacts"}
                         </button>
                       )}
                       {!isRequester && alreadyShared && (
-                        <span className="text-xs text-green-400 font-medium bg-green-900/20 px-3 py-1.5 rounded-full">✓ You've already shared your contact</span>
+                        <div className="space-y-1">
+                          <span className="text-xs text-green-400 font-medium bg-green-900/20 px-3 py-1.5 rounded-full block">✓ Contacts exchanged successfully</span>
+                          {daysLeft !== null && daysLeft > 0 && (
+                            <span className="text-xs text-amber-400/70">⏱ Visible for {daysLeft} more day{daysLeft !== 1 ? "s" : ""}</span>
+                          )}
+                        </div>
                       )}
-                      {isRequester && <span className="text-xs text-gray-500">Waiting for their response...</span>}
+                      {isRequester && !alreadyShared && <span className="text-xs text-gray-500">Waiting for their response…</span>}
+                      {isRequester && alreadyShared && (
+                        <div className="space-y-1">
+                          <span className="text-xs text-green-400 block">✓ Contacts exchanged</span>
+                          {daysLeft !== null && daysLeft > 0 && (
+                            <span className="text-xs text-amber-400/70">⏱ Visible for {daysLeft} more day{daysLeft !== 1 ? "s" : ""}</span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 );

@@ -67,6 +67,8 @@ export default function AdminConsole() {
           </button>
         </div>
         <div className="flex-1 overflow-y-auto p-4">
+          {activeSection === "Analytics Dashboard" && <AnalyticsDashboard />}
+          {activeSection === "Active Duration" && <ActiveDurationViewer />}
           {activeSection === "User Lookup" && <UserLookup />}
           {activeSection === "All Profiles" && <AllProfilesViewer />}
           {activeSection === "Activity Logs" && <ActivityLogsViewer />}
@@ -135,6 +137,8 @@ export default function AdminConsole() {
       </div>
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {[
+          { id: "Analytics Dashboard", icon: BarChart3, color: "bg-blue-100 text-blue-600", desc: "New user onboarding, DAU, usage trends" },
+          { id: "Active Duration", icon: Clock, color: "bg-cyan-100 text-cyan-600", desc: "User daily active time (non-AI mode)" },
           { id: "User Lookup", icon: UserSearch, color: "bg-orange-100 text-orange-600", desc: "Search & inspect any user (legal compliance)" },
           { id: "All Profiles", icon: Users, color: "bg-indigo-100 text-indigo-600", desc: "View all registered profiles" },
           { id: "Activity Logs", icon: Activity, color: "bg-slate-100 text-slate-600", desc: "View all user activity logs" },
@@ -143,7 +147,7 @@ export default function AdminConsole() {
           { id: "Welcome Taglines", icon: MessageSquareQuote, color: "bg-red-100 text-red-600", desc: "Manage login welcome messages" },
           { id: "Membership Plans", icon: Crown, color: "bg-amber-100 text-amber-600", desc: "Manage membership tiers & pricing" },
           { id: "Ad Settings", icon: Megaphone, color: "bg-green-100 text-green-600", desc: "Configure Google Ads settings" },
-          { id: "Bot Mode Settings", icon: Bot, color: "bg-purple-100 text-purple-600", desc: "Configure bot mode auto-offline" },
+          { id: "Bot Mode Settings", icon: Bot, color: "bg-purple-100 text-purple-600", desc: "Configure bot mode auto-offline & proxy pause" },
           { id: "Membership Revenue", icon: DollarSign, color: "bg-emerald-100 text-emerald-600", desc: "View revenue & transactions" },
           { id: "App Logo", icon: Image, color: "bg-pink-100 text-pink-600", desc: "Choose between logo styles" },
           { id: "Seed Profiles", icon: Users, color: "bg-teal-100 text-teal-600", desc: "View test/seed profiles with phone numbers" },
@@ -1721,31 +1725,42 @@ function AdSettingsEditor() {
 
 function BotModeSettings() {
   const [maxHours, setMaxHours] = useState(12);
+  const [minPauseMinutes, setMinPauseMinutes] = useState(60);
+  const [pauseDurationMinutes, setPauseDurationMinutes] = useState(120);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    fetch("/api/admin/bot-mode-settings", { credentials: "include" })
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.maxHours !== undefined) setMaxHours(data.maxHours);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+    Promise.all([
+      fetch("/api/admin/bot-mode-settings", { credentials: "include" }).then(r => r.json()),
+      fetch("/api/admin/bot-mode/proxy-pause-settings", { credentials: "include" }).then(r => r.json()),
+    ]).then(([botData, pauseData]) => {
+      if (botData.maxHours !== undefined) setMaxHours(botData.maxHours);
+      if (pauseData.minPauseMinutes !== undefined) setMinPauseMinutes(pauseData.minPauseMinutes);
+      if (pauseData.pauseDurationMinutes !== undefined) setPauseDurationMinutes(pauseData.pauseDurationMinutes);
+      setLoading(false);
+    }).catch(() => setLoading(false));
   }, []);
 
   const handleSave = async () => {
     setSaving(true);
     setSaved(false);
     try {
-      const res = await fetch("/api/admin/bot-mode-settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ maxHours }),
-      });
-      if (!res.ok) throw new Error("Failed to save");
+      await Promise.all([
+        fetch("/api/admin/bot-mode-settings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ maxHours }),
+        }),
+        fetch("/api/admin/bot-mode/proxy-pause-settings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ minPauseMinutes, pauseDurationMinutes }),
+        }),
+      ]);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (err) {
@@ -1755,53 +1770,188 @@ function BotModeSettings() {
     }
   };
 
-  if (loading)
-    return (
-      <div className="text-center py-8 text-slate-400">Loading...</div>
-    );
+  if (loading) return <div className="text-center py-8 text-slate-400">Loading...</div>;
 
   return (
     <div className="space-y-4">
       <div className="bg-purple-50 rounded-2xl p-4 border border-purple-200">
         <div className="flex items-center gap-2 mb-3">
           <Bot size={16} className="text-purple-600" />
-          <h4 className="font-bold text-sm text-purple-800">
-            Bot Mode Auto-Offline
-          </h4>
+          <h4 className="font-bold text-sm text-purple-800">Bot Mode Auto-Offline</h4>
         </div>
         <p className="text-xs text-purple-700 mb-4">
-          Users in bot mode will automatically go offline after this many hours
-          of inactivity. This prevents bot profiles from appearing online
-          indefinitely and ensures a more authentic experience for other users.
+          Users in bot mode will automatically go offline after this many hours of inactivity.
         </p>
-
         <div className="bg-white rounded-xl px-4 py-3 border border-purple-100">
-          <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">
-            Max Hours Before Auto-Offline
-          </label>
-          <Input
-            type="number"
-            value={maxHours}
-            onChange={(e) => setMaxHours(Number(e.target.value))}
-            min={1}
-            max={168}
-            className="h-10 rounded-xl text-sm"
-            data-testid="input-bot-max-hours"
-          />
-          <p className="text-[10px] text-slate-400 mt-1">
-            Default: 12 hours. Range: 1-168 hours (1 week).
-          </p>
+          <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Max Hours Before Auto-Offline</label>
+          <Input type="number" value={maxHours} onChange={(e) => setMaxHours(Number(e.target.value))} min={1} max={168} className="h-10 rounded-xl text-sm" data-testid="input-bot-max-hours" />
+          <p className="text-[10px] text-slate-400 mt-1">Default: 12 hours. Range: 1-168 hours.</p>
         </div>
       </div>
 
-      <Button
-        onClick={handleSave}
-        disabled={saving}
-        className="w-full h-12 rounded-2xl font-bold bg-purple-600 hover:bg-purple-700 text-white"
-        data-testid="button-save-bot-settings"
-      >
+      <div className="bg-indigo-50 rounded-2xl p-4 border border-indigo-200">
+        <div className="flex items-center gap-2 mb-3">
+          <Clock size={16} className="text-indigo-600" />
+          <h4 className="font-bold text-sm text-indigo-800">AI Proxy Silence Mode</h4>
+        </div>
+        <p className="text-xs text-indigo-700 mb-4">
+          After a minimum conversation age, the AI proxy will randomly pause for a period. The proxy resumes when the other user sends a manual reply. This makes interactions feel more real.
+        </p>
+        <div className="space-y-3">
+          <div className="bg-white rounded-xl px-4 py-3 border border-indigo-100">
+            <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Min Conversation Age Before Pause (minutes)</label>
+            <Input type="number" value={minPauseMinutes} onChange={(e) => setMinPauseMinutes(Number(e.target.value))} min={30} max={1440} className="h-10 rounded-xl text-sm" data-testid="input-proxy-min-pause" />
+            <p className="text-[10px] text-slate-400 mt-1">Default: 60 min. Proxy won't pause before this age.</p>
+          </div>
+          <div className="bg-white rounded-xl px-4 py-3 border border-indigo-100">
+            <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Pause Duration (minutes)</label>
+            <Input type="number" value={pauseDurationMinutes} onChange={(e) => setPauseDurationMinutes(Number(e.target.value))} min={30} max={480} className="h-10 rounded-xl text-sm" data-testid="input-proxy-pause-duration" />
+            <p className="text-[10px] text-slate-400 mt-1">Default: 120 min (~2 hrs). Actual pause = this + random 0-30 min.</p>
+          </div>
+        </div>
+      </div>
+
+      <Button onClick={handleSave} disabled={saving} className="w-full h-12 rounded-2xl font-bold bg-purple-600 hover:bg-purple-700 text-white" data-testid="button-save-bot-settings">
         {saving ? "Saving..." : saved ? "Saved!" : "Save Bot Mode Settings"}
       </Button>
+    </div>
+  );
+}
+
+function AnalyticsDashboard() {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/admin/analytics", { credentials: "include" })
+      .then(r => r.json())
+      .then(d => { setData(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="text-center py-12 text-slate-400">Loading analytics...</div>;
+  if (!data) return <div className="text-center py-12 text-red-400">Failed to load analytics.</div>;
+
+  const maxNewUsers = Math.max(...(data.newUsersByDay || []).map((d: any) => d.count), 1);
+  const maxMsgs = Math.max(...(data.messagesByDay || []).map((d: any) => d.count), 1);
+  const maxDau = Math.max(...(data.dauByDay || []).map((d: any) => d.count), 1);
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3">
+        {[
+          { label: "Total Users", value: data.totals?.users ?? 0, color: "bg-blue-600" },
+          { label: "Active Today", value: data.totals?.activeToday ?? 0, color: "bg-green-600" },
+          { label: "Active This Week", value: data.totals?.activeWeek ?? 0, color: "bg-indigo-600" },
+          { label: "Total Matches", value: data.totals?.matches ?? 0, color: "bg-pink-600" },
+          { label: "Total Messages", value: data.totals?.messages ?? 0, color: "bg-amber-600" },
+        ].map(stat => (
+          <div key={stat.label} className={`${stat.color} rounded-2xl p-4 text-white`}>
+            <p className="text-2xl font-bold">{stat.value.toLocaleString()}</p>
+            <p className="text-xs opacity-80 mt-1">{stat.label}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="bg-white rounded-2xl p-4 border border-slate-100">
+        <h4 className="font-bold text-sm text-slate-700 mb-3">New Users (Last 30 Days)</h4>
+        <div className="flex items-end gap-1 h-24">
+          {(data.newUsersByDay || []).slice(-30).map((d: any, i: number) => (
+            <div key={i} className="flex-1 flex flex-col items-center gap-0.5" title={`${d.day}: ${d.count}`}>
+              <div className="w-full bg-blue-500 rounded-sm" style={{ height: `${Math.round((d.count / maxNewUsers) * 80)}px`, minHeight: d.count > 0 ? "2px" : "0" }} />
+            </div>
+          ))}
+        </div>
+        <p className="text-[10px] text-slate-400 mt-2">Each bar = 1 day. Hover for count.</p>
+      </div>
+
+      <div className="bg-white rounded-2xl p-4 border border-slate-100">
+        <h4 className="font-bold text-sm text-slate-700 mb-3">Daily Active Users (DAU, Last 30 Days)</h4>
+        <div className="flex items-end gap-1 h-24">
+          {(data.dauByDay || []).slice(-30).map((d: any, i: number) => (
+            <div key={i} className="flex-1 flex flex-col items-center gap-0.5" title={`${d.day}: ${d.count}`}>
+              <div className="w-full bg-green-500 rounded-sm" style={{ height: `${Math.round((d.count / maxDau) * 80)}px`, minHeight: d.count > 0 ? "2px" : "0" }} />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl p-4 border border-slate-100">
+        <h4 className="font-bold text-sm text-slate-700 mb-3">Messages Sent (Last 30 Days)</h4>
+        <div className="flex items-end gap-1 h-24">
+          {(data.messagesByDay || []).slice(-30).map((d: any, i: number) => (
+            <div key={i} className="flex-1 flex flex-col items-center gap-0.5" title={`${d.day}: ${d.count}`}>
+              <div className="w-full bg-amber-500 rounded-sm" style={{ height: `${Math.round((d.count / maxMsgs) * 80)}px`, minHeight: d.count > 0 ? "2px" : "0" }} />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl p-4 border border-slate-100">
+        <h4 className="font-bold text-sm text-slate-700 mb-3">Membership Breakdown</h4>
+        <div className="space-y-2">
+          {(data.membershipBreakdown || []).map((m: any) => (
+            <div key={m.tier} className="flex items-center gap-2">
+              <span className="text-xs font-medium text-slate-600 w-16 capitalize">{m.tier}</span>
+              <div className="flex-1 bg-slate-100 rounded-full h-2">
+                <div className="bg-indigo-500 h-2 rounded-full" style={{ width: `${Math.round((m.count / (data.totals?.users || 1)) * 100)}%` }} />
+              </div>
+              <span className="text-xs text-slate-500 w-8 text-right">{m.count}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ActiveDurationViewer() {
+  const [users, setUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/admin/active-duration", { credentials: "include" })
+      .then(r => r.json())
+      .then(d => { setUsers(d.users || []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+
+  const downloadCSV = () => {
+    window.open("/api/admin/active-duration?format=csv", "_blank");
+  };
+
+  if (loading) return <div className="text-center py-12 text-slate-400">Loading...</div>;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-slate-600">Daily active time (non-AI mode) per user</p>
+        <Button onClick={downloadCSV} className="h-9 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-4">
+          <Download size={14} className="mr-1" /> Export CSV
+        </Button>
+      </div>
+      <div className="bg-white rounded-2xl border border-slate-100 divide-y divide-slate-50 overflow-hidden">
+        <div className="grid grid-cols-3 px-4 py-2 bg-slate-50">
+          <span className="text-[10px] font-bold text-slate-500 uppercase">User</span>
+          <span className="text-[10px] font-bold text-slate-500 uppercase text-center">Today (min)</span>
+          <span className="text-[10px] font-bold text-slate-500 uppercase text-right">Last Seen</span>
+        </div>
+        {users.slice(0, 50).map((u) => (
+          <div key={u.userId} className="grid grid-cols-3 px-4 py-3 items-center">
+            <div>
+              <p className="text-xs font-semibold text-slate-800 truncate">{u.name || "—"}</p>
+              <p className="text-[10px] text-slate-400">{u.phone || "—"}</p>
+            </div>
+            <div className="text-center">
+              <span className={`text-sm font-bold ${u.dailyActiveMinutes > 10 ? "text-green-600" : "text-slate-400"}`}>{u.dailyActiveMinutes || 0}</span>
+            </div>
+            <div className="text-right">
+              <span className="text-[10px] text-slate-400">{u.lastSeenAt ? new Date(u.lastSeenAt).toLocaleDateString("en-IN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "Never"}</span>
+            </div>
+          </div>
+        ))}
+        {users.length === 0 && <div className="text-center py-8 text-slate-400 text-sm">No active duration data yet</div>}
+      </div>
     </div>
   );
 }

@@ -697,29 +697,121 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(userSessions.createdAt));
   }
 
-  async upsertContactShare(data: InsertContactShare): Promise<ContactShare> {
+  async upsertContactShare(data: InsertContactShare & { expiresAt?: Date }): Promise<ContactShare> {
+    const expiresAt = data.expiresAt || new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
     const existing = await this.getContactShare(data.matchId, data.sharerUserId);
     if (existing) {
       const [updated] = await db.update(contactShares)
-        .set({ sharePhone: data.sharePhone, shareEmail: data.shareEmail, updatedAt: new Date() })
+        .set({ sharePhone: data.sharePhone, shareEmail: data.shareEmail, expiresAt, updatedAt: new Date() })
         .where(eq(contactShares.id, existing.id))
         .returning();
       return updated;
     }
-    const [created] = await db.insert(contactShares).values(data).returning();
+    const [created] = await db.insert(contactShares).values({ ...data, expiresAt }).returning();
     return created;
   }
 
   async getContactShare(matchId: string, sharerUserId: string): Promise<ContactShare | undefined> {
     const allMatchIds = await this.getBothMatchIds(matchId);
+    const now = new Date();
     const [share] = await db.select().from(contactShares)
-      .where(and(inArray(contactShares.matchId, allMatchIds), eq(contactShares.sharerUserId, sharerUserId)));
+      .where(and(
+        inArray(contactShares.matchId, allMatchIds),
+        eq(contactShares.sharerUserId, sharerUserId),
+        or(sql`${contactShares.expiresAt} IS NULL`, gt(contactShares.expiresAt, now))
+      ));
     return share;
   }
 
   async getContactSharesForMatch(matchId: string): Promise<ContactShare[]> {
     const allMatchIds = await this.getBothMatchIds(matchId);
-    return db.select().from(contactShares).where(inArray(contactShares.matchId, allMatchIds));
+    const now = new Date();
+    return db.select().from(contactShares).where(
+      and(
+        inArray(contactShares.matchId, allMatchIds),
+        or(sql`${contactShares.expiresAt} IS NULL`, gt(contactShares.expiresAt, now))
+      )
+    );
+  }
+
+  async getAnalyticsDashboard(): Promise<any> {
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const [totalUsersRow] = await db.execute(sql`SELECT count(*)::int AS cnt FROM users`);
+    const [activeToday] = await db.execute(sql`SELECT count(*)::int AS cnt FROM users WHERE last_seen_at >= ${todayStart}`);
+    const [activeWeek] = await db.execute(sql`SELECT count(*)::int AS cnt FROM users WHERE last_seen_at >= ${sevenDaysAgo}`);
+    const [totalMessages] = await db.execute(sql`SELECT count(*)::int AS cnt FROM messages WHERE is_system_message = false`);
+    const [totalMatches] = await db.execute(sql`SELECT count(*)::int AS cnt FROM matches WHERE is_matched = true`);
+
+    const newUsersByDay = await db.execute(sql`
+      SELECT date_trunc('day', created_at)::date AS day, count(*)::int AS cnt
+      FROM users
+      WHERE created_at >= ${thirtyDaysAgo}
+      GROUP BY 1 ORDER BY 1
+    `);
+
+    const messagesByDay = await db.execute(sql`
+      SELECT date_trunc('day', created_at)::date AS day, count(*)::int AS cnt
+      FROM messages
+      WHERE created_at >= ${thirtyDaysAgo} AND is_system_message = false
+      GROUP BY 1 ORDER BY 1
+    `);
+
+    const dauByDay = await db.execute(sql`
+      SELECT date_trunc('day', last_seen_at)::date AS day, count(distinct id)::int AS cnt
+      FROM users
+      WHERE last_seen_at >= ${thirtyDaysAgo}
+      GROUP BY 1 ORDER BY 1
+    `);
+
+    const membershipBreakdown = await db.execute(sql`
+      SELECT membership_tier, count(*)::int AS cnt FROM users GROUP BY 1 ORDER BY 2 DESC
+    `);
+
+    return {
+      totals: {
+        users: (totalUsersRow as any).cnt,
+        activeToday: (activeToday as any).cnt,
+        activeWeek: (activeWeek as any).cnt,
+        messages: (totalMessages as any).cnt,
+        matches: (totalMatches as any).cnt,
+      },
+      newUsersByDay: (newUsersByDay as any[]).map((r: any) => ({ day: r.day, count: r.cnt })),
+      messagesByDay: (messagesByDay as any[]).map((r: any) => ({ day: r.day, count: r.cnt })),
+      dauByDay: (dauByDay as any[]).map((r: any) => ({ day: r.day, count: r.cnt })),
+      membershipBreakdown: (membershipBreakdown as any[]).map((r: any) => ({ tier: r.membership_tier, count: r.cnt })),
+    };
+  }
+
+  async getAllUsersActiveDuration(): Promise<{ userId: string; name: string; phone: string; totalActiveMinutes: number; dailyActiveMinutes: number; dailyActiveDate: string | null; lastSeenAt: Date | null }[]> {
+    const rows = await db.execute(sql`
+      SELECT u.id, u.phone, u.last_seen_at, u.daily_active_minutes, u.daily_active_date,
+             p.name
+      FROM users u
+      LEFT JOIN profiles p ON p.user_id = u.id
+      ORDER BY u.daily_active_minutes DESC NULLS LAST
+    `);
+    return (rows as any[]).map((r: any) => ({
+      userId: r.id,
+      name: r.name || "",
+      phone: r.phone || "",
+      totalActiveMinutes: r.daily_active_minutes || 0,
+      dailyActiveMinutes: r.daily_active_minutes || 0,
+      dailyActiveDate: r.daily_active_date || null,
+      lastSeenAt: r.last_seen_at || null,
+    }));
+  }
+
+  async getMatchByIdForUpdate(matchId: string): Promise<Match | undefined> {
+    const [match] = await db.select().from(matches).where(eq(matches.id, matchId));
+    return match;
+  }
+
+  async updateMatch(matchId: string, data: Partial<Match>): Promise<void> {
+    await db.update(matches).set(data).where(eq(matches.id, matchId));
   }
 
   async createLocationShare(data: InsertLocationShare): Promise<LocationShare> {

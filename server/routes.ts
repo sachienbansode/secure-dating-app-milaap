@@ -431,7 +431,24 @@ export async function registerRoutes(
   });
 
   app.post("/api/auth/heartbeat", requireAuth, async (req: Request, res: Response) => {
-    await storage.setUserOnlineStatus(req.session.userId!, true);
+    const userId = req.session.userId!;
+    await storage.setUserOnlineStatus(userId, true);
+
+    const user = await storage.getUser(userId);
+    const profile = await storage.getProfile(userId);
+    const isBotProfile = user && !user.email;
+    const isInAiProxy = profile?.aiProxyEnabled;
+
+    if (!isBotProfile && !isInAiProxy) {
+      const today = new Date().toISOString().slice(0, 10);
+      if (user?.dailyActiveDate !== today) {
+        await storage.updateUser(userId, { dailyActiveMinutes: 1, dailyActiveDate: today });
+      } else {
+        const current = user?.dailyActiveMinutes || 0;
+        await storage.updateUser(userId, { dailyActiveMinutes: current + 1 });
+      }
+    }
+
     return res.json({ ok: true });
   });
 
@@ -1149,45 +1166,88 @@ export async function registerRoutes(
         const isBotProfile = recipientUser && !recipientUser.email;
         const shouldProxy = recipientProfile?.aiProxyEnabled && (hasNoActiveSession || isBotProfile);
         console.log(`[AI Proxy Check] recipient=${recipientUserId}, aiProxyEnabled=${recipientProfile?.aiProxyEnabled}, isOnline=${recipientUser?.isOnline}, isBot=${isBotProfile}, shouldProxy=${shouldProxy}`);
+
         if (shouldProxy) {
-          const initialPause = Math.floor(Math.random() * 3000) + 2000;
-          setTimeout(async () => {
-            try {
-              console.log(`[AI Proxy] Generating reply for ${recipientProfile?.name} in match ${parsed.data.matchId}`);
-              const result = await generateBotProxyReply(recipientUserId, parsed.data.matchId, true);
-              if (result && result.text) {
-                const replyText = result.text;
-                const wordCount = replyText.split(/\s+/).length;
-                const typingDuration = wordCount <= 5 ? Math.floor(Math.random() * 1500) + 1000
-                  : wordCount <= 10 ? Math.floor(Math.random() * 2000) + 2000
-                  : Math.floor(Math.random() * 3000) + 3000;
-                typingStatus.set(parsed.data.matchId + ":" + recipientUserId, {
-                  userId: recipientUserId,
-                  name: recipientProfile?.name || "Someone",
-                  expiresAt: Date.now() + typingDuration + 1000,
-                });
-                setTimeout(async () => {
-                  try {
-                    await storage.sendMessage({
-                      matchId: parsed.data.matchId,
-                      senderId: recipientUserId,
-                      content: replyText,
-                      isAiGenerated: true,
-                      isAiProxy: true,
-                    });
-                    typingStatus.delete(parsed.data.matchId + ":" + recipientUserId);
-                    console.log(`[AI Proxy] Reply delivered (${wordCount} words, ${typingDuration}ms typing)`);
-                  } catch (saveErr) {
-                    console.error("[AI Proxy] Save error:", saveErr);
-                    typingStatus.delete(parsed.data.matchId + ":" + recipientUserId);
-                  }
-                }, typingDuration);
-              }
-            } catch (err) {
-              console.error("[AI Proxy] Auto bot-reply error:", err);
-              typingStatus.delete(parsed.data.matchId + ":" + recipientUserId);
+          const currentMatch = await storage.getMatchByIdForUpdate(parsed.data.matchId);
+          const proxyPaused = currentMatch?.proxyPausedForUserId === recipientUserId
+            && currentMatch?.proxyPauseUntil
+            && new Date(currentMatch.proxyPauseUntil) > new Date();
+
+          if (proxyPaused) {
+            console.log(`[AI Proxy] Proxy paused for ${recipientUserId} until ${currentMatch!.proxyPauseUntil}. Sender sent manual message - clearing pause.`);
+            const senderIsHuman = !parsed.data.isAiProxy && !parsed.data.isAiGenerated;
+            if (senderIsHuman) {
+              await storage.updateMatch(parsed.data.matchId, { proxyPausedForUserId: null as any, proxyPauseUntil: null as any, proxyPauseStartedAt: null as any });
             }
-          }, initialPause);
+          } else {
+            const minPauseStr = await storage.getAppSetting("proxy_min_pause_minutes");
+            const pauseDurStr = await storage.getAppSetting("proxy_pause_duration_minutes");
+            const minPauseMin = minPauseStr ? parseInt(minPauseStr) : 60;
+            const pauseDurMin = pauseDurStr ? parseInt(pauseDurStr) : 120;
+
+            const recentMsgs = await storage.getMessages(parsed.data.matchId, 50);
+            const firstMsg = recentMsgs[recentMsgs.length - 1];
+            const conversationAgeMin = firstMsg ? (Date.now() - new Date(firstMsg.createdAt!).getTime()) / 60000 : 0;
+
+            const shouldPause = conversationAgeMin > minPauseMin && Math.random() < 0.04;
+            if (shouldPause) {
+              const extraMin = Math.floor(Math.random() * 30);
+              const pauseUntil = new Date(Date.now() + (pauseDurMin + extraMin) * 60 * 1000);
+              await storage.updateMatch(parsed.data.matchId, {
+                proxyPausedForUserId: recipientUserId,
+                proxyPauseUntil: pauseUntil,
+                proxyPauseStartedAt: new Date(),
+              });
+              console.log(`[AI Proxy] Proxy paused for ${recipientUserId} until ${pauseUntil.toISOString()}`);
+            } else {
+              const msgIdForBatch = message.id;
+              const initialPause = Math.floor(Math.random() * 3000) + 2000;
+              setTimeout(async () => {
+                try {
+                  const latestMsgs = await storage.getMessages(parsed.data.matchId, 5);
+                  const newerSenderMsgs = latestMsgs.filter(m => m.senderId === userId && m.id !== msgIdForBatch);
+                  if (newerSenderMsgs.length > 0) {
+                    console.log(`[AI Proxy] Skipping reply - newer messages detected, will reply to batch`);
+                    return;
+                  }
+
+                  console.log(`[AI Proxy] Generating reply for ${recipientProfile?.name} in match ${parsed.data.matchId}`);
+                  const result = await generateBotProxyReply(recipientUserId, parsed.data.matchId, true);
+                  if (result && result.text) {
+                    const replyText = result.text;
+                    const wordCount = replyText.split(/\s+/).length;
+                    const typingDuration = wordCount <= 5 ? Math.floor(Math.random() * 1500) + 1000
+                      : wordCount <= 10 ? Math.floor(Math.random() * 2000) + 2000
+                      : Math.floor(Math.random() * 3000) + 3000;
+                    typingStatus.set(parsed.data.matchId + ":" + recipientUserId, {
+                      userId: recipientUserId,
+                      name: recipientProfile?.name || "Someone",
+                      expiresAt: Date.now() + typingDuration + 1000,
+                    });
+                    setTimeout(async () => {
+                      try {
+                        await storage.sendMessage({
+                          matchId: parsed.data.matchId,
+                          senderId: recipientUserId,
+                          content: replyText,
+                          isAiGenerated: true,
+                          isAiProxy: true,
+                        });
+                        typingStatus.delete(parsed.data.matchId + ":" + recipientUserId);
+                        console.log(`[AI Proxy] Reply delivered (${wordCount} words, ${typingDuration}ms typing)`);
+                      } catch (saveErr) {
+                        console.error("[AI Proxy] Save error:", saveErr);
+                        typingStatus.delete(parsed.data.matchId + ":" + recipientUserId);
+                      }
+                    }, typingDuration);
+                  }
+                } catch (err) {
+                  console.error("[AI Proxy] Auto bot-reply error:", err);
+                  typingStatus.delete(parsed.data.matchId + ":" + recipientUserId);
+                }
+              }, initialPause);
+            }
+          }
         }
       }
 
@@ -1778,6 +1838,29 @@ ${commonInterests.length > 0 ? `- You both share these interests: ${commonIntere
         ? "They've shared their contact with you. Be appreciative and consider sharing yours too."
         : "";
 
+    const pendingUserMsgs = recentMessages.filter(m => m.senderId === otherUserId);
+    const lastProxyMsg = [...recentMessages].reverse().find(m => m.senderId === proxyUserId);
+    const pendingSinceLast = lastProxyMsg
+      ? pendingUserMsgs.filter(m => new Date(m.createdAt!) > new Date(lastProxyMsg.createdAt!))
+      : pendingUserMsgs;
+    const pendingCount = pendingSinceLast.length;
+    const batchInstruction = pendingCount > 1
+      ? `IMPORTANT: The other person sent ${pendingCount} messages since your last reply. Read ALL of them and reply in ONE single message that addresses all of them naturally. Do not ignore any of their points.`
+      : "";
+
+    const meetReadyInstruction = dateReadiness === "Meet-ready"
+      ? `MEET-READY MODE: You are actively looking to meet in person. Be proactive about suggesting meetups in ${myProfile.city}. Recommend specific local spots (cafes, parks, malls), suggest a day/time, and be enthusiastic. Say things like "We should just meet for coffee yaar, enough chatting!" or "I know this great chai place in ${myProfile.city}, let's go this weekend?"`
+      : "";
+
+    const confusedReplies = ["Sorry what?", "Hmm didn't catch that", "Say again?", "Wait what did you say", "Sorry missed that", "Huh?", "Can you repeat?"];
+    const isConfusedReply = Math.random() < 0.05;
+    if (isConfusedReply) {
+      const confused = confusedReplies[Math.floor(Math.random() * confusedReplies.length)];
+      if (textOnly) return { text: confused };
+      const confusedMsg = await storage.sendMessage({ matchId, senderId: proxyUserId, content: confused, isAiGenerated: true, isAiProxy: true });
+      return confusedMsg;
+    }
+
     const systemPrompt = `You are ${myProfile.name} on Milaap, an Indian dating app. You're chatting with ${otherProfile?.name || "your match"}. You must be indistinguishable from a real person - charming, witty, and genuinely interested.
 
 PERSONALITY & STYLE:
@@ -1785,6 +1868,7 @@ PERSONALITY & STYLE:
 - Chat pace: ${pace === "Fast" ? "Reply quickly, keep energy high, use shorter punchy messages" : pace === "Slow" ? "Be thoughtful, take time with responses, occasionally say 'hmm let me think'" : "Natural conversational flow"}
 ${boundaries.length > 0 ? `- NEVER discuss: ${boundaries.join(", ")}` : ""}
 ${myProfile.familyMode ? "- FAMILY MODE ON: Keep everything wholesome and respectful" : ""}
+${meetReadyInstruction}
 
 YOUR PROFILE:
 - Name: ${myProfile.name} | Age: ${myProfile.age} | City: ${myProfile.city}
@@ -1800,6 +1884,7 @@ ${stageGuidance[conversationStage] || stageGuidance.opening}
 
 PHONE/CONTACT STATUS: ${phoneGuidance}
 ${contactGuidance}
+${batchInstruction}
 
 CONVERSATION TECHNIQUES - USE THESE:
 1. Callback humor: Reference something they said earlier in a funny way
@@ -2714,6 +2799,51 @@ By continuing to use Milaap, you acknowledge that you have read, understood, and
     }
   });
 
+  app.post("/api/contact-share/approve", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const { matchId, requesterUserId } = req.body;
+      if (!matchId || !requesterUserId) return res.status(400).json({ message: "matchId and requesterUserId are required" });
+
+      const match = await storage.getMatchById(matchId);
+      if (!match || !match.isMatched) return res.status(403).json({ message: "Invalid match" });
+
+      const allMatchIds = await storage.getBothMatchIds(matchId);
+      const canonicalMatchId = allMatchIds[0];
+      const expiresAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+
+      await storage.upsertContactShare({
+        matchId: canonicalMatchId,
+        sharerUserId: userId,
+        targetUserId: requesterUserId,
+        sharePhone: true,
+        shareEmail: false,
+        expiresAt,
+      });
+
+      await storage.upsertContactShare({
+        matchId: canonicalMatchId,
+        sharerUserId: requesterUserId,
+        targetUserId: userId,
+        sharePhone: true,
+        shareEmail: false,
+        expiresAt,
+      });
+
+      await storage.sendMessage({
+        matchId,
+        senderId: userId,
+        content: `✅ Contact exchange approved! Both contacts are now visible for 3 days.`,
+        isSystemMessage: true,
+      });
+
+      await logActivity(userId, "contact_share_approved", "privacy", { matchId, requesterUserId }, req);
+      return res.json({ success: true, expiresAt });
+    } catch (err: any) {
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
+    }
+  });
+
   app.post("/api/contact-share/request", requireAuth, async (req: Request, res: Response) => {
     try {
       const userId = req.session.userId!;
@@ -2794,8 +2924,8 @@ By continuing to use Milaap, you acknowledge that you have read, understood, and
       }
 
       return res.json({
-        myShare: myShare ? { sharePhone: myShare.sharePhone, shareEmail: myShare.shareEmail } : null,
-        theirShare: theirShare ? { sharePhone: theirShare.sharePhone, shareEmail: theirShare.shareEmail } : null,
+        myShare: myShare ? { sharePhone: myShare.sharePhone, shareEmail: myShare.shareEmail, expiresAt: myShare.expiresAt } : null,
+        theirShare: theirShare ? { sharePhone: theirShare.sharePhone, shareEmail: theirShare.shareEmail, expiresAt: theirShare.expiresAt } : null,
         theirSharedData,
       });
     } catch (err: any) {
@@ -3517,6 +3647,59 @@ By continuing to use Milaap, you acknowledge that you have read, understood, and
       }
       await logActivity(req.session.adminUserId!, "bot_mode_settings_updated", "admin", { maxHours }, req);
       return res.json({ success: true });
+    } catch (err: any) {
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
+    }
+  });
+
+  app.get("/api/admin/analytics", requireAdmin, async (_req: Request, res: Response) => {
+    try {
+      const data = await storage.getAnalyticsDashboard();
+      return res.json(data);
+    } catch (err: any) {
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
+    }
+  });
+
+  app.get("/api/admin/active-duration", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const data = await storage.getAllUsersActiveDuration();
+      const format = req.query.format;
+      if (format === "csv") {
+        const header = "User ID,Name,Phone,Daily Active Minutes,Date,Last Seen\n";
+        const rows = data.map(r =>
+          `${r.userId},"${r.name}","${r.phone}",${r.dailyActiveMinutes},"${r.dailyActiveDate || ""}","${r.lastSeenAt ? new Date(r.lastSeenAt).toISOString() : ""}"`
+        ).join("\n");
+        res.setHeader("Content-Type", "text/csv");
+        res.setHeader("Content-Disposition", "attachment; filename=active-duration.csv");
+        return res.send(header + rows);
+      }
+      return res.json({ users: data });
+    } catch (err: any) {
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
+    }
+  });
+
+  app.post("/api/admin/bot-mode/proxy-pause-settings", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const { minPauseMinutes, pauseDurationMinutes } = req.body;
+      if (minPauseMinutes !== undefined) await storage.setAppSetting("proxy_min_pause_minutes", String(minPauseMinutes));
+      if (pauseDurationMinutes !== undefined) await storage.setAppSetting("proxy_pause_duration_minutes", String(pauseDurationMinutes));
+      await logActivity(req.session.adminUserId!, "proxy_pause_settings_updated", "admin", { minPauseMinutes, pauseDurationMinutes }, req);
+      return res.json({ success: true });
+    } catch (err: any) {
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
+    }
+  });
+
+  app.get("/api/admin/bot-mode/proxy-pause-settings", requireAdmin, async (_req: Request, res: Response) => {
+    try {
+      const minPause = await storage.getAppSetting("proxy_min_pause_minutes");
+      const pauseDur = await storage.getAppSetting("proxy_pause_duration_minutes");
+      return res.json({
+        minPauseMinutes: minPause ? parseInt(minPause) : 60,
+        pauseDurationMinutes: pauseDur ? parseInt(pauseDur) : 120,
+      });
     } catch (err: any) {
       console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }

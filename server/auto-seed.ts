@@ -8,36 +8,39 @@ const femaleNames = ["Priya", "Ananya", "Diya", "Kiara", "Sneha"];
 const transNames = ["Kiran", "Noor", "Shakti", "Alex", "Jordan"];
 const coupleNames = ["Aarav & Priya", "Rohan & Sneha", "Vikram & Anjali", "Arjun & Diya", "Kabir & Meera"];
 
+const DICEBEAR = (style: string, seed: string, bg: string) =>
+  `https://api.dicebear.com/7.x/${style}/svg?seed=${encodeURIComponent(seed)}&backgroundColor=${bg}&scale=90`;
+
 const malePhotos = [
-  "/profiles/indian_male_seed_1.png",
-  "/profiles/indian_male_seed_2.png",
-  "/profiles/indian_male_seed_3.png",
-  "/profiles/indian_male_seed_4.png",
-  "/profiles/indian_male_seed_5.png",
+  DICEBEAR("avataaars", "AaravMumbai", "b6e3f4"),
+  DICEBEAR("avataaars", "VihaanPune", "b6e3f4"),
+  DICEBEAR("avataaars", "AdityaBangalore", "b6e3f4"),
+  DICEBEAR("avataaars", "ArjunDelhi", "b6e3f4"),
+  DICEBEAR("avataaars", "RohanHyderabad", "b6e3f4"),
 ];
 
 const femalePhotos = [
-  "/profiles/indian_female_seed_1.png",
-  "/profiles/indian_female_seed_2.png",
-  "/profiles/indian_female_seed_3.png",
-  "/profiles/indian_female_seed_4.png",
-  "/profiles/indian_female_seed_5.png",
+  DICEBEAR("avataaars", "PriyaMumbai", "ffdfbf"),
+  DICEBEAR("avataaars", "AnanyaPune", "ffdfbf"),
+  DICEBEAR("avataaars", "DiyaBangalore", "ffdfbf"),
+  DICEBEAR("avataaars", "KiaraDelhi", "ffdfbf"),
+  DICEBEAR("avataaars", "SnehaMumbai", "ffdfbf"),
 ];
 
 const neutralPhotos = [
-  "/profiles/indian_neutral_seed_1.png",
-  "/profiles/indian_neutral_seed_2.png",
-  "/profiles/indian_neutral_seed_3.png",
-  "/profiles/indian_neutral_seed_4.png",
-  "/profiles/indian_neutral_seed_5.png",
+  DICEBEAR("avataaars", "KiranNeutral", "d1d4f9"),
+  DICEBEAR("avataaars", "NoorNeutral", "d1d4f9"),
+  DICEBEAR("avataaars", "ShaktiNeutral", "d1d4f9"),
+  DICEBEAR("avataaars", "AlexNeutral", "d1d4f9"),
+  DICEBEAR("avataaars", "JordanNeutral", "d1d4f9"),
 ];
 
 const couplePhotos = [
-  "/profiles/indian_couple_seed_1.png",
-  "/profiles/indian_couple_seed_2.png",
-  "/profiles/indian_couple_seed_3.png",
-  "/profiles/indian_couple_seed_4.png",
-  "/profiles/indian_couple_seed_5.png",
+  DICEBEAR("avataaars", "AaravPriyaCouple", "c0aede"),
+  DICEBEAR("avataaars", "RohanSnehaCouple", "c0aede"),
+  DICEBEAR("avataaars", "VikramAnjaliCouple", "c0aede"),
+  DICEBEAR("avataaars", "ArjunDiyaCouple", "c0aede"),
+  DICEBEAR("avataaars", "KabirMeeraCouple", "c0aede"),
 ];
 
 const locations = [
@@ -76,12 +79,45 @@ const getRandomSubset = <T,>(arr: T[], count: number): T[] => {
 
 const SEED_PHONE_BASE = 9900000000;
 
+const ITHAN_AVATAR = `https://api.dicebear.com/7.x/avataaars/svg?seed=IthanHuntFounder&backgroundColor=b6e3f4&scale=90`;
+const REKHA_AVATAR = `https://api.dicebear.com/7.x/avataaars/svg?seed=RekhaFounderHyd&backgroundColor=ffdfbf&scale=90`;
+
+async function updateAllAvatarsToDiceBear() {
+  const maleSeeds = malePhotos;
+  const femaleSeeds = femalePhotos;
+  const neutralSeeds = neutralPhotos;
+  const coupleSeeds = couplePhotos;
+
+  const allSeedUsers = await db.select({ id: users.id, phone: users.phone }).from(users).where(sql`phone LIKE '+91990000%'`);
+  for (let i = 0; i < allSeedUsers.length; i++) {
+    const u = allSeedUsers[i];
+    let photo: string;
+    if (i < 5) photo = maleSeeds[i % 5];
+    else if (i < 10) photo = femaleSeeds[(i - 5) % 5];
+    else if (i < 15) photo = neutralSeeds[(i - 10) % 5];
+    else photo = coupleSeeds[(i - 15) % 5];
+    await db.execute(sql`UPDATE profiles SET photos = ARRAY[${photo}]::text[] WHERE user_id = ${u.id}`);
+  }
+
+  const ithanRows = await db.select({ id: users.id }).from(users).where(sql`phone = '+919820098200'`);
+  if (ithanRows.length > 0) {
+    await db.execute(sql`UPDATE profiles SET photos = ARRAY[${ITHAN_AVATAR}]::text[] WHERE user_id = ${ithanRows[0].id}`);
+  }
+
+  const rekhaRows = await db.select({ id: users.id }).from(users).where(sql`phone = '+917950903063'`);
+  if (rekhaRows.length > 0) {
+    await db.execute(sql`UPDATE profiles SET photos = ARRAY[${REKHA_AVATAR}]::text[] WHERE user_id = ${rekhaRows[0].id}`);
+  }
+  console.log("Auto-seed: Updated all profiles to DiceBear cartoon avatars.");
+}
+
 export async function autoSeedProfiles() {
   const seedUsers = await db.select({ count: sql<number>`count(*)` }).from(users).where(sql`phone LIKE '+91990000%'`);
   const seedCount = Number(seedUsers[0].count);
   if (seedCount >= 20) {
     console.log(`Auto-seed: ${seedCount} seed profiles already exist, skipping seed profiles.`);
     await seedFounderProfiles();
+    await updateAllAvatarsToDiceBear();
     return;
   }
   if (seedCount > 0) {
@@ -217,7 +253,7 @@ async function seedFounderProfiles(dbOrTx: any = db) {
       city: "Mumbai",
       location: "Mumbai",
       interests: ["Cricket", "Chai", "Bollywood", "Music", "Travel", "Dancing"],
-      photos: ["/uploads/photo-1770750512396-756030314.jpeg"],
+      photos: [ITHAN_AVATAR],
       isVisible: true,
       aiPersonaEnabled: false,
       aiTone: "Friendly",
@@ -258,7 +294,7 @@ async function seedFounderProfiles(dbOrTx: any = db) {
       city: "Hyderabad",
       location: "Jubilee Hills, Hyderabad",
       interests: ["Bollywood", "Art", "Fashion"],
-      photos: ["/profiles/indian_female_1_5.jpg"],
+      photos: [REKHA_AVATAR],
       isVisible: true,
       aiPersonaEnabled: true,
       aiTone: "Witty",

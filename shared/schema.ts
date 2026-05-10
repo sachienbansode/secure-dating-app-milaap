@@ -30,6 +30,9 @@ export const users = pgTable("users", {
   membershipExpiresAt: timestamp("membership_expires_at"),
   membershipStartedAt: timestamp("membership_started_at"),
   lastDiscoverDepletedAt: timestamp("last_discover_depleted_at"),
+  dailyActiveMinutes: integer("daily_active_minutes").default(0),
+  dailyActiveDate: text("daily_active_date"),
+  proxyPauseUntil: timestamp("proxy_pause_until"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -90,6 +93,9 @@ export const matches = pgTable("matches", {
   isDeleted: boolean("is_deleted").default(false),
   archivedAt: timestamp("archived_at"),
   deletedAt: timestamp("deleted_at"),
+  proxyPauseUntil: timestamp("proxy_pause_until"),
+  proxyPausedForUserId: varchar("proxy_paused_for_user_id"),
+  proxyPauseStartedAt: timestamp("proxy_pause_started_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -174,6 +180,7 @@ export const contactShares = pgTable("contact_shares", {
   targetUserId: varchar("target_user_id").notNull().references(() => users.id),
   sharePhone: boolean("share_phone").default(false),
   shareEmail: boolean("share_email").default(false),
+  expiresAt: timestamp("expires_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
