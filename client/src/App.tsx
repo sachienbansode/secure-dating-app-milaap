@@ -160,12 +160,21 @@ function SessionHandler() {
 }
 
 function App() {
+  const [location] = useLocation();
+  const isAdmin = location === "/admin" || location.startsWith("/admin/");
+
   return (
     <QueryClientProvider client={queryClient}>
-      <MobileWrapper>
-        <SessionHandler />
-        <Router />
-      </MobileWrapper>
+      <SessionHandler />
+      {isAdmin ? (
+        <div className="h-screen w-screen overflow-hidden bg-slate-100">
+          <Router />
+        </div>
+      ) : (
+        <MobileWrapper>
+          <Router />
+        </MobileWrapper>
+      )}
       <InstallPrompt />
       <Toaster />
     </QueryClientProvider>

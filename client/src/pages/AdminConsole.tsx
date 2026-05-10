@@ -16,9 +16,27 @@ import type { AuthResponse } from "@/lib/auth";
 import logoNew from "@/assets/milaap-logo.png";
 import logoClassic from "@/assets/logo.png";
 
+const NAV_ITEMS = [
+  { id: "Analytics Dashboard", icon: BarChart3, color: "text-blue-600", bg: "bg-blue-50", desc: "Onboarding, DAU & usage trends" },
+  { id: "Active Duration", icon: Clock, color: "text-cyan-600", bg: "bg-cyan-50", desc: "User daily active time" },
+  { id: "User Lookup", icon: UserSearch, color: "text-orange-600", bg: "bg-orange-50", desc: "Search & inspect any user" },
+  { id: "All Profiles", icon: Users, color: "text-indigo-600", bg: "bg-indigo-50", desc: "View all registered profiles" },
+  { id: "Activity Logs", icon: Activity, color: "text-slate-600", bg: "bg-slate-100", desc: "View all user activity logs" },
+  { id: "Terms & Conditions", icon: Shield, color: "text-teal-600", bg: "bg-teal-50", desc: "Edit T&C with versioning" },
+  { id: "Feature Toggles", icon: Settings, color: "text-violet-600", bg: "bg-violet-50", desc: "Enable/disable app features" },
+  { id: "Welcome Taglines", icon: MessageSquareQuote, color: "text-red-600", bg: "bg-red-50", desc: "Manage login messages" },
+  { id: "Membership Plans", icon: Crown, color: "text-amber-600", bg: "bg-amber-50", desc: "Manage membership tiers" },
+  { id: "Ad Settings", icon: Megaphone, color: "text-green-600", bg: "bg-green-50", desc: "Configure Google Ads" },
+  { id: "Bot Mode Settings", icon: Bot, color: "text-purple-600", bg: "bg-purple-50", desc: "Bot auto-offline & proxy pause" },
+  { id: "Membership Revenue", icon: DollarSign, color: "text-emerald-600", bg: "bg-emerald-50", desc: "Revenue & transactions" },
+  { id: "App Logo", icon: Image, color: "text-pink-600", bg: "bg-pink-50", desc: "Choose between logo styles" },
+  { id: "Seed Profiles", icon: Users, color: "text-teal-600", bg: "bg-teal-50", desc: "Test profiles with phone numbers" },
+  { id: "Background Music", icon: Megaphone, color: "text-rose-600", bg: "bg-rose-50", desc: "Upload background music" },
+];
+
 export default function AdminConsole() {
   const queryClient = useQueryClient();
-  const [activeSection, setActiveSection] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState<string>("Analytics Dashboard");
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const { data: adminSession, isLoading: checkingAdmin } = useQuery({
@@ -33,8 +51,8 @@ export default function AdminConsole() {
 
   if (checkingAdmin) {
     return (
-      <div className="h-full flex items-center justify-center bg-slate-900">
-        <div className="animate-pulse text-white text-xl font-heading">Admin Console</div>
+      <div className="h-screen w-screen flex items-center justify-center bg-slate-900">
+        <div className="animate-pulse text-white text-xl font-heading">Milaap Admin</div>
       </div>
     );
   }
@@ -48,155 +66,113 @@ export default function AdminConsole() {
     queryClient.invalidateQueries({ queryKey: ["/api/admin/auth/me"] });
   };
 
-  if (activeSection) {
-    return (
-      <div className="h-full flex flex-col bg-slate-50">
-        <div className="bg-slate-900 text-white px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button onClick={() => setActiveSection(null)} className="p-1 hover:bg-slate-800 rounded-lg" data-testid="button-admin-back">
-              <ArrowLeft size={20} />
-            </button>
-            <h2 className="font-bold text-lg">{activeSection}</h2>
-          </div>
-          <button
-            onClick={() => setShowLogoutConfirm(true)}
-            className="p-2 hover:bg-slate-800 rounded-xl transition-colors"
-            data-testid="button-admin-logout-section"
-          >
-            <LogOut size={18} />
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto p-4">
-          {activeSection === "Analytics Dashboard" && <AnalyticsDashboard />}
-          {activeSection === "Active Duration" && <ActiveDurationViewer />}
-          {activeSection === "User Lookup" && <UserLookup />}
-          {activeSection === "All Profiles" && <AllProfilesViewer />}
-          {activeSection === "Activity Logs" && <ActivityLogsViewer />}
-          {activeSection === "Terms & Conditions" && <TermsEditor />}
-          {activeSection === "Feature Toggles" && <FeatureToggles />}
-          {activeSection === "Welcome Taglines" && <TaglineEditor />}
-          {activeSection === "Membership Plans" && <MembershipPlansEditor />}
-          {activeSection === "Ad Settings" && <AdSettingsEditor />}
-          {activeSection === "Bot Mode Settings" && <BotModeSettings />}
-          {activeSection === "Membership Revenue" && <MembershipRevenue />}
-          {activeSection === "App Logo" && <LogoSelector />}
-          {activeSection === "Seed Profiles" && <SeedProfilesViewer />}
-          {activeSection === "Background Music" && <BackgroundMusicUploader />}
-        </div>
-
-        {showLogoutConfirm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center">
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowLogoutConfirm(false)} />
-            <div className="relative bg-white rounded-2xl p-6 mx-6 w-full max-w-sm shadow-2xl">
-              <div className="text-center mb-5">
-                <div className="w-14 h-14 rounded-full bg-red-100 mx-auto flex items-center justify-center mb-3">
-                  <LogOut size={24} className="text-red-600" />
-                </div>
-                <h3 className="text-lg font-bold text-slate-900">Admin Logout</h3>
-                <p className="text-sm text-slate-500 mt-1">Are you sure you want to log out of the admin console?</p>
-              </div>
-              <div className="flex gap-3">
-                <button
-                  className="flex-1 h-11 rounded-xl border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50 transition-colors"
-                  onClick={() => setShowLogoutConfirm(false)}
-                  data-testid="button-admin-logout-cancel-section"
-                >
-                  Cancel
-                </button>
-                <button
-                  className="flex-1 h-11 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors"
-                  onClick={() => { setShowLogoutConfirm(false); handleLogout(); }}
-                  data-testid="button-admin-logout-confirm-section"
-                >
-                  Log Out
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  }
+  const activeNav = NAV_ITEMS.find(n => n.id === activeSection);
 
   return (
-    <div className="h-full flex flex-col bg-slate-50">
-      <div className="bg-slate-900 text-white px-6 py-5">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-heading font-bold">Admin Console</h1>
-            <p className="text-slate-400 text-sm mt-1">{adminSession.admin.email}</p>
+    <div className="h-screen w-screen flex overflow-hidden bg-slate-100">
+      {/* ── Sidebar ── */}
+      <aside className="w-64 shrink-0 bg-slate-900 flex flex-col h-full">
+        {/* Brand */}
+        <div className="px-5 py-5 border-b border-slate-800">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-red-600 to-blue-600 flex items-center justify-center shrink-0">
+              <Shield size={16} className="text-white" />
+            </div>
+            <div>
+              <p className="text-white font-bold text-sm leading-tight">Milaap Admin</p>
+              <p className="text-slate-500 text-[10px] truncate max-w-[130px]">{adminSession.admin.email}</p>
+            </div>
           </div>
+        </div>
+
+        {/* Nav */}
+        <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-0.5">
+          {NAV_ITEMS.map((item) => {
+            const active = activeSection === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActiveSection(item.id)}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${active ? "bg-white/10 text-white" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}
+                data-testid={`admin-nav-${item.id.toLowerCase().replace(/\s/g, "-")}`}
+              >
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${active ? item.bg : "bg-white/5"}`}>
+                  <item.icon size={14} className={active ? item.color : "text-slate-400"} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold truncate">{item.id}</p>
+                </div>
+                {active && <div className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Logout */}
+        <div className="px-3 py-4 border-t border-slate-800">
           <button
             onClick={() => setShowLogoutConfirm(true)}
-            className="p-2 hover:bg-slate-800 rounded-xl transition-colors"
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:bg-red-900/30 hover:text-red-400 transition-all"
             data-testid="button-admin-logout"
           >
-            <LogOut size={20} />
+            <LogOut size={16} />
+            <span className="text-xs font-medium">Log Out</span>
           </button>
         </div>
-      </div>
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        {[
-          { id: "Analytics Dashboard", icon: BarChart3, color: "bg-blue-100 text-blue-600", desc: "New user onboarding, DAU, usage trends" },
-          { id: "Active Duration", icon: Clock, color: "bg-cyan-100 text-cyan-600", desc: "User daily active time (non-AI mode)" },
-          { id: "User Lookup", icon: UserSearch, color: "bg-orange-100 text-orange-600", desc: "Search & inspect any user (legal compliance)" },
-          { id: "All Profiles", icon: Users, color: "bg-indigo-100 text-indigo-600", desc: "View all registered profiles" },
-          { id: "Activity Logs", icon: Activity, color: "bg-slate-100 text-slate-600", desc: "View all user activity logs" },
-          { id: "Terms & Conditions", icon: Shield, color: "bg-cyan-100 text-cyan-600", desc: "Edit T&C with versioning" },
-          { id: "Feature Toggles", icon: Settings, color: "bg-indigo-100 text-indigo-600", desc: "Enable/disable app features" },
-          { id: "Welcome Taglines", icon: MessageSquareQuote, color: "bg-red-100 text-red-600", desc: "Manage login welcome messages" },
-          { id: "Membership Plans", icon: Crown, color: "bg-amber-100 text-amber-600", desc: "Manage membership tiers & pricing" },
-          { id: "Ad Settings", icon: Megaphone, color: "bg-green-100 text-green-600", desc: "Configure Google Ads settings" },
-          { id: "Bot Mode Settings", icon: Bot, color: "bg-purple-100 text-purple-600", desc: "Configure bot mode auto-offline & proxy pause" },
-          { id: "Membership Revenue", icon: DollarSign, color: "bg-emerald-100 text-emerald-600", desc: "View revenue & transactions" },
-          { id: "App Logo", icon: Image, color: "bg-pink-100 text-pink-600", desc: "Choose between logo styles" },
-          { id: "Seed Profiles", icon: Users, color: "bg-teal-100 text-teal-600", desc: "View test/seed profiles with phone numbers" },
-          { id: "Background Music", icon: Megaphone, color: "bg-rose-100 text-rose-600", desc: "Upload background music for the app" },
-        ].map((item) => (
-          <button
-            key={item.id}
-            onClick={() => setActiveSection(item.id)}
-            className="w-full bg-white rounded-2xl p-4 flex items-center gap-3 shadow-sm border border-slate-100 hover:bg-slate-50 transition-colors text-left"
-            data-testid={`admin-nav-${item.id.toLowerCase().replace(/\s/g, "-")}`}
-          >
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${item.color}`}>
-              <item.icon size={20} />
+      </aside>
+
+      {/* ── Main content ── */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Top bar */}
+        <header className="bg-white border-b border-slate-200 px-8 py-4 flex items-center gap-4 shrink-0">
+          {activeNav && (
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${activeNav.bg} shrink-0`}>
+              <activeNav.icon size={18} className={activeNav.color} />
             </div>
-            <div className="flex-1">
-              <h3 className="font-semibold text-sm text-slate-800">{item.id}</h3>
-              <p className="text-xs text-slate-500">{item.desc}</p>
-            </div>
-            <ChevronRight size={18} className="text-slate-300" />
-          </button>
-        ))}
+          )}
+          <div>
+            <h1 className="text-lg font-bold text-slate-900">{activeSection}</h1>
+            <p className="text-xs text-slate-500">{activeNav?.desc}</p>
+          </div>
+        </header>
+
+        {/* Section content */}
+        <main className="flex-1 overflow-y-auto p-8">
+          <div className="max-w-4xl mx-auto">
+            {activeSection === "Analytics Dashboard" && <AnalyticsDashboard />}
+            {activeSection === "Active Duration" && <ActiveDurationViewer />}
+            {activeSection === "User Lookup" && <UserLookup />}
+            {activeSection === "All Profiles" && <AllProfilesViewer />}
+            {activeSection === "Activity Logs" && <ActivityLogsViewer />}
+            {activeSection === "Terms & Conditions" && <TermsEditor />}
+            {activeSection === "Feature Toggles" && <FeatureToggles />}
+            {activeSection === "Welcome Taglines" && <TaglineEditor />}
+            {activeSection === "Membership Plans" && <MembershipPlansEditor />}
+            {activeSection === "Ad Settings" && <AdSettingsEditor />}
+            {activeSection === "Bot Mode Settings" && <BotModeSettings />}
+            {activeSection === "Membership Revenue" && <MembershipRevenue />}
+            {activeSection === "App Logo" && <LogoSelector />}
+            {activeSection === "Seed Profiles" && <SeedProfilesViewer />}
+            {activeSection === "Background Music" && <BackgroundMusicUploader />}
+          </div>
+        </main>
       </div>
 
+      {/* Logout confirm */}
       {showLogoutConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowLogoutConfirm(false)} />
-          <div className="relative bg-white rounded-2xl p-6 mx-6 w-full max-w-sm shadow-2xl">
+          <div className="relative bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl mx-4">
             <div className="text-center mb-5">
               <div className="w-14 h-14 rounded-full bg-red-100 mx-auto flex items-center justify-center mb-3">
                 <LogOut size={24} className="text-red-600" />
               </div>
               <h3 className="text-lg font-bold text-slate-900">Admin Logout</h3>
-              <p className="text-sm text-slate-500 mt-1">Are you sure you want to log out of the admin console?</p>
+              <p className="text-sm text-slate-500 mt-1">Are you sure you want to log out?</p>
             </div>
             <div className="flex gap-3">
-              <button
-                className="flex-1 h-11 rounded-xl border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50 transition-colors"
-                onClick={() => setShowLogoutConfirm(false)}
-                data-testid="button-admin-logout-cancel"
-              >
-                Cancel
-              </button>
-              <button
-                className="flex-1 h-11 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors"
-                onClick={() => { setShowLogoutConfirm(false); handleLogout(); }}
-                data-testid="button-admin-logout-confirm"
-              >
-                Log Out
-              </button>
+              <button className="flex-1 h-11 rounded-xl border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50 transition-colors" onClick={() => setShowLogoutConfirm(false)} data-testid="button-admin-logout-cancel">Cancel</button>
+              <button className="flex-1 h-11 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors" onClick={() => { setShowLogoutConfirm(false); handleLogout(); }} data-testid="button-admin-logout-confirm">Log Out</button>
             </div>
           </div>
         </div>
