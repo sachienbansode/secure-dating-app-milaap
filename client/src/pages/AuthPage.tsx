@@ -11,6 +11,29 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import WelcomeOverlay from "@/components/WelcomeOverlay";
 import FeatureShowcase from "@/components/FeatureShowcase";
 
+const COUNTRY_CODES = [
+  { name: "India", flag: "🇮🇳", dial: "91", digits: 10 },
+  { name: "USA", flag: "🇺🇸", dial: "1", digits: 10 },
+  { name: "UK", flag: "🇬🇧", dial: "44", digits: 10 },
+  { name: "UAE", flag: "🇦🇪", dial: "971", digits: 9 },
+  { name: "Singapore", flag: "🇸🇬", dial: "65", digits: 8 },
+  { name: "Australia", flag: "🇦🇺", dial: "61", digits: 9 },
+  { name: "Canada", flag: "🇨🇦", dial: "1", digits: 10 },
+  { name: "Germany", flag: "🇩🇪", dial: "49", digits: 10 },
+  { name: "France", flag: "🇫🇷", dial: "33", digits: 9 },
+  { name: "Saudi Arabia", flag: "🇸🇦", dial: "966", digits: 9 },
+  { name: "Bangladesh", flag: "🇧🇩", dial: "880", digits: 10 },
+  { name: "Pakistan", flag: "🇵🇰", dial: "92", digits: 10 },
+  { name: "Sri Lanka", flag: "🇱🇰", dial: "94", digits: 9 },
+  { name: "Nepal", flag: "🇳🇵", dial: "977", digits: 10 },
+  { name: "Qatar", flag: "🇶🇦", dial: "974", digits: 8 },
+  { name: "Kuwait", flag: "🇰🇼", dial: "965", digits: 8 },
+  { name: "Bahrain", flag: "🇧🇭", dial: "973", digits: 8 },
+  { name: "Oman", flag: "🇴🇲", dial: "968", digits: 8 },
+  { name: "New Zealand", flag: "🇳🇿", dial: "64", digits: 9 },
+  { name: "South Africa", flag: "🇿🇦", dial: "27", digits: 9 },
+];
+
 export default function AuthPage() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
@@ -21,6 +44,9 @@ export default function AuthPage() {
   const [contactValue, setContactValue] = useState("");
   const [otpValue, setOtpValue] = useState("");
   const [otpHint, setOtpHint] = useState("");
+  const [selectedCountry, setSelectedCountry] = useState(COUNTRY_CODES[0]);
+  const [showCountryPicker, setShowCountryPicker] = useState(false);
+  const [countrySearch, setCountrySearch] = useState("");
   const [showWelcome, setShowWelcome] = useState(false);
   const [loginDestination, setLoginDestination] = useState<string | null>(null);
   const [taglines, setTaglines] = useState<string[]>([]);
@@ -94,13 +120,16 @@ export default function AuthPage() {
     return null;
   }
 
+  const phoneDigits = contactValue.replace(/\D/g, "");
+  const isPhoneValid = method === "phone" ? phoneDigits.length === selectedCountry.digits : contactValue.trim().length > 0;
+
   const handleRequestOtp = async () => {
-    if (!contactValue.trim()) return;
+    if (!isPhoneValid) return;
     setIsLoading(true);
     setError("");
     try {
       const payload = method === "phone"
-        ? { phone: `+91${contactValue.replace(/\s/g, "")}` }
+        ? { phone: `+${selectedCountry.dial}${phoneDigits}` }
         : { email: contactValue };
       const result = await requestOtp(payload);
       setOtpHint(result.otp_hint || "");
@@ -140,7 +169,7 @@ export default function AuthPage() {
     setError("");
     try {
       const payload = method === "phone"
-        ? { phone: `+91${contactValue.replace(/\s/g, "")}`, otp: otpValue }
+        ? { phone: `+${selectedCountry.dial}${phoneDigits}`, otp: otpValue }
         : { email: contactValue, otp: otpValue };
       const result = await verifyOtp(payload);
       await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
@@ -368,30 +397,114 @@ export default function AuthPage() {
         <div className="space-y-6">
           {step === "input" ? (
             <>
-              <div className="relative">
-                {method === "phone" && (
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 font-medium pr-3 mr-2" style={{ color: "rgba(255,255,255,0.4)", borderRight: "1px solid rgba(255,255,255,0.15)" }}>
-                    +91
-                  </span>
-                )}
+              {method === "phone" ? (
+                <div className="space-y-3">
+                  <div className="flex gap-2">
+                    <button
+                      data-testid="button-country-picker"
+                      type="button"
+                      onClick={() => { setShowCountryPicker(!showCountryPicker); setCountrySearch(""); }}
+                      className="h-16 px-4 rounded-2xl flex items-center gap-2 flex-shrink-0 font-medium transition-all"
+                      style={{ background: "rgba(255,255,255,0.08)", border: "2px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.85)", minWidth: "100px" }}
+                    >
+                      <span className="text-xl">{selectedCountry.flag}</span>
+                      <span className="text-sm">+{selectedCountry.dial}</span>
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ color: "rgba(255,255,255,0.4)", flexShrink: 0 }}>
+                        <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </button>
+                    <Input
+                      data-testid="input-contact"
+                      type="tel"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={contactValue}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/[^\d]/g, "");
+                        if (raw.length <= selectedCountry.digits) setContactValue(raw);
+                      }}
+                      placeholder={"0".repeat(selectedCountry.digits)}
+                      maxLength={selectedCountry.digits}
+                      className="flex-1 h-16 text-xl rounded-2xl px-5 text-white placeholder-white/20"
+                      style={{ background: "rgba(255,255,255,0.08)", border: `2px solid ${phoneDigits.length > 0 && phoneDigits.length < selectedCountry.digits ? "rgba(251,146,60,0.5)" : phoneDigits.length === selectedCountry.digits ? "rgba(74,222,128,0.4)" : "rgba(255,255,255,0.12)"}` }}
+                      autoFocus
+                      onKeyDown={(e) => e.key === "Enter" && handleRequestOtp()}
+                    />
+                  </div>
+
+                  {showCountryPicker && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      className="rounded-2xl overflow-hidden border"
+                      style={{ background: "rgba(15,15,30,0.98)", borderColor: "rgba(255,255,255,0.15)", backdropFilter: "blur(20px)" }}
+                      data-testid="country-picker-dropdown"
+                    >
+                      <div className="p-3 border-b" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
+                        <input
+                          type="text"
+                          placeholder="Search country..."
+                          value={countrySearch}
+                          onChange={(e) => setCountrySearch(e.target.value)}
+                          className="w-full bg-transparent text-sm text-white placeholder-white/30 outline-none px-2 py-1"
+                          data-testid="input-country-search"
+                          autoFocus
+                        />
+                      </div>
+                      <div className="max-h-48 overflow-y-auto">
+                        {COUNTRY_CODES.filter(c => c.name.toLowerCase().includes(countrySearch.toLowerCase()) || c.dial.includes(countrySearch)).map((c) => (
+                          <button
+                            key={`${c.name}-${c.dial}`}
+                            type="button"
+                            onClick={() => {
+                              setSelectedCountry(c);
+                              setShowCountryPicker(false);
+                              setContactValue("");
+                              setCountrySearch("");
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors"
+                            style={{ color: "rgba(255,255,255,0.85)", background: selectedCountry.name === c.name ? "rgba(255,255,255,0.08)" : "transparent" }}
+                            data-testid={`country-option-${c.dial}`}
+                          >
+                            <span className="text-lg">{c.flag}</span>
+                            <span className="flex-1 text-sm">{c.name}</span>
+                            <span className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>+{c.dial}</span>
+                            <span className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>{c.digits} digits</span>
+                          </button>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+
+                  <div className="flex items-center justify-between px-1">
+                    <p className="text-xs" style={{ color: phoneDigits.length === selectedCountry.digits ? "rgba(74,222,128,0.8)" : "rgba(255,255,255,0.3)" }}>
+                      {selectedCountry.name} numbers are {selectedCountry.digits} digits
+                    </p>
+                    <p className="text-xs font-mono" style={{ color: phoneDigits.length === selectedCountry.digits ? "rgba(74,222,128,0.8)" : "rgba(255,255,255,0.3)" }}>
+                      {phoneDigits.length}/{selectedCountry.digits}
+                    </p>
+                  </div>
+                </div>
+              ) : (
                 <Input
                   data-testid="input-contact"
-                  type={method === "phone" ? "tel" : "email"}
-                  inputMode={method === "phone" ? "numeric" : "email"}
-                  pattern={method === "phone" ? "[0-9]*" : undefined}
+                  type="email"
+                  inputMode="email"
                   value={contactValue}
-                  onChange={(e) => setContactValue(method === "phone" ? e.target.value.replace(/[^\d\s]/g, "") : e.target.value)}
-                  placeholder={method === "phone" ? "98765 43210" : "name@example.com"}
-                  className={`h-16 text-xl rounded-2xl ${method === "phone" ? "pl-20" : "px-6"} text-white placeholder-white/30`}
+                  onChange={(e) => setContactValue(e.target.value)}
+                  placeholder="name@example.com"
+                  className="h-16 text-xl rounded-2xl px-6 text-white placeholder-white/30"
                   style={{ background: "rgba(255,255,255,0.08)", border: "2px solid rgba(255,255,255,0.12)" }}
                   autoFocus
                   onKeyDown={(e) => e.key === "Enter" && handleRequestOtp()}
                 />
-              </div>
+              )}
+
               <Button
                 data-testid="button-send-otp"
                 onClick={handleRequestOtp}
-                disabled={isLoading || !contactValue.trim()}
+                disabled={isLoading || !isPhoneValid}
                 className="w-full h-14 rounded-2xl font-bold text-lg shadow-lg text-white transition-all active:scale-95"
                 style={{ background: "linear-gradient(135deg, #dc2626, #2563eb)" }}
               >
