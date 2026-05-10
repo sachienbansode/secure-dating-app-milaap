@@ -104,6 +104,27 @@ const triggerHaptic = (style: 'light' | 'medium' | 'heavy' = 'light') => {
   }
 };
 
+function playHomeChime() {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const notes = [523.25, 659.25, 783.99, 1046.5];
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.13);
+      gain.gain.setValueAtTime(0, ctx.currentTime + i * 0.13);
+      gain.gain.linearRampToValueAtTime(0.06, ctx.currentTime + i * 0.13 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.13 + 0.35);
+      osc.start(ctx.currentTime + i * 0.13);
+      osc.stop(ctx.currentTime + i * 0.13 + 0.4);
+    });
+    setTimeout(() => ctx.close(), 2000);
+  } catch {}
+}
+
 export default function Home() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
@@ -113,6 +134,11 @@ export default function Home() {
   const [expandedCard, setExpandedCard] = useState(false);
   const { showAd, recordSwipe, dismissAd } = useAdFrequency("discover");
   const [canCloseAd, setCanCloseAd] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => playHomeChime(), 800);
+    return () => clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     if (showAd) {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -79,6 +79,7 @@ export default function AdminConsole() {
           {activeSection === "Membership Revenue" && <MembershipRevenue />}
           {activeSection === "App Logo" && <LogoSelector />}
           {activeSection === "Seed Profiles" && <SeedProfilesViewer />}
+          {activeSection === "Background Music" && <BackgroundMusicUploader />}
         </div>
 
         {showLogoutConfirm && (
@@ -146,6 +147,7 @@ export default function AdminConsole() {
           { id: "Membership Revenue", icon: DollarSign, color: "bg-emerald-100 text-emerald-600", desc: "View revenue & transactions" },
           { id: "App Logo", icon: Image, color: "bg-pink-100 text-pink-600", desc: "Choose between logo styles" },
           { id: "Seed Profiles", icon: Users, color: "bg-teal-100 text-teal-600", desc: "View test/seed profiles with phone numbers" },
+          { id: "Background Music", icon: Megaphone, color: "bg-rose-100 text-rose-600", desc: "Upload background music for the app" },
         ].map((item) => (
           <button
             key={item.id}
@@ -2592,6 +2594,76 @@ function UserLookup() {
           <p className="text-sm text-slate-400">No users found for "{debouncedQuery}"</p>
         </div>
       )}
+    </div>
+  );
+}
+
+function BackgroundMusicUploader() {
+  const [uploading, setUploading] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [currentUrl, setCurrentUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    fetch("/api/app-settings", { credentials: "include" })
+      .then(r => r.json())
+      .then(d => { if (d.background_music_url) setCurrentUrl(d.background_music_url); });
+  }, []);
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setMsg(null);
+    const form = new FormData();
+    form.append("music", file);
+    try {
+      const res = await fetch("/api/admin/upload-bg-music", { method: "POST", credentials: "include", body: form });
+      const data = await res.json();
+      if (res.ok) { setCurrentUrl(data.url); setMsg("Music uploaded successfully!"); }
+      else setMsg(data.message || "Upload failed");
+    } catch { setMsg("Upload failed"); }
+    setUploading(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleDelete = async () => {
+    try {
+      await fetch("/api/admin/bg-music", { method: "DELETE", credentials: "include" });
+      setCurrentUrl(null);
+      setMsg("Music removed.");
+    } catch { setMsg("Failed to remove"); }
+  };
+
+  return (
+    <div className="space-y-5">
+      <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+        <h3 className="font-semibold text-slate-800 mb-1">App Background Music</h3>
+        <p className="text-xs text-slate-500 mb-4">Upload an audio file (MP3, MP4, WAV, OGG) to play as background music in the app tour.</p>
+        {currentUrl ? (
+          <div className="bg-slate-50 rounded-xl p-4 mb-4 space-y-3 border border-slate-200">
+            <p className="text-xs font-medium text-slate-600">Current music:</p>
+            <audio controls src={currentUrl} className="w-full" />
+            <button onClick={handleDelete} className="text-xs text-red-500 hover:text-red-700 font-medium flex items-center gap-1" data-testid="button-delete-bg-music">
+              <Trash2 size={12} /> Remove music
+            </button>
+          </div>
+        ) : (
+          <div className="bg-slate-50 rounded-xl p-4 mb-4 text-center border border-dashed border-slate-300">
+            <p className="text-xs text-slate-400">No background music set</p>
+          </div>
+        )}
+        <input ref={fileInputRef} type="file" accept="audio/*,video/mp4" className="hidden" onChange={handleUpload} />
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          className="w-full py-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-medium transition-colors disabled:opacity-50"
+          data-testid="button-upload-bg-music"
+        >
+          {uploading ? "Uploading..." : "Upload Music File"}
+        </button>
+        {msg && <p className={`text-xs mt-2 text-center font-medium ${msg.includes("success") || msg.includes("removed") ? "text-green-600" : "text-red-500"}`}>{msg}</p>}
+      </div>
     </div>
   );
 }

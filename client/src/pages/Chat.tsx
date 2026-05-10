@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRoute, Link, useLocation } from "wouter";
-import { ArrowLeft, Send, Sparkles, MoreVertical, ShieldCheck, Phone, Paperclip, CheckCheck, Flag, Loader2, Bot, ShieldAlert, Camera, Ban, Unlock, Clock, MessageCircle, Mic, Users, Archive, Trash2, Image, X, Eye, EyeOff, Play, Mail, MapPin, Navigation, Share2, Coffee, Check } from "lucide-react";
+import { ArrowLeft, Send, Sparkles, MoreVertical, ShieldCheck, Phone, Paperclip, CheckCheck, Flag, Loader2, Bot, ShieldAlert, Camera, Ban, Unlock, Clock, MessageCircle, Mic, Users, Archive, Trash2, Image, X, Eye, EyeOff, Play, Mail, MapPin, Navigation, Share2, Coffee, Check, Copy, CornerUpLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -56,6 +56,23 @@ interface ChatMessage {
   createdAt: string;
 }
 
+function parseReplyTo(content: string): { replyToId: string; replyPreview: string; actualContent: string } | null {
+  const match = content.match(/^\[REPLY_TO:([^:]+):([^\]]*)\]\n?([\s\S]*)$/);
+  if (!match) return null;
+  return { replyToId: match[1], replyPreview: match[2], actualContent: match[3] };
+}
+
+function formatLastSeen(lastSeenAt: string | Date | null | undefined): string {
+  if (!lastSeenAt) return "Offline";
+  const d = new Date(lastSeenAt);
+  const diffMin = Math.floor((Date.now() - d.getTime()) / 60000);
+  if (diffMin < 1) return "Last seen just now";
+  if (diffMin < 60) return `Last seen ${diffMin}m ago`;
+  const diffH = Math.floor(diffMin / 60);
+  if (diffH < 24) return `Last seen ${diffH}h ago`;
+  return `Last seen ${d.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`;
+}
+
 const DATE_READINESS_CONFIG: Record<string, { icon: any; label: string; color: string }> = {
   "Chat-only": { icon: MessageCircle, label: "Chat-only", color: "text-blue-400 bg-blue-900/20" },
   "Voice-ready": { icon: Mic, label: "Voice-ready", color: "text-green-400 bg-green-900/20" },
@@ -89,6 +106,10 @@ export default function Chat() {
   const [sharingLiveLocation, setSharingLiveLocation] = useState(false);
   const [liveLocationId, setLiveLocationId] = useState<string | null>(null);
   const [otherTyping, setOtherTyping] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<{ id: string; content: string; senderName: string } | null>(null);
+  const [messageMenuId, setMessageMenuId] = useState<string | null>(null);
+  const [showAiProxyBanner, setShowAiProxyBanner] = useState(true);
+  const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
   const liveLocationIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -331,6 +352,16 @@ export default function Chat() {
     },
   });
 
+  const contactShareRequestMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/contact-share/request", { matchId });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/messages/${matchId}`] });
+    },
+  });
+
   const locationShareMutation = useMutation({
     mutationFn: async (data: { latitude: number; longitude: number; isLive: boolean }) => {
       const res = await apiRequest("POST", "/api/location-share", { matchId, ...data });
@@ -457,6 +488,14 @@ export default function Chat() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!showAiProxyBanner) return;
+    const hasProxy = messages.some(m => m.isAiProxy);
+    if (!hasProxy) return;
+    const t = setTimeout(() => setShowAiProxyBanner(false), 4000);
+    return () => clearTimeout(t);
+  }, [messages, showAiProxyBanner]);
+
   if (checkingSession || !session?.user) {
     return <div className="h-full flex items-center justify-center"><div className="animate-pulse text-muted-foreground">Loading...</div></div>;
   }
@@ -539,8 +578,13 @@ export default function Chat() {
   const handleSend = () => {
     if (!input.trim() || !matchId || isChatCooledDown) return;
     triggerHaptic("light");
-    sendMutation.mutate({ matchId, content: input, isAiGenerated: false });
+    const content = replyingTo
+      ? `[REPLY_TO:${replyingTo.id}:${replyingTo.content.slice(0, 50)}]\n${input}`
+      : input;
+    sendMutation.mutate({ matchId, content, isAiGenerated: false });
     setInput("");
+    setReplyingTo(null);
+    setMessageMenuId(null);
   };
 
   const handleAiSuggest = () => { aiSuggestMutation.mutate(); };
@@ -663,7 +707,7 @@ export default function Chat() {
               <div className={`w-2 h-2 rounded-full shrink-0 ${getRespectColor(otherRespectScore)}`} title={`Respect: ${otherRespectScore}`} />
             </div>
             <p className={`text-[11px] font-medium ${otherIsOnline ? "text-green-500" : "text-muted-foreground"}`}>
-              {otherIsOnline ? "Online" : "Offline"}
+              {otherIsOnline ? "Online" : formatLastSeen(profile?.lastSeenAt)}
               {profile?.intent && <span className="text-muted-foreground"> · {profile.intent}</span>}
             </p>
           </div>
@@ -737,16 +781,18 @@ export default function Chat() {
         </div>
       </header>
 
-      {messages.some(m => m.isAiProxy && m.senderId === currentUserId) && (
+      {showAiProxyBanner && messages.some(m => m.isAiProxy && m.senderId === currentUserId) && (
         <div className="bg-blue-900/20 px-4 py-2 flex items-center gap-2 text-xs text-blue-400 border-b border-blue-900/30">
           <Bot size={14} />
-          <span className="font-medium">Your AI proxy sent replies on your behalf while you were offline. Look for the blue "Sent by AI" labels below.</span>
+          <span className="font-medium flex-1">Your AI proxy sent replies on your behalf while you were offline.</span>
+          <button onClick={() => setShowAiProxyBanner(false)} className="shrink-0 text-blue-400/60 hover:text-blue-400 transition-colors" data-testid="button-dismiss-proxy-banner"><X size={14} /></button>
         </div>
       )}
-      {messages.some(m => m.isAiProxy && m.senderId !== currentUserId) && (
+      {showAiProxyBanner && messages.some(m => m.isAiProxy && m.senderId !== currentUserId) && (
         <div className="bg-blue-900/10 px-4 py-2 flex items-center gap-2 text-xs text-blue-400/70 border-b border-blue-900/20">
           <Bot size={14} />
-          <span className="font-medium">Some replies from your match may be AI-assisted</span>
+          <span className="font-medium flex-1">Some replies from your match may be AI-assisted</span>
+          <button onClick={() => setShowAiProxyBanner(false)} className="shrink-0 text-blue-400/40 hover:text-blue-400/70 transition-colors" data-testid="button-dismiss-proxy-banner-other"><X size={14} /></button>
         </div>
       )}
 
@@ -958,6 +1004,38 @@ export default function Chat() {
                 );
               }
 
+              const contactShareRequestMatch = msg.content.match(/^\[CONTACT_SHARE_REQUEST:(.+?)\]$/);
+              if (contactShareRequestMatch) {
+                const requesterUserId = contactShareRequestMatch[1];
+                const isRequester = requesterUserId === currentUserId;
+                const alreadyShared = !!contactShareStatus?.myShare;
+                return (
+                  <div key={msg.id} className="flex justify-center my-4" data-testid={`message-contact-request-${msg.id}`}>
+                    <div className="rounded-2xl p-4 max-w-[85%] text-center" style={{ background: "linear-gradient(135deg, rgba(59,130,246,0.15), rgba(99,102,241,0.1))", border: "1px solid rgba(59,130,246,0.3)" }}>
+                      <div className="text-3xl mb-2">📋</div>
+                      <p className="text-blue-400 font-bold text-sm mb-1">
+                        {isRequester ? "You requested contact sharing" : `${profile?.name || "Your match"} wants to share contacts`}
+                      </p>
+                      <p className="text-gray-400 text-xs mb-3">Share phone/email to stay connected outside the app</p>
+                      {!isRequester && !alreadyShared && (
+                        <button
+                          onClick={() => setShowContactShare(true)}
+                          className="px-5 py-2 rounded-xl text-white text-xs font-bold"
+                          style={{ background: "linear-gradient(135deg, #3b82f6, #6366f1)" }}
+                          data-testid="button-approve-contact-share"
+                        >
+                          <Share2 size={12} className="inline mr-1" /> Share My Contact
+                        </button>
+                      )}
+                      {!isRequester && alreadyShared && (
+                        <span className="text-xs text-green-400 font-medium bg-green-900/20 px-3 py-1.5 rounded-full">✓ You've already shared your contact</span>
+                      )}
+                      {isRequester && <span className="text-xs text-gray-500">Waiting for their response...</span>}
+                    </div>
+                  </div>
+                );
+              }
+
               return (
                 <div key={msg.id} className="flex justify-center my-3" data-testid={`message-system-${msg.id}`}>
                   <span className="text-[11px] font-medium text-muted-foreground bg-muted px-4 py-2 rounded-full max-w-[80%] text-center">{msg.content}</span>
@@ -999,6 +1077,9 @@ export default function Chat() {
               );
             }
 
+            const replyData = !msg.attachmentUrl ? parseReplyTo(msg.content) : null;
+            const displayContent = replyData ? replyData.actualContent : msg.content;
+
             return (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
@@ -1007,7 +1088,30 @@ export default function Chat() {
                 className={`flex flex-col ${isMe ? "items-end" : "items-start"} ${isNextSame ? "mb-1" : "mb-4"}`}
                 data-testid={`message-${msg.id}`}
               >
-                <div className={`max-w-[75%] shadow-sm text-sm relative group ${msg.attachmentUrl && !msg.isOneTimeView ? "p-1" : "px-4 py-3"} ${isMe ? "bg-brand-gradient text-white rounded-2xl rounded-tr-sm" : "bg-card text-foreground rounded-2xl rounded-tl-sm border border-border"}`}>
+                {messageMenuId === msg.id && (
+                  <div className={`flex items-center gap-1 mb-1 ${isMe ? "self-end" : "self-start"}`}>
+                    <button
+                      onClick={() => { setReplyingTo({ id: msg.id, content: displayContent.slice(0, 60), senderName: isMe ? "You" : (profile?.name || "Match") }); setMessageMenuId(null); }}
+                      className="flex items-center gap-1 bg-card border border-border text-foreground text-xs px-2 py-1.5 rounded-lg shadow-sm hover:bg-muted"
+                      data-testid={`button-reply-${msg.id}`}
+                    >
+                      <CornerUpLeft size={11} /> Reply
+                    </button>
+                    {!msg.attachmentUrl && (
+                      <button
+                        onClick={() => { navigator.clipboard.writeText(displayContent); setCopiedMsgId(msg.id); setTimeout(() => setCopiedMsgId(null), 2000); setMessageMenuId(null); }}
+                        className="flex items-center gap-1 bg-card border border-border text-foreground text-xs px-2 py-1.5 rounded-lg shadow-sm hover:bg-muted"
+                        data-testid={`button-copy-${msg.id}`}
+                      >
+                        <Copy size={11} /> {copiedMsgId === msg.id ? "Copied!" : "Copy"}
+                      </button>
+                    )}
+                  </div>
+                )}
+                <div
+                  className={`max-w-[75%] shadow-sm text-sm relative group ${msg.attachmentUrl && !msg.isOneTimeView ? "p-1" : "px-4 py-3"} ${isMe ? "bg-brand-gradient text-white rounded-2xl rounded-tr-sm" : "bg-card text-foreground rounded-2xl rounded-tl-sm border border-border"}`}
+                  onClick={() => setMessageMenuId(prev => prev === msg.id ? null : msg.id)}
+                >
                   {msg.attachmentUrl && !msg.isOneTimeView && (
                     <div className="mb-1">
                       {msg.attachmentType === "image" ? (
@@ -1038,9 +1142,15 @@ export default function Chat() {
                       )}
                     </div>
                   )}
-                  {!msg.attachmentUrl && msg.content}
+                  {replyData && (
+                    <div className={`mb-2 rounded-lg px-3 py-2 text-xs border-l-2 ${isMe ? "bg-white/10 border-white/40 text-white/80" : "bg-muted/60 border-primary/40 text-muted-foreground"}`}>
+                      <span className="font-semibold block">{replyData.replyToId === messages.find(m => m.id === replyData.replyToId)?.senderId ? (profile?.name || "Match") : "You"}</span>
+                      <span className="line-clamp-1">{replyData.replyPreview}</span>
+                    </div>
+                  )}
+                  {!msg.attachmentUrl && displayContent}
                   {msg.attachmentUrl && !msg.isOneTimeView && (
-                    <div className="px-3 pb-2 pt-1 text-xs opacity-80">{msg.content}</div>
+                    <div className="px-3 pb-2 pt-1 text-xs opacity-80">{displayContent}</div>
                   )}
                   {msg.isAiGenerated && !msg.isAiProxy && (
                     <Sparkles size={10} className="inline-block ml-1 opacity-60" />
@@ -1157,6 +1267,19 @@ export default function Chat() {
               {uploadingAttachment ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
             </Button>
           </div>
+        </div>
+      )}
+
+      {replyingTo && (
+        <div className="bg-card border-t border-border px-4 py-2 flex items-center gap-2">
+          <CornerUpLeft size={14} className="text-primary shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-semibold text-primary">{replyingTo.senderName}</p>
+            <p className="text-xs text-muted-foreground truncate">{replyingTo.content}</p>
+          </div>
+          <button onClick={() => setReplyingTo(null)} className="shrink-0 text-muted-foreground hover:text-foreground" data-testid="button-cancel-reply">
+            <X size={14} />
+          </button>
         </div>
       )}
 
@@ -1365,8 +1488,19 @@ export default function Chat() {
                 </p>
               )}
 
-              <div className="flex gap-3 pt-2">
+              <div className="flex gap-2 pt-2">
                 <Button variant="ghost" className="flex-1 rounded-xl" onClick={() => setShowContactShare(false)}>Cancel</Button>
+                {!contactShareStatus?.myShare && (
+                  <Button
+                    variant="outline"
+                    className="flex-1 rounded-xl border-blue-700 text-blue-400"
+                    onClick={() => { contactShareRequestMutation.mutate(); setShowContactShare(false); }}
+                    disabled={contactShareRequestMutation.isPending}
+                    data-testid="button-request-contact-share"
+                  >
+                    Send Request
+                  </Button>
+                )}
                 <Button
                   className="flex-1 rounded-xl bg-blue-600 hover:bg-blue-700 text-white"
                   onClick={() => {

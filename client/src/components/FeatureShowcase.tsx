@@ -224,29 +224,46 @@ function useAudioContext() {
     try {
       const ctx = getCtx();
       if (ctx.state === "suspended") ctx.resume();
-      const bufferSize = ctx.sampleRate * 8;
-      const buffer = ctx.createBuffer(2, bufferSize, ctx.sampleRate);
+      const sr = ctx.sampleRate;
+      const bpm = 76;
+      const beat = (60 / bpm) * sr;
+      const raagYaman = [261.63, 309.03, 349.23, 369.99, 392.0, 466.16, 523.25, 587.33, 659.26, 698.46, 783.99, 880.0];
+      const melody = [
+        [4, 0.75], [5, 0.5], [6, 1.0], [7, 0.5], [6, 0.75], [5, 0.5], [4, 1.0],
+        [3, 0.5], [2, 0.75], [4, 0.5], [2, 1.0], [1, 0.5], [2, 0.75], [4, 1.5],
+        [6, 0.5], [7, 0.75], [8, 0.5], [9, 1.0], [8, 0.5], [7, 0.75], [6, 0.5],
+        [4, 1.0], [5, 0.5], [4, 0.75], [2, 0.5], [0, 2.0],
+      ];
+      const totalBeats = melody.reduce((s, [, d]) => s + d, 0);
+      const bufferSize = Math.ceil(totalBeats * beat);
+      const buffer = ctx.createBuffer(2, bufferSize, sr);
       for (let ch = 0; ch < 2; ch++) {
         const data = buffer.getChannelData(ch);
-        const notes = [261.63, 329.63, 392.0, 523.25, 392.0, 329.63];
-        const noteLen = Math.floor(bufferSize / notes.length);
-        for (let n = 0; n < notes.length; n++) {
-          const freq = notes[n];
-          for (let i = 0; i < noteLen; i++) {
-            const t = i / ctx.sampleRate;
-            const idx = n * noteLen + i;
-            const env = Math.sin((Math.PI * i) / noteLen);
-            data[idx] = Math.sin(2 * Math.PI * freq * t) * 0.03 * env +
-              Math.sin(2 * Math.PI * freq * 1.5 * t) * 0.015 * env +
-              Math.sin(2 * Math.PI * freq * 2 * t) * 0.008 * env;
+        let pos = 0;
+        for (const [noteIdx, dur] of melody) {
+          const freq = raagYaman[noteIdx];
+          const len = Math.floor(dur * beat);
+          for (let i = 0; i < len && pos + i < bufferSize; i++) {
+            const t = i / sr;
+            const env = i < sr * 0.04
+              ? i / (sr * 0.04)
+              : Math.exp(-2.5 * (i - sr * 0.04) / sr);
+            const pan = ch === 0 ? 0.95 : 1.0;
+            data[pos + i] =
+              Math.sin(2 * Math.PI * freq * t) * 0.04 * env * pan +
+              Math.sin(2 * Math.PI * freq * 2.001 * t) * 0.018 * env +
+              Math.sin(2 * Math.PI * freq * 3.0 * t) * 0.008 * env +
+              Math.sin(2 * Math.PI * freq * 0.5 * t) * 0.012 * env * (ch === 1 ? 1 : 0.9);
           }
+          pos += len;
         }
       }
       const source = ctx.createBufferSource();
       source.buffer = buffer;
       source.loop = true;
       const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0.4, ctx.currentTime);
+      gain.gain.setValueAtTime(0, ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.45, ctx.currentTime + 1.5);
       source.connect(gain);
       gain.connect(ctx.destination);
       source.start();

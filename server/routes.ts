@@ -1143,7 +1143,9 @@ export async function registerRoutes(
         const recipientUserId = match.userId === userId ? match.targetUserId : match.userId;
         const recipientProfile = await storage.getProfile(recipientUserId);
         const recipientUser = await storage.getUser(recipientUserId);
-        const hasNoActiveSession = !recipientUser?.isOnline;
+        const lastSeenCutoff = new Date(Date.now() - 3 * 60 * 1000);
+        const recentlyActive = recipientUser?.lastSeenAt && new Date(recipientUser.lastSeenAt) > lastSeenCutoff;
+        const hasNoActiveSession = !recipientUser?.isOnline && !recentlyActive;
         const isBotProfile = recipientUser && !recipientUser.email;
         const shouldProxy = recipientProfile?.aiProxyEnabled && (hasNoActiveSession || isBotProfile);
         console.log(`[AI Proxy Check] recipient=${recipientUserId}, aiProxyEnabled=${recipientProfile?.aiProxyEnabled}, isOnline=${recipientUser?.isOnline}, isBot=${isBotProfile}, shouldProxy=${shouldProxy}`);
@@ -1654,10 +1656,14 @@ Their interests: ${(otherProfile?.interests || []).join(", ")}`;
   });
 
   async function generateBotProxyReply(proxyUserId: string, matchId: string, textOnly?: boolean): Promise<any> {
-    const hasAccess = await checkFeatureAccess(proxyUserId, "ai_proxy_mode");
-    if (!hasAccess) {
-      console.log(`[AI Proxy] Feature access denied for user ${proxyUserId}`);
-      return null;
+    const proxyUser = await storage.getUser(proxyUserId);
+    const isBotUser = proxyUser && !proxyUser.email;
+    if (!isBotUser) {
+      const hasAccess = await checkFeatureAccess(proxyUserId, "ai_proxy_mode");
+      if (!hasAccess) {
+        console.log(`[AI Proxy] Feature access denied for user ${proxyUserId}`);
+        return null;
+      }
     }
 
     const myProfile = await storage.getProfile(proxyUserId);
@@ -2703,6 +2709,26 @@ By continuing to use Milaap, you acknowledge that you have read, understood, and
       await logActivity(userId, "contact_shared", "privacy", { matchId, sharePhone, shareEmail }, req);
 
       return res.json({ success: true, share });
+    } catch (err: any) {
+      console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
+    }
+  });
+
+  app.post("/api/contact-share/request", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const { matchId } = req.body;
+      if (!matchId) return res.status(400).json({ message: "matchId is required" });
+      const match = await storage.getMatchById(matchId);
+      if (!match || !match.isMatched) return res.status(403).json({ message: "Invalid match" });
+      await storage.sendMessage({
+        matchId,
+        senderId: userId,
+        content: `[CONTACT_SHARE_REQUEST:${userId}]`,
+        isSystemMessage: true,
+      });
+      await logActivity(userId, "contact_share_requested", "privacy", { matchId }, req);
+      return res.json({ success: true });
     } catch (err: any) {
       console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
@@ -4050,6 +4076,21 @@ By continuing to use Milaap, you acknowledge that you have read, understood, and
       console.error("Seed profiles fetch error:", err);
       res.status(500).json({ message: err.message });
     }
+  });
+
+  app.post("/api/admin/upload-bg-music", requireAdmin, (req: Request, res: Response, next: Function) => {
+    upload.single("music")(req, res, async (err: any) => {
+      if (err) return res.status(400).json({ message: err.message });
+      if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+      const url = `/uploads/${req.file.filename}`;
+      await storage.setAppSetting("background_music_url", url);
+      return res.json({ success: true, url });
+    });
+  });
+
+  app.delete("/api/admin/bg-music", requireAdmin, async (_req: Request, res: Response) => {
+    await storage.setAppSetting("background_music_url", "");
+    return res.json({ success: true });
   });
 
   app.post("/api/auto-seed-profiles", async (_req: Request, res: Response) => {
