@@ -39,38 +39,87 @@ export default function AdminConsole() {
   const queryClient = useQueryClient();
   const [activeSection, setActiveSection] = useState<string>("Analytics Dashboard");
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [isDark, setIsDark] = useState<boolean>(() => localStorage.getItem("adminTheme") !== "light");
-
   useEffect(() => {
-    localStorage.setItem("adminTheme", isDark ? "dark" : "light");
     const el = document.getElementById("admin-theme-style") || (() => {
       const s = document.createElement("style"); s.id = "admin-theme-style"; document.head.appendChild(s); return s;
     })();
-    el.textContent = isDark ? `
-      .admin-dark [class~="bg-white"] { background-color: #1e293b !important; color: #e2e8f0 !important; }
-      .admin-dark [class~="bg-slate-50"] { background-color: #0f172a !important; }
-      .admin-dark [class~="bg-indigo-50"] { background-color: #1e1b4b !important; }
-      .admin-dark [class~="bg-orange-50"] { background-color: #1c1008 !important; }
-      .admin-dark [class~="bg-amber-50"] { background-color: #1c1400 !important; }
-      .admin-dark [class~="bg-teal-50"] { background-color: #011a16 !important; }
-      .admin-dark [class~="bg-violet-50"] { background-color: #120c2a !important; }
-      .admin-dark [class~="bg-red-50"] { background-color: #1c0606 !important; }
-      .admin-dark [class~="bg-cyan-50"] { background-color: #011a1f !important; }
-      .admin-dark [class~="bg-blue-50"] { background-color: #0b1526 !important; }
-      .admin-dark [class~="text-slate-800"] { color: #f1f5f9 !important; }
-      .admin-dark [class~="text-slate-700"] { color: #e2e8f0 !important; }
-      .admin-dark [class~="text-slate-600"] { color: #94a3b8 !important; }
-      .admin-dark [class~="text-slate-500"] { color: #64748b !important; }
-      .admin-dark [class~="text-indigo-800"] { color: #a5b4fc !important; }
-      .admin-dark [class~="text-indigo-600"] { color: #818cf8 !important; }
-      .admin-dark [class~="border-slate-200"] { border-color: #334155 !important; }
-      .admin-dark [class~="border-slate-100"] { border-color: #1e293b !important; }
-      .admin-dark [class~="border-indigo-200"] { border-color: #3730a3 !important; }
-      .admin-dark [class~="border-indigo-100"] { border-color: #312e81 !important; }
-      .admin-dark [class~="bg-indigo-700"]:not(.admin-nav-active) { background-color: #4338ca !important; }
-      .admin-dark input, .admin-dark select, .admin-dark textarea { background-color: #1e293b !important; border-color: #334155 !important; color: #e2e8f0 !important; }
-    ` : "";
-  }, [isDark]);
+    el.textContent = `
+      .admin-root [class~="bg-white"] { background-color: #0d1728 !important; color: rgba(255,255,255,0.9) !important; }
+      .admin-root [class~="bg-slate-50"] { background-color: #080f1e !important; }
+      .admin-root [class~="bg-slate-100"] { background-color: rgba(255,255,255,0.06) !important; }
+      .admin-root [class~="bg-slate-200"] { background-color: rgba(255,255,255,0.1) !important; }
+      .admin-root [class~="bg-indigo-50"] { background-color: rgba(6,182,212,0.07) !important; }
+      .admin-root [class~="bg-teal-50"] { background-color: rgba(20,184,166,0.07) !important; }
+      .admin-root [class~="bg-cyan-50"] { background-color: rgba(6,182,212,0.07) !important; }
+      .admin-root [class~="bg-orange-50"] { background-color: rgba(249,115,22,0.07) !important; }
+      .admin-root [class~="bg-amber-50"] { background-color: rgba(245,158,11,0.07) !important; }
+      .admin-root [class~="bg-violet-50"] { background-color: rgba(139,92,246,0.07) !important; }
+      .admin-root [class~="bg-red-50"] { background-color: rgba(239,68,68,0.07) !important; }
+      .admin-root [class~="bg-blue-50"] { background-color: rgba(59,130,246,0.07) !important; }
+      .admin-root [class~="bg-green-50"] { background-color: rgba(16,185,129,0.07) !important; }
+      .admin-root [class~="bg-pink-50"] { background-color: rgba(236,72,153,0.07) !important; }
+      .admin-root [class~="bg-purple-50"] { background-color: rgba(168,85,247,0.07) !important; }
+      .admin-root [class~="bg-rose-50"] { background-color: rgba(244,63,94,0.07) !important; }
+      .admin-root [class~="bg-emerald-50"] { background-color: rgba(16,185,129,0.07) !important; }
+      .admin-root [class~="bg-green-100"] { background-color: rgba(16,185,129,0.12) !important; }
+      .admin-root [class~="bg-red-100"] { background-color: rgba(239,68,68,0.12) !important; }
+      .admin-root [class~="bg-blue-100"] { background-color: rgba(59,130,246,0.12) !important; }
+      .admin-root [class~="bg-yellow-100"] { background-color: rgba(234,179,8,0.12) !important; }
+      .admin-root [class~="bg-purple-100"] { background-color: rgba(168,85,247,0.12) !important; }
+      .admin-root [class~="bg-orange-100"] { background-color: rgba(249,115,22,0.12) !important; }
+      .admin-root [class~="bg-amber-100"] { background-color: rgba(245,158,11,0.12) !important; }
+      .admin-root [class~="bg-indigo-100"] { background-color: rgba(99,102,241,0.12) !important; }
+      .admin-root [class~="text-slate-900"] { color: rgba(255,255,255,0.95) !important; }
+      .admin-root [class~="text-slate-800"] { color: rgba(255,255,255,0.9) !important; }
+      .admin-root [class~="text-slate-700"] { color: rgba(255,255,255,0.72) !important; }
+      .admin-root [class~="text-slate-600"] { color: rgba(255,255,255,0.52) !important; }
+      .admin-root [class~="text-slate-500"] { color: rgba(255,255,255,0.4) !important; }
+      .admin-root [class~="text-slate-400"] { color: rgba(255,255,255,0.32) !important; }
+      .admin-root [class~="text-slate-300"] { color: rgba(255,255,255,0.28) !important; }
+      .admin-root [class~="text-indigo-800"] { color: #67e8f9 !important; }
+      .admin-root [class~="text-indigo-600"] { color: #67e8f9 !important; }
+      .admin-root [class~="text-cyan-800"] { color: #67e8f9 !important; }
+      .admin-root [class~="text-cyan-600"] { color: #22d3ee !important; }
+      .admin-root [class~="text-teal-800"] { color: #2dd4bf !important; }
+      .admin-root [class~="text-teal-700"] { color: #2dd4bf !important; }
+      .admin-root [class~="text-teal-600"] { color: #2dd4bf !important; }
+      .admin-root [class~="text-green-700"] { color: #34d399 !important; }
+      .admin-root [class~="text-green-600"] { color: #34d399 !important; }
+      .admin-root [class~="text-red-700"] { color: #f87171 !important; }
+      .admin-root [class~="text-red-600"] { color: #f87171 !important; }
+      .admin-root [class~="text-blue-700"] { color: #60a5fa !important; }
+      .admin-root [class~="text-blue-600"] { color: #60a5fa !important; }
+      .admin-root [class~="text-orange-700"] { color: #fb923c !important; }
+      .admin-root [class~="text-orange-600"] { color: #fb923c !important; }
+      .admin-root [class~="text-amber-700"] { color: #fbbf24 !important; }
+      .admin-root [class~="text-amber-600"] { color: #fbbf24 !important; }
+      .admin-root [class~="text-violet-700"] { color: #c084fc !important; }
+      .admin-root [class~="text-violet-600"] { color: #c084fc !important; }
+      .admin-root [class~="text-purple-700"] { color: #c084fc !important; }
+      .admin-root [class~="text-purple-600"] { color: #c084fc !important; }
+      .admin-root [class~="text-pink-600"] { color: #f472b6 !important; }
+      .admin-root [class~="text-emerald-600"] { color: #34d399 !important; }
+      .admin-root [class~="border-slate-200"] { border-color: rgba(255,255,255,0.09) !important; }
+      .admin-root [class~="border-slate-100"] { border-color: rgba(255,255,255,0.07) !important; }
+      .admin-root [class~="border-indigo-200"] { border-color: rgba(6,182,212,0.22) !important; }
+      .admin-root [class~="border-indigo-100"] { border-color: rgba(6,182,212,0.15) !important; }
+      .admin-root [class~="border-teal-200"] { border-color: rgba(20,184,166,0.22) !important; }
+      .admin-root [class~="border-cyan-200"] { border-color: rgba(6,182,212,0.22) !important; }
+      .admin-root [class~="border-dashed"] { border-color: rgba(255,255,255,0.12) !important; }
+      .admin-root input:not([type="color"]):not([type="file"]), .admin-root select, .admin-root textarea {
+        background-color: rgba(255,255,255,0.06) !important;
+        border-color: rgba(255,255,255,0.1) !important;
+        color: rgba(255,255,255,0.87) !important;
+      }
+      .admin-root input::placeholder, .admin-root textarea::placeholder { color: rgba(255,255,255,0.3) !important; }
+      .admin-root [class~="hover:bg-slate-50"]:hover { background-color: rgba(255,255,255,0.06) !important; }
+      .admin-root [class~="hover:bg-slate-100"]:hover { background-color: rgba(255,255,255,0.08) !important; }
+      .admin-root [class~="hover:bg-slate-200"]:hover { background-color: rgba(255,255,255,0.1) !important; }
+      .admin-root [class~="shadow-sm"] { box-shadow: 0 1px 3px rgba(0,0,0,0.4) !important; }
+      .admin-root [class~="divide-slate-50"] > * + * { border-color: rgba(255,255,255,0.05) !important; }
+    `;
+    return () => { el.textContent = ""; };
+  }, []);
 
   const { data: adminSession, isLoading: checkingAdmin } = useQuery({
     queryKey: ["/api/admin/auth/me"],
@@ -102,7 +151,7 @@ export default function AdminConsole() {
   const activeNav = NAV_ITEMS.find(n => n.id === activeSection);
 
   return (
-    <div className={`h-screen w-screen flex overflow-hidden admin-dark ${isDark ? "bg-slate-950" : "bg-slate-100"}`}>
+    <div className="admin-root h-screen w-screen flex overflow-hidden" style={{ background: "linear-gradient(160deg, #030712 0%, #0a1628 50%, #041420 100%)" }}>
       {/* ── Sidebar ── */}
       <aside className="w-64 shrink-0 bg-slate-900 flex flex-col h-full">
         {/* Brand */}
@@ -157,28 +206,20 @@ export default function AdminConsole() {
       {/* ── Main content ── */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top bar */}
-        <header className={`border-b px-8 py-4 flex items-center gap-4 shrink-0 ${isDark ? "bg-slate-900 border-slate-700" : "bg-white border-slate-200"}`}>
+        <header className="px-8 py-4 flex items-center gap-4 shrink-0" style={{ background: "rgba(13,23,40,0.8)", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
           {activeNav && (
-            <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${activeNav.bg} shrink-0`}>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: "rgba(5,150,105,0.15)", border: "1px solid rgba(5,150,105,0.2)" }}>
               <activeNav.icon size={18} className={activeNav.color} />
             </div>
           )}
           <div className="flex-1">
-            <h1 className={`text-lg font-bold ${isDark ? "text-white" : "text-slate-900"}`}>{activeSection}</h1>
-            <p className={`text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>{activeNav?.desc}</p>
+            <h1 className="text-lg font-bold text-white">{activeSection}</h1>
+            <p className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>{activeNav?.desc}</p>
           </div>
-          <button
-            onClick={() => setIsDark(d => !d)}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-medium transition-all border ${isDark ? "bg-slate-800 border-slate-600 text-slate-300 hover:bg-slate-700" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"}`}
-            data-testid="button-theme-toggle"
-            title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
-          >
-            {isDark ? <span>☀️ Light</span> : <span>🌙 Dark</span>}
-          </button>
         </header>
 
         {/* Section content */}
-        <main className="flex-1 overflow-y-auto p-8">
+        <main className="flex-1 overflow-y-auto p-8" style={{ background: "transparent" }}>
           <div className="max-w-4xl mx-auto">
             {activeSection === "Analytics Dashboard" && <AnalyticsDashboard />}
             {activeSection === "Active Duration" && <ActiveDurationViewer />}
@@ -203,17 +244,17 @@ export default function AdminConsole() {
       {/* Logout confirm */}
       {showLogoutConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowLogoutConfirm(false)} />
-          <div className="relative bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl mx-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowLogoutConfirm(false)} />
+          <div className="relative rounded-2xl p-6 w-full max-w-sm shadow-2xl mx-4" style={{ background: "#0d1728", border: "1px solid rgba(255,255,255,0.1)" }}>
             <div className="text-center mb-5">
-              <div className="w-14 h-14 rounded-full bg-red-100 mx-auto flex items-center justify-center mb-3">
-                <LogOut size={24} className="text-red-600" />
+              <div className="w-14 h-14 rounded-full mx-auto flex items-center justify-center mb-3" style={{ background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.2)" }}>
+                <LogOut size={24} className="text-red-400" />
               </div>
-              <h3 className="text-lg font-bold text-slate-900">Admin Logout</h3>
-              <p className="text-sm text-slate-500 mt-1">Are you sure you want to log out?</p>
+              <h3 className="text-lg font-bold text-white">Admin Logout</h3>
+              <p className="text-sm mt-1" style={{ color: "rgba(255,255,255,0.45)" }}>Are you sure you want to log out?</p>
             </div>
             <div className="flex gap-3">
-              <button className="flex-1 h-11 rounded-xl border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50 transition-colors" onClick={() => setShowLogoutConfirm(false)} data-testid="button-admin-logout-cancel">Cancel</button>
+              <button className="flex-1 h-11 rounded-xl text-sm font-medium transition-colors" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.7)" }} onClick={() => setShowLogoutConfirm(false)} data-testid="button-admin-logout-cancel">Cancel</button>
               <button className="flex-1 h-11 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors" onClick={() => { setShowLogoutConfirm(false); handleLogout(); }} data-testid="button-admin-logout-confirm">Log Out</button>
             </div>
           </div>
@@ -492,64 +533,97 @@ function TermsEditor() {
 }
 
 function ActivityLogsViewer() {
-  const [logs, setLogs] = useState<any[]>([]);
-  const [total, setTotal] = useState(0);
+  const [allLogs, setAllLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(0);
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [userSearch, setUserSearch] = useState("");
+  const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
-  const limit = 20;
 
   const categories = ["all", "auth", "profile", "match", "chat", "moderation", "admin", "security", "privacy"];
 
   const fetchLogs = async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ limit: String(limit), offset: String(page * limit) });
+      const params = new URLSearchParams({ limit: "500", offset: "0" });
       if (categoryFilter !== "all") params.set("category", categoryFilter);
       const res = await fetch(`/api/admin/activity-logs?${params}`, { credentials: "include" });
       const data = await res.json();
-      setLogs(data.logs || []);
-      setTotal(data.total || 0);
+      setAllLogs(data.logs || []);
     } catch { }
     setLoading(false);
   };
 
-  useEffect(() => { fetchLogs(); }, [page, categoryFilter]);
+  useEffect(() => { fetchLogs(); }, [categoryFilter]);
 
-  const getCategoryColor = (cat: string) => {
-    const colors: Record<string, string> = {
-      auth: "bg-blue-100 text-blue-700",
-      profile: "bg-green-100 text-green-700",
-      match: "bg-blue-900/30 text-blue-400",
-      chat: "bg-blue-900/30 text-blue-400",
-      moderation: "bg-red-100 text-red-700",
-      admin: "bg-red-900/30 text-red-400",
-      security: "bg-orange-100 text-orange-700",
-      privacy: "bg-cyan-100 text-cyan-700",
+  const getCategoryBadge = (cat: string) => {
+    const c: Record<string, [string, string]> = {
+      auth: ["rgba(59,130,246,0.18)", "#60a5fa"],
+      profile: ["rgba(16,185,129,0.18)", "#34d399"],
+      match: ["rgba(236,72,153,0.18)", "#f472b6"],
+      chat: ["rgba(14,165,233,0.18)", "#38bdf8"],
+      moderation: ["rgba(239,68,68,0.18)", "#f87171"],
+      admin: ["rgba(168,85,247,0.18)", "#c084fc"],
+      security: ["rgba(249,115,22,0.18)", "#fb923c"],
+      privacy: ["rgba(6,182,212,0.18)", "#22d3ee"],
     };
-    return colors[cat] || "bg-gray-100 text-gray-700";
+    const [bg, text] = c[cat] || ["rgba(255,255,255,0.08)", "rgba(255,255,255,0.5)"];
+    return { background: bg, color: text, padding: "1px 7px", borderRadius: 999, fontSize: 9, fontWeight: 700, textTransform: "uppercase" as const };
   };
 
-  const formatTime = (date: string) => {
-    const d = new Date(date);
-    return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
-  };
+  const formatTime = (date: string) => new Date(date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 
-  const totalPages = Math.ceil(total / limit);
+  const grouped = allLogs.reduce((acc: Record<string, any>, log: any) => {
+    const key = log.userId || "__system__";
+    if (!acc[key]) acc[key] = { userId: log.userId, userName: log.userName, logs: [], lastAt: log.createdAt };
+    acc[key].logs.push(log);
+    if (new Date(log.createdAt) > new Date(acc[key].lastAt)) acc[key].lastAt = log.createdAt;
+    return acc;
+  }, {});
+
+  const userGroups = Object.values(grouped)
+    .sort((a: any, b: any) => new Date(b.lastAt).getTime() - new Date(a.lastAt).getTime())
+    .filter((g: any) => {
+      if (!userSearch) return true;
+      const q = userSearch.toLowerCase();
+      return (g.userName || "").toLowerCase().includes(q) || (g.userId || "").toLowerCase().includes(q);
+    });
+
+  const CARD = { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16 };
 
   return (
     <div className="space-y-4">
-      <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200">
-        <h4 className="font-bold text-sm text-slate-800 mb-3">Activity Logs ({total})</h4>
+      <div className="rounded-2xl p-4" style={CARD}>
+        {/* Header */}
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="font-bold text-sm text-white">Activity Logs</h4>
+          <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.5)" }}>{allLogs.length} events · {userGroups.length} users</span>
+        </div>
+
+        {/* User search */}
+        <div className="relative mb-3">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: "rgba(255,255,255,0.3)" }} />
+          <input
+            type="text"
+            placeholder="Search user name or ID..."
+            value={userSearch}
+            onChange={e => setUserSearch(e.target.value)}
+            className="w-full pl-8 pr-3 py-2 text-xs rounded-xl"
+            style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.8)", outline: "none" }}
+            data-testid="input-log-user-search"
+          />
+        </div>
+
+        {/* Category filters */}
         <div className="flex flex-wrap gap-1.5 mb-4">
           {categories.map((cat) => (
             <button
               key={cat}
-              onClick={() => { setCategoryFilter(cat); setPage(0); }}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                categoryFilter === cat ? "bg-slate-700 text-white" : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-100"
-              }`}
+              onClick={() => setCategoryFilter(cat)}
+              className="px-3 py-1 rounded-full text-xs font-medium transition-all"
+              style={categoryFilter === cat
+                ? { background: "linear-gradient(135deg,#059669,#0ea5e9)", color: "#fff" }
+                : { background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.08)" }}
               data-testid={`filter-log-${cat}`}
             >
               {cat.charAt(0).toUpperCase() + cat.slice(1)}
@@ -558,81 +632,83 @@ function ActivityLogsViewer() {
         </div>
 
         {loading ? (
-          <div className="text-center py-8 text-slate-400 text-sm">Loading logs...</div>
-        ) : logs.length === 0 ? (
-          <div className="text-center py-8 text-slate-400 text-sm">No logs found</div>
+          <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-14 rounded-xl animate-pulse" style={{ background: "rgba(255,255,255,0.04)" }} />)}</div>
+        ) : userGroups.length === 0 ? (
+          <div className="text-center py-10" style={{ color: "rgba(255,255,255,0.3)" }}>
+            <Activity size={28} className="mx-auto mb-2 opacity-30" />
+            <p className="text-xs">No activity found</p>
+          </div>
         ) : (
           <div className="space-y-2">
-            {logs.map((log: any) => (
-              <div key={log.id} className="bg-white rounded-xl p-3 border border-slate-100 text-sm">
-                <div className="flex items-center justify-between mb-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${getCategoryColor(log.category)}`}>
-                      {log.category}
-                    </span>
-                    <span className="font-medium text-slate-800">{log.action.replace(/_/g, " ")}</span>
-                  </div>
-                  <span className="text-[10px] text-slate-400 shrink-0 ml-2">{formatTime(log.createdAt)}</span>
-                </div>
-                {log.userId && (
-                  <div className="flex items-center gap-2 mt-0.5">
-                    {log.userName && (
-                      <span className="text-[10px] font-semibold text-slate-600">{log.userName}</span>
-                    )}
-                    <span className="text-[10px] text-slate-400 font-mono truncate max-w-[160px]" title={log.userId}>
-                      ID: {log.userId}
-                    </span>
-                  </div>
-                )}
-                <div className="flex items-center justify-between mt-1.5">
-                  {log.ipAddress && <span className="text-[10px] text-slate-400">{log.ipAddress}</span>}
-                  {log.details && Object.keys(log.details).length > 0 && (
-                    <button
-                      onClick={() => setExpandedLogId(expandedLogId === log.id ? null : log.id)}
-                      className="text-[10px] text-blue-500 hover:text-blue-700 font-medium ml-auto"
-                      data-testid={`button-log-details-${log.id}`}
-                    >
-                      {expandedLogId === log.id ? "Hide Details" : "View Details"}
-                    </button>
-                  )}
-                </div>
-                {expandedLogId === log.id && log.details && (
-                  <div className="mt-2 bg-slate-50 rounded-lg px-3 py-2 border border-slate-100">
-                    <p className="text-[10px] font-bold text-slate-500 uppercase mb-1.5">Details</p>
-                    <div className="space-y-1">
-                      {Object.entries(log.details).map(([k, v]) => (
-                        <div key={k} className="flex gap-2 text-[10px]">
-                          <span className="text-slate-500 shrink-0 font-medium">{k}:</span>
-                          <span className="text-slate-700 break-all font-mono">{String(v)}</span>
+            {userGroups.map((group: any) => {
+              const isOpen = expandedUser === (group.userId || "__system__");
+              return (
+                <div key={group.userId || "__system__"} className="rounded-xl overflow-hidden" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                  {/* User row */}
+                  <button
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left transition-all"
+                    style={isOpen ? { background: "rgba(5,150,105,0.1)" } : {}}
+                    onClick={() => setExpandedUser(isOpen ? null : (group.userId || "__system__"))}
+                    data-testid={`button-log-user-${group.userId || "system"}`}
+                  >
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs font-bold" style={{ background: "linear-gradient(135deg,#059669,#0ea5e9)", color: "#fff" }}>
+                      {(group.userName || (group.userId ? "?" : "S"))[0]?.toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-white truncate">{group.userName || (group.userId ? "Unknown User" : "System")}</span>
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-full shrink-0" style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.4)" }}>{group.logs.length} events</span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        {group.userId && <span className="text-[9px] font-mono" style={{ color: "rgba(255,255,255,0.25)" }}>{group.userId.slice(0, 12)}...</span>}
+                        <span className="text-[9px]" style={{ color: "rgba(255,255,255,0.3)" }}>Last: {formatTime(group.lastAt)}</span>
+                      </div>
+                    </div>
+                    <ChevronRight size={14} className="shrink-0 transition-transform" style={{ color: "rgba(255,255,255,0.3)", transform: isOpen ? "rotate(90deg)" : "none" }} />
+                  </button>
+
+                  {/* Log entries */}
+                  {isOpen && (
+                    <div className="border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+                      {group.logs.map((log: any) => (
+                        <div key={log.id} className="px-4 py-2.5 border-b last:border-b-0" style={{ borderColor: "rgba(255,255,255,0.04)" }}>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span style={getCategoryBadge(log.category)}>{log.category}</span>
+                              <span className="text-xs font-medium" style={{ color: "rgba(255,255,255,0.75)" }}>{log.action.replace(/_/g, " ")}</span>
+                            </div>
+                            <span className="text-[9px] ml-2 shrink-0" style={{ color: "rgba(255,255,255,0.3)" }}>{formatTime(log.createdAt)}</span>
+                          </div>
+                          {log.ipAddress && <p className="text-[9px] mt-0.5" style={{ color: "rgba(255,255,255,0.25)" }}>{log.ipAddress}</p>}
+                          {log.details && Object.keys(log.details).length > 0 && (
+                            <div className="mt-1.5">
+                              <button
+                                onClick={() => setExpandedLogId(expandedLogId === log.id ? null : log.id)}
+                                className="text-[9px] font-medium transition-colors"
+                                style={{ color: expandedLogId === log.id ? "#22d3ee" : "rgba(255,255,255,0.3)" }}
+                                data-testid={`button-log-details-${log.id}`}
+                              >
+                                {expandedLogId === log.id ? "▲ Hide Details" : "▼ View Details"}
+                              </button>
+                              {expandedLogId === log.id && (
+                                <div className="mt-1.5 rounded-lg px-3 py-2" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                                  {Object.entries(log.details).map(([k, v]) => (
+                                    <div key={k} className="flex gap-2 text-[9px] py-0.5">
+                                      <span className="shrink-0 font-medium" style={{ color: "#22d3ee" }}>{k}:</span>
+                                      <span className="break-all font-mono" style={{ color: "rgba(255,255,255,0.6)" }}>{String(v)}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-100">
-            <button
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-              disabled={page === 0}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-white border border-slate-200 disabled:opacity-40"
-              data-testid="button-logs-prev"
-            >
-              Previous
-            </button>
-            <span className="text-xs text-slate-500">Page {page + 1} of {totalPages}</span>
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-              disabled={page >= totalPages - 1}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-white border border-slate-200 disabled:opacity-40"
-              data-testid="button-logs-next"
-            >
-              Next
-            </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -2031,85 +2107,174 @@ function BotModeSettings() {
 function AnalyticsDashboard() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     fetch("/api/admin/analytics", { credentials: "include" })
       .then(r => r.json())
       .then(d => { setData(d); setLoading(false); })
-      .catch(() => setLoading(false));
+      .catch(() => { setError(true); setLoading(false); });
   }, []);
 
-  if (loading) return <div className="text-center py-12 text-slate-400">Loading analytics...</div>;
-  if (!data) return <div className="text-center py-12 text-red-400">Failed to load analytics.</div>;
+  const CARD_STYLE = { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16 };
+  const CARD_GLOW = (color: string) => ({ background: `rgba(255,255,255,0.04)`, border: `1px solid ${color}30`, borderRadius: 16 });
 
-  const maxNewUsers = Math.max(...(data.newUsersByDay || []).map((d: any) => d.count), 1);
-  const maxMsgs = Math.max(...(data.messagesByDay || []).map((d: any) => d.count), 1);
-  const maxDau = Math.max(...(data.dauByDay || []).map((d: any) => d.count), 1);
+  const tierMeta: Record<string, { label: string; color: string; glow: string }> = {
+    basic: { label: "Basic", color: "#94a3b8", glow: "rgba(148,163,184,0.4)" },
+    silver: { label: "Silver", color: "#e2e8f0", glow: "rgba(226,232,240,0.4)" },
+    gold: { label: "Gold", color: "#fbbf24", glow: "rgba(251,191,36,0.5)" },
+    platinum: { label: "Platinum", color: "#c084fc", glow: "rgba(192,132,252,0.5)" },
+  };
+
+  const BarChart = ({ days, color, gradient }: { days: any[]; color: string; gradient: string }) => {
+    const max = Math.max(...days.map((d: any) => d.count), 1);
+    return (
+      <div className="flex items-end gap-[2px] h-20">
+        {days.slice(-30).map((d: any, i: number) => (
+          <div key={i} className="flex-1 flex flex-col justify-end" title={`${d.day}: ${d.count}`} style={{ minWidth: 0 }}>
+            <div className="w-full rounded-[2px] transition-all" style={{
+              height: `${Math.max(Math.round((d.count / max) * 68), d.count > 0 ? 3 : 0)}px`,
+              background: gradient,
+            }} />
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  if (loading) {
+    return (
+      <div className="grid grid-cols-2 gap-3">
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="h-24 rounded-2xl animate-pulse" style={{ background: "rgba(255,255,255,0.04)" }} />
+        ))}
+      </div>
+    );
+  }
+  if (error || !data) {
+    return (
+      <div className="rounded-2xl p-8 text-center" style={CARD_STYLE}>
+        <p className="text-red-400 font-medium">Failed to load analytics</p>
+        <button onClick={() => { setLoading(true); setError(false); fetch("/api/admin/analytics", { credentials: "include" }).then(r => r.json()).then(d => { setData(d); setLoading(false); }).catch(() => { setError(true); setLoading(false); }); }} className="mt-3 text-xs px-4 py-2 rounded-lg" style={{ background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.6)" }}>Retry</button>
+      </div>
+    );
+  }
+
+  const stats = [
+    { label: "Total Users", value: data.totals?.users ?? 0, icon: Users, grad: "linear-gradient(135deg,#059669,#0ea5e9)", glow: "rgba(5,150,105,0.3)" },
+    { label: "Active Today", value: data.totals?.activeToday ?? 0, icon: Activity, grad: "linear-gradient(135deg,#0ea5e9,#6366f1)", glow: "rgba(14,165,233,0.3)" },
+    { label: "Active This Week", value: data.totals?.activeWeek ?? 0, icon: Clock, grad: "linear-gradient(135deg,#6366f1,#a855f7)", glow: "rgba(99,102,241,0.3)" },
+    { label: "Total Matches", value: data.totals?.matches ?? 0, icon: Heart, grad: "linear-gradient(135deg,#ec4899,#f43f5e)", glow: "rgba(236,72,153,0.3)" },
+    { label: "Total Messages", value: data.totals?.messages ?? 0, icon: MessageCircle, grad: "linear-gradient(135deg,#f59e0b,#ef4444)", glow: "rgba(245,158,11,0.3)" },
+  ];
+
+  const totalUsers = data.totals?.users || 1;
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3">
-        {[
-          { label: "Total Users", value: data.totals?.users ?? 0, color: "bg-blue-600" },
-          { label: "Active Today", value: data.totals?.activeToday ?? 0, color: "bg-green-600" },
-          { label: "Active This Week", value: data.totals?.activeWeek ?? 0, color: "bg-indigo-600" },
-          { label: "Total Matches", value: data.totals?.matches ?? 0, color: "bg-pink-600" },
-          { label: "Total Messages", value: data.totals?.messages ?? 0, color: "bg-amber-600" },
-        ].map(stat => (
-          <div key={stat.label} className={`${stat.color} rounded-2xl p-4 text-white`}>
-            <p className="text-2xl font-bold">{stat.value.toLocaleString()}</p>
-            <p className="text-xs opacity-80 mt-1">{stat.label}</p>
+      {/* Metric Cards */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        {stats.map(stat => (
+          <div key={stat.label} className="rounded-2xl p-4 relative overflow-hidden" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+            <div className="absolute inset-0 opacity-10 rounded-2xl" style={{ background: stat.grad }} />
+            <div className="relative">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3" style={{ background: stat.grad, boxShadow: `0 4px 14px ${stat.glow}` }}>
+                <stat.icon size={16} className="text-white" />
+              </div>
+              <p className="text-2xl font-bold text-white">{stat.value.toLocaleString()}</p>
+              <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.45)" }}>{stat.label}</p>
+            </div>
           </div>
         ))}
       </div>
 
-      <div className="bg-white rounded-2xl p-4 border border-slate-100">
-        <h4 className="font-bold text-sm text-slate-700 mb-3">New Users (Last 30 Days)</h4>
-        <div className="flex items-end gap-1 h-24">
-          {(data.newUsersByDay || []).slice(-30).map((d: any, i: number) => (
-            <div key={i} className="flex-1 flex flex-col items-center gap-0.5" title={`${d.day}: ${d.count}`}>
-              <div className="w-full bg-blue-500 rounded-sm" style={{ height: `${Math.round((d.count / maxNewUsers) * 80)}px`, minHeight: d.count > 0 ? "2px" : "0" }} />
-            </div>
-          ))}
+      {/* Charts row */}
+      <div className="grid grid-cols-1 gap-3">
+        {/* New Users */}
+        <div className="rounded-2xl p-5" style={CARD_STYLE}>
+          <div className="flex items-center justify-between mb-1">
+            <h4 className="font-semibold text-sm text-white">New Registrations</h4>
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ background: "rgba(5,150,105,0.15)", color: "#34d399" }}>Last 30 days</span>
+          </div>
+          <p className="text-xs mb-3" style={{ color: "rgba(255,255,255,0.35)" }}>Daily new user signups</p>
+          {data.newUsersByDay?.length > 0 ? (
+            <BarChart days={data.newUsersByDay} color="#34d399" gradient="linear-gradient(180deg,#059669,#034d38)" />
+          ) : (
+            <div className="h-20 flex items-center justify-center" style={{ color: "rgba(255,255,255,0.25)" }}><p className="text-xs">No data yet</p></div>
+          )}
+          <p className="text-[10px] mt-2" style={{ color: "rgba(255,255,255,0.25)" }}>Each bar = 1 day · Hover for count</p>
         </div>
-        <p className="text-[10px] text-slate-400 mt-2">Each bar = 1 day. Hover for count.</p>
+
+        {/* DAU */}
+        <div className="rounded-2xl p-5" style={CARD_STYLE}>
+          <div className="flex items-center justify-between mb-1">
+            <h4 className="font-semibold text-sm text-white">Daily Active Users</h4>
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ background: "rgba(14,165,233,0.15)", color: "#38bdf8" }}>Last 30 days</span>
+          </div>
+          <p className="text-xs mb-3" style={{ color: "rgba(255,255,255,0.35)" }}>Unique users seen per day</p>
+          {data.dauByDay?.length > 0 ? (
+            <BarChart days={data.dauByDay} color="#38bdf8" gradient="linear-gradient(180deg,#0ea5e9,#0369a1)" />
+          ) : (
+            <div className="h-20 flex items-center justify-center"><p className="text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>No data yet</p></div>
+          )}
+        </div>
+
+        {/* Messages */}
+        <div className="rounded-2xl p-5" style={CARD_STYLE}>
+          <div className="flex items-center justify-between mb-1">
+            <h4 className="font-semibold text-sm text-white">Messages Sent</h4>
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ background: "rgba(245,158,11,0.15)", color: "#fbbf24" }}>Last 30 days</span>
+          </div>
+          <p className="text-xs mb-3" style={{ color: "rgba(255,255,255,0.35)" }}>Chat messages per day</p>
+          {data.messagesByDay?.length > 0 ? (
+            <BarChart days={data.messagesByDay} color="#fbbf24" gradient="linear-gradient(180deg,#f59e0b,#b45309)" />
+          ) : (
+            <div className="h-20 flex items-center justify-center"><p className="text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>No data yet</p></div>
+          )}
+        </div>
       </div>
 
-      <div className="bg-white rounded-2xl p-4 border border-slate-100">
-        <h4 className="font-bold text-sm text-slate-700 mb-3">Daily Active Users (DAU, Last 30 Days)</h4>
-        <div className="flex items-end gap-1 h-24">
-          {(data.dauByDay || []).slice(-30).map((d: any, i: number) => (
-            <div key={i} className="flex-1 flex flex-col items-center gap-0.5" title={`${d.day}: ${d.count}`}>
-              <div className="w-full bg-green-500 rounded-sm" style={{ height: `${Math.round((d.count / maxDau) * 80)}px`, minHeight: d.count > 0 ? "2px" : "0" }} />
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="bg-white rounded-2xl p-4 border border-slate-100">
-        <h4 className="font-bold text-sm text-slate-700 mb-3">Messages Sent (Last 30 Days)</h4>
-        <div className="flex items-end gap-1 h-24">
-          {(data.messagesByDay || []).slice(-30).map((d: any, i: number) => (
-            <div key={i} className="flex-1 flex flex-col items-center gap-0.5" title={`${d.day}: ${d.count}`}>
-              <div className="w-full bg-amber-500 rounded-sm" style={{ height: `${Math.round((d.count / maxMsgs) * 80)}px`, minHeight: d.count > 0 ? "2px" : "0" }} />
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="bg-white rounded-2xl p-4 border border-slate-100">
-        <h4 className="font-bold text-sm text-slate-700 mb-3">Membership Breakdown</h4>
-        <div className="space-y-2">
-          {(data.membershipBreakdown || []).map((m: any) => (
-            <div key={m.tier} className="flex items-center gap-2">
-              <span className="text-xs font-medium text-slate-600 w-16 capitalize">{m.tier}</span>
-              <div className="flex-1 bg-slate-100 rounded-full h-2">
-                <div className="bg-indigo-500 h-2 rounded-full" style={{ width: `${Math.round((m.count / (data.totals?.users || 1)) * 100)}%` }} />
+      {/* Membership Breakdown */}
+      <div className="rounded-2xl p-5" style={CARD_STYLE}>
+        <h4 className="font-semibold text-sm text-white mb-4">Membership Breakdown</h4>
+        <div className="space-y-3">
+          {(data.membershipBreakdown || []).map((m: any) => {
+            const meta = tierMeta[m.tier] || { label: m.tier, color: "#94a3b8", glow: "rgba(148,163,184,0.4)" };
+            const pct = Math.round((m.count / totalUsers) * 100);
+            return (
+              <div key={m.tier}>
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2.5 h-2.5 rounded-full" style={{ background: meta.color, boxShadow: `0 0 6px ${meta.glow}` }} />
+                    <span className="text-xs font-semibold" style={{ color: meta.color }}>{meta.label}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-white">{m.count}</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.4)" }}>{pct}%</span>
+                  </div>
+                </div>
+                <div className="h-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.06)" }}>
+                  <div className="h-1.5 rounded-full transition-all" style={{ width: `${pct}%`, background: meta.color, boxShadow: `0 0 8px ${meta.glow}` }} />
+                </div>
               </div>
-              <span className="text-xs text-slate-500 w-8 text-right">{m.count}</span>
-            </div>
-          ))}
+            );
+          })}
         </div>
+      </div>
+
+      {/* Summary footer */}
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { label: "Avg Daily Active", value: data.dauByDay?.length > 0 ? Math.round(data.dauByDay.reduce((a: number, d: any) => a + d.count, 0) / data.dauByDay.length) : 0, unit: "users/day" },
+          { label: "Match Rate", value: data.totals?.users > 0 ? Math.round((data.totals.matches / data.totals.users) * 100) : 0, unit: "% of users" },
+          { label: "Msgs / User", value: data.totals?.users > 0 ? Math.round(data.totals.messages / data.totals.users) : 0, unit: "avg messages" },
+        ].map(s => (
+          <div key={s.label} className="rounded-xl p-3 text-center" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            <p className="text-xl font-bold text-white">{s.value.toLocaleString()}</p>
+            <p className="text-[9px] mt-0.5 leading-tight" style={{ color: "rgba(255,255,255,0.35)" }}>{s.unit}</p>
+            <p className="text-[9px] mt-1 font-medium" style={{ color: "rgba(255,255,255,0.5)" }}>{s.label}</p>
+          </div>
+        ))}
       </div>
     </div>
   );
