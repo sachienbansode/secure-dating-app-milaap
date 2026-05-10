@@ -39,6 +39,38 @@ export default function AdminConsole() {
   const queryClient = useQueryClient();
   const [activeSection, setActiveSection] = useState<string>("Analytics Dashboard");
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [isDark, setIsDark] = useState<boolean>(() => localStorage.getItem("adminTheme") !== "light");
+
+  useEffect(() => {
+    localStorage.setItem("adminTheme", isDark ? "dark" : "light");
+    const el = document.getElementById("admin-theme-style") || (() => {
+      const s = document.createElement("style"); s.id = "admin-theme-style"; document.head.appendChild(s); return s;
+    })();
+    el.textContent = isDark ? `
+      .admin-dark [class~="bg-white"] { background-color: #1e293b !important; color: #e2e8f0 !important; }
+      .admin-dark [class~="bg-slate-50"] { background-color: #0f172a !important; }
+      .admin-dark [class~="bg-indigo-50"] { background-color: #1e1b4b !important; }
+      .admin-dark [class~="bg-orange-50"] { background-color: #1c1008 !important; }
+      .admin-dark [class~="bg-amber-50"] { background-color: #1c1400 !important; }
+      .admin-dark [class~="bg-teal-50"] { background-color: #011a16 !important; }
+      .admin-dark [class~="bg-violet-50"] { background-color: #120c2a !important; }
+      .admin-dark [class~="bg-red-50"] { background-color: #1c0606 !important; }
+      .admin-dark [class~="bg-cyan-50"] { background-color: #011a1f !important; }
+      .admin-dark [class~="bg-blue-50"] { background-color: #0b1526 !important; }
+      .admin-dark [class~="text-slate-800"] { color: #f1f5f9 !important; }
+      .admin-dark [class~="text-slate-700"] { color: #e2e8f0 !important; }
+      .admin-dark [class~="text-slate-600"] { color: #94a3b8 !important; }
+      .admin-dark [class~="text-slate-500"] { color: #64748b !important; }
+      .admin-dark [class~="text-indigo-800"] { color: #a5b4fc !important; }
+      .admin-dark [class~="text-indigo-600"] { color: #818cf8 !important; }
+      .admin-dark [class~="border-slate-200"] { border-color: #334155 !important; }
+      .admin-dark [class~="border-slate-100"] { border-color: #1e293b !important; }
+      .admin-dark [class~="border-indigo-200"] { border-color: #3730a3 !important; }
+      .admin-dark [class~="border-indigo-100"] { border-color: #312e81 !important; }
+      .admin-dark [class~="bg-indigo-700"]:not(.admin-nav-active) { background-color: #4338ca !important; }
+      .admin-dark input, .admin-dark select, .admin-dark textarea { background-color: #1e293b !important; border-color: #334155 !important; color: #e2e8f0 !important; }
+    ` : "";
+  }, [isDark]);
 
   const { data: adminSession, isLoading: checkingAdmin } = useQuery({
     queryKey: ["/api/admin/auth/me"],
@@ -70,7 +102,7 @@ export default function AdminConsole() {
   const activeNav = NAV_ITEMS.find(n => n.id === activeSection);
 
   return (
-    <div className="h-screen w-screen flex overflow-hidden bg-slate-100">
+    <div className={`h-screen w-screen flex overflow-hidden admin-dark ${isDark ? "bg-slate-950" : "bg-slate-100"}`}>
       {/* ── Sidebar ── */}
       <aside className="w-64 shrink-0 bg-slate-900 flex flex-col h-full">
         {/* Brand */}
@@ -125,16 +157,24 @@ export default function AdminConsole() {
       {/* ── Main content ── */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top bar */}
-        <header className="bg-white border-b border-slate-200 px-8 py-4 flex items-center gap-4 shrink-0">
+        <header className={`border-b px-8 py-4 flex items-center gap-4 shrink-0 ${isDark ? "bg-slate-900 border-slate-700" : "bg-white border-slate-200"}`}>
           {activeNav && (
             <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${activeNav.bg} shrink-0`}>
               <activeNav.icon size={18} className={activeNav.color} />
             </div>
           )}
-          <div>
-            <h1 className="text-lg font-bold text-slate-900">{activeSection}</h1>
-            <p className="text-xs text-slate-500">{activeNav?.desc}</p>
+          <div className="flex-1">
+            <h1 className={`text-lg font-bold ${isDark ? "text-white" : "text-slate-900"}`}>{activeSection}</h1>
+            <p className={`text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>{activeNav?.desc}</p>
           </div>
+          <button
+            onClick={() => setIsDark(d => !d)}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-medium transition-all border ${isDark ? "bg-slate-800 border-slate-600 text-slate-300 hover:bg-slate-700" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"}`}
+            data-testid="button-theme-toggle"
+            title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+          >
+            {isDark ? <span>☀️ Light</span> : <span>🌙 Dark</span>}
+          </button>
         </header>
 
         {/* Section content */}
@@ -457,6 +497,7 @@ function ActivityLogsViewer() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
   const limit = 20;
 
   const categories = ["all", "auth", "profile", "match", "chat", "moderation", "admin", "security", "privacy"];
@@ -525,22 +566,47 @@ function ActivityLogsViewer() {
             {logs.map((log: any) => (
               <div key={log.id} className="bg-white rounded-xl p-3 border border-slate-100 text-sm">
                 <div className="flex items-center justify-between mb-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${getCategoryColor(log.category)}`}>
                       {log.category}
                     </span>
                     <span className="font-medium text-slate-800">{log.action.replace(/_/g, " ")}</span>
                   </div>
-                  <span className="text-[10px] text-slate-400">{formatTime(log.createdAt)}</span>
+                  <span className="text-[10px] text-slate-400 shrink-0 ml-2">{formatTime(log.createdAt)}</span>
                 </div>
                 {log.userId && (
-                  <p className="text-[10px] text-slate-400 mt-0.5">User: {log.userId.slice(0, 8)}...</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    {log.userName && (
+                      <span className="text-[10px] font-semibold text-slate-600">{log.userName}</span>
+                    )}
+                    <span className="text-[10px] text-slate-400 font-mono truncate max-w-[160px]" title={log.userId}>
+                      ID: {log.userId}
+                    </span>
+                  </div>
                 )}
-                {log.details && Object.keys(log.details).length > 0 && (
-                  <div className="mt-1 text-[10px] text-slate-500 bg-slate-50 rounded-lg px-2 py-1">
-                    {Object.entries(log.details).map(([k, v]) => (
-                      <span key={k} className="mr-3">{k}: <strong>{String(v)}</strong></span>
-                    ))}
+                <div className="flex items-center justify-between mt-1.5">
+                  {log.ipAddress && <span className="text-[10px] text-slate-400">{log.ipAddress}</span>}
+                  {log.details && Object.keys(log.details).length > 0 && (
+                    <button
+                      onClick={() => setExpandedLogId(expandedLogId === log.id ? null : log.id)}
+                      className="text-[10px] text-blue-500 hover:text-blue-700 font-medium ml-auto"
+                      data-testid={`button-log-details-${log.id}`}
+                    >
+                      {expandedLogId === log.id ? "Hide Details" : "View Details"}
+                    </button>
+                  )}
+                </div>
+                {expandedLogId === log.id && log.details && (
+                  <div className="mt-2 bg-slate-50 rounded-lg px-3 py-2 border border-slate-100">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase mb-1.5">Details</p>
+                    <div className="space-y-1">
+                      {Object.entries(log.details).map(([k, v]) => (
+                        <div key={k} className="flex gap-2 text-[10px]">
+                          <span className="text-slate-500 shrink-0 font-medium">{k}:</span>
+                          <span className="text-slate-700 break-all font-mono">{String(v)}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -753,15 +819,23 @@ function AllProfilesViewer() {
   const [page, setPage] = useState(0);
   const [genderFilter, setGenderFilter] = useState("all");
   const [selectedProfile, setSelectedProfile] = useState<any | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const limit = 20;
 
   const genders = ["all", "Male", "Female", "Trans", "Couple"];
+
+  useEffect(() => {
+    const t = setTimeout(() => { setDebouncedSearch(searchQuery); setPage(0); }, 400);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
 
   const fetchProfiles = async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({ limit: String(limit), offset: String(page * limit) });
       if (genderFilter !== "all") params.set("gender", genderFilter);
+      if (debouncedSearch) params.set("q", debouncedSearch);
       const res = await fetch(`/api/admin/profiles?${params}`, { credentials: "include" });
       const data = await res.json();
       setProfilesData(data.profiles || []);
@@ -770,7 +844,16 @@ function AllProfilesViewer() {
     setLoading(false);
   };
 
-  useEffect(() => { fetchProfiles(); }, [page, genderFilter]);
+  useEffect(() => { fetchProfiles(); }, [page, genderFilter, debouncedSearch]);
+
+  const getDisplayName = (profile: any) => {
+    if (profile.gender === "Couple" && profile.partner2Name) {
+      const p1 = profile.name?.split(" ")[0] || profile.name;
+      const p2 = profile.partner2Name?.split(" ")[0] || profile.partner2Name;
+      return `${p1} & ${p2}`;
+    }
+    return profile.name;
+  };
 
   const totalPages = Math.ceil(total / limit);
 
@@ -792,7 +875,20 @@ function AllProfilesViewer() {
   return (
     <div className="space-y-4">
       <div className="bg-indigo-50 rounded-2xl p-4 border border-indigo-200">
-        <h4 className="font-bold text-sm text-indigo-800 mb-3">All Profiles ({total})</h4>
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="font-bold text-sm text-indigo-800">All Profiles ({total})</h4>
+        </div>
+        <div className="relative mb-3">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+          <input
+            type="text"
+            placeholder="Search by name, city..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            className="w-full pl-9 pr-4 py-2 text-sm border border-indigo-200 rounded-xl focus:outline-none focus:border-indigo-400 bg-white"
+            data-testid="input-profiles-search"
+          />
+        </div>
         <div className="flex flex-wrap gap-1.5 mb-4">
           {genders.map((g) => (
             <button
@@ -831,11 +927,11 @@ function AllProfilesViewer() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-sm text-slate-800 truncate">{profile.name}</span>
+                      <span className="font-semibold text-sm text-slate-800 truncate">{getDisplayName(profile)}</span>
                       <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase ${getGenderColor(profile.gender)}`}>
                         {profile.gender}
                       </span>
-                      {profile.age && <span className="text-[10px] text-slate-400">{profile.age}y</span>}
+                      {profile.age && <span className="text-[10px] text-slate-400">{profile.gender === "Couple" && profile.partner2Age ? `${profile.age} & ${profile.partner2Age}` : `${profile.age}y`}</span>}
                     </div>
                     <div className="text-[10px] text-slate-500 mt-0.5">{profile.city} · {profile.location}</div>
                     <div className="flex gap-3 mt-1">
@@ -1359,17 +1455,11 @@ function MembershipPlansEditor() {
                   <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">
                     Price Monthly (₹)
                   </label>
-                  <Input
+                  <input
                     type="number"
                     value={plan.priceMonthly ?? 0}
-                    onChange={(e) =>
-                      updatePlanField(
-                        plan.id,
-                        "priceMonthly",
-                        Number(e.target.value)
-                      )
-                    }
-                    className="h-10 rounded-xl text-sm"
+                    onChange={(e) => updatePlanField(plan.id, "priceMonthly", Number(e.target.value))}
+                    className="w-full h-10 rounded-xl border border-slate-200 px-3 text-sm focus:outline-none focus:border-indigo-400 bg-white"
                     data-testid={`plan-price-monthly-${plan.id}`}
                   />
                 </div>
@@ -1377,17 +1467,11 @@ function MembershipPlansEditor() {
                   <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">
                     Price Yearly (₹)
                   </label>
-                  <Input
+                  <input
                     type="number"
                     value={plan.priceYearly ?? 0}
-                    onChange={(e) =>
-                      updatePlanField(
-                        plan.id,
-                        "priceYearly",
-                        Number(e.target.value)
-                      )
-                    }
-                    className="h-10 rounded-xl text-sm"
+                    onChange={(e) => updatePlanField(plan.id, "priceYearly", Number(e.target.value))}
+                    className="w-full h-10 rounded-xl border border-slate-200 px-3 text-sm focus:outline-none focus:border-indigo-400 bg-white"
                     data-testid={`plan-price-yearly-${plan.id}`}
                   />
                 </div>
@@ -1398,17 +1482,11 @@ function MembershipPlansEditor() {
                   <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">
                     Duration (days)
                   </label>
-                  <Input
+                  <input
                     type="number"
                     value={plan.durationDays ?? 30}
-                    onChange={(e) =>
-                      updatePlanField(
-                        plan.id,
-                        "durationDays",
-                        Number(e.target.value)
-                      )
-                    }
-                    className="h-10 rounded-xl text-sm"
+                    onChange={(e) => updatePlanField(plan.id, "durationDays", Number(e.target.value))}
+                    className="w-full h-10 rounded-xl border border-slate-200 px-3 text-sm focus:outline-none focus:border-indigo-400 bg-white"
                     data-testid={`plan-duration-${plan.id}`}
                   />
                 </div>
@@ -1416,17 +1494,11 @@ function MembershipPlansEditor() {
                   <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">
                     Daily Likes
                   </label>
-                  <Input
+                  <input
                     type="number"
                     value={plan.dailyLikesLimit ?? 10}
-                    onChange={(e) =>
-                      updatePlanField(
-                        plan.id,
-                        "dailyLikesLimit",
-                        Number(e.target.value)
-                      )
-                    }
-                    className="h-10 rounded-xl text-sm"
+                    onChange={(e) => updatePlanField(plan.id, "dailyLikesLimit", Number(e.target.value))}
+                    className="w-full h-10 rounded-xl border border-slate-200 px-3 text-sm focus:outline-none focus:border-indigo-400 bg-white"
                     data-testid={`plan-likes-${plan.id}`}
                   />
                 </div>
@@ -1434,17 +1506,11 @@ function MembershipPlansEditor() {
                   <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">
                     Super Likes/Day
                   </label>
-                  <Input
+                  <input
                     type="number"
                     value={plan.superLikesPerDay ?? 0}
-                    onChange={(e) =>
-                      updatePlanField(
-                        plan.id,
-                        "superLikesPerDay",
-                        Number(e.target.value)
-                      )
-                    }
-                    className="h-10 rounded-xl text-sm"
+                    onChange={(e) => updatePlanField(plan.id, "superLikesPerDay", Number(e.target.value))}
+                    className="w-full h-10 rounded-xl border border-slate-200 px-3 text-sm focus:outline-none focus:border-indigo-400 bg-white"
                     data-testid={`plan-superlikes-${plan.id}`}
                   />
                 </div>
@@ -1455,17 +1521,11 @@ function MembershipPlansEditor() {
                   <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">
                     Sort Order
                   </label>
-                  <Input
+                  <input
                     type="number"
                     value={plan.sortOrder ?? 0}
-                    onChange={(e) =>
-                      updatePlanField(
-                        plan.id,
-                        "sortOrder",
-                        Number(e.target.value)
-                      )
-                    }
-                    className="h-10 rounded-xl text-sm"
+                    onChange={(e) => updatePlanField(plan.id, "sortOrder", Number(e.target.value))}
+                    className="w-full h-10 rounded-xl border border-slate-200 px-3 text-sm focus:outline-none focus:border-indigo-400 bg-white"
                     data-testid={`plan-sort-${plan.id}`}
                   />
                 </div>
@@ -2589,22 +2649,65 @@ function UserLookup() {
         {activeTab === "chats" && (
           <div className="space-y-3" data-testid="tab-content-chats">
             <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
-              <h3 className="font-bold text-sm text-slate-800 mb-3">Messages Sent ({messages?.length || 0})</h3>
-              {messages?.length > 0 ? (
-                <div className="space-y-1.5 max-h-96 overflow-y-auto">
-                  {messages.map((m: any, idx: number) => (
-                    <div key={idx} className="text-xs bg-slate-50 rounded-xl p-2.5">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-slate-400 font-mono text-[10px]">Match: {m.matchId?.substring(0, 8)}...</span>
-                        <span className="text-slate-400">{formatDate(m.message?.createdAt)}</span>
-                      </div>
-                      <p className="text-slate-700">{m.message?.content}</p>
-                      {m.message?.isAiGenerated && <span className="text-[10px] bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded mt-1 inline-block">AI Generated</span>}
-                      {m.message?.attachmentUrl && <span className="text-[10px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded mt-1 inline-block ml-1">Attachment</span>}
-                    </div>
-                  ))}
-                </div>
-              ) : (
+              <h3 className="font-bold text-sm text-slate-800 mb-3">Conversations ({messages?.length || 0} messages)</h3>
+              {messages?.length > 0 ? (() => {
+                const grouped: Record<string, any[]> = {};
+                for (const m of messages) {
+                  const key = m.matchId || "unknown";
+                  if (!grouped[key]) grouped[key] = [];
+                  grouped[key].push(m);
+                }
+                const matchMap: Record<string, any> = {};
+                for (const match of (matches || [])) {
+                  matchMap[match.id] = match;
+                }
+                return (
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                    {Object.entries(grouped).map(([matchId, msgs]) => {
+                      const match = matchMap[matchId];
+                      const otherProfile = match?.profile;
+                      const otherName = otherProfile?.name || "Unknown User";
+                      return (
+                        <div key={matchId} className="border border-slate-100 rounded-xl overflow-hidden">
+                          <div className="bg-slate-50 px-3 py-2 flex items-center gap-2">
+                            {otherProfile?.photos?.[0] && (
+                              <img src={otherProfile.photos[0]} alt="" className="w-7 h-7 rounded-full object-cover" />
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <span className="font-semibold text-xs text-slate-800">{otherName}</span>
+                              <span className="text-[10px] text-slate-400 ml-2">{msgs.length} message{msgs.length !== 1 ? "s" : ""}</span>
+                            </div>
+                            <span className="text-[10px] text-slate-400 font-mono">{matchId.substring(0, 8)}...</span>
+                          </div>
+                          <div className="divide-y divide-slate-50">
+                            {msgs.slice(0, 5).map((m: any, idx: number) => {
+                              const msg = m.message || m;
+                              return (
+                                <div key={idx} className="px-3 py-2 text-xs">
+                                  <div className="flex items-center justify-between mb-0.5">
+                                    <span className={`text-[10px] font-medium ${msg.senderId === selectedUserId ? "text-blue-600" : "text-slate-500"}`}>
+                                      {msg.senderId === selectedUserId ? "↑ Sent" : "↓ Received"}
+                                    </span>
+                                    <span className="text-[10px] text-slate-400">{formatDate(msg.createdAt)}</span>
+                                  </div>
+                                  <p className="text-slate-700 leading-snug">{msg.content}</p>
+                                  <div className="flex gap-1 mt-0.5">
+                                    {msg.isAiGenerated && <span className="text-[9px] bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded">AI</span>}
+                                    {msg.attachmentUrl && <span className="text-[9px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded">Attachment</span>}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                            {msgs.length > 5 && (
+                              <p className="px-3 py-1.5 text-[10px] text-slate-400">+{msgs.length - 5} more messages...</p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })() : (
                 <p className="text-xs text-slate-400">No messages found.</p>
               )}
             </div>

@@ -86,7 +86,7 @@ export interface IStorage {
   getActivityLogs(limit?: number, offset?: number, category?: string, userId?: string): Promise<ActivityLog[]>;
   getActivityLogCount(category?: string, userId?: string): Promise<number>;
 
-  getAllProfilesAdmin(limit?: number, offset?: number, genderFilter?: string): Promise<{ profiles: (Profile & { user?: User })[], total: number }>;
+  getAllProfilesAdmin(limit?: number, offset?: number, genderFilter?: string, q?: string): Promise<{ profiles: (Profile & { user?: User })[], total: number }>;
   getAppSettingWithMeta(key: string): Promise<AppSetting | undefined>;
 
   getAdminUserByEmail(email: string): Promise<AdminUser | undefined>;
@@ -605,13 +605,33 @@ export class DatabaseStorage implements IStorage {
     return result?.count || 0;
   }
 
-  async getAllProfilesAdmin(limit = 50, offset = 0, genderFilter?: string): Promise<{ profiles: (Profile & { user?: User })[], total: number }> {
+  async getAllProfilesAdmin(limit = 50, offset = 0, genderFilter?: string, q?: string): Promise<{ profiles: (Profile & { user?: User })[], total: number }> {
     const conditions: any[] = [];
     if (genderFilter && genderFilter !== "all") {
       conditions.push(eq(profiles.gender, genderFilter));
     }
-
     const baseWhere = conditions.length > 0 ? and(...conditions) : undefined;
+
+    if (q && q.length >= 1) {
+      const allRows = baseWhere
+        ? await db.select().from(profiles).where(baseWhere).orderBy(desc(profiles.updatedAt))
+        : await db.select().from(profiles).orderBy(desc(profiles.updatedAt));
+      const decryptedAll = allRows.map(decryptProfile);
+      const ql = q.toLowerCase();
+      const filtered = decryptedAll.filter(p =>
+        p.name?.toLowerCase().includes(ql) ||
+        p.city?.toLowerCase().includes(ql) ||
+        p.location?.toLowerCase().includes(ql) ||
+        (p as any).partner2Name?.toLowerCase().includes(ql)
+      );
+      const total = filtered.length;
+      const paged = filtered.slice(offset, offset + limit);
+      const enriched = await Promise.all(paged.map(async (p) => {
+        const [user] = await db.select().from(users).where(eq(users.id, p.userId));
+        return { ...p, user: user || undefined };
+      }));
+      return { profiles: enriched, total };
+    }
 
     const [countResult] = baseWhere
       ? await db.select({ count: sql<number>`count(*)::int` }).from(profiles).where(baseWhere)
@@ -740,49 +760,49 @@ export class DatabaseStorage implements IStorage {
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-    const [totalUsersRow] = await db.execute(sql`SELECT count(*)::int AS cnt FROM users`);
-    const [activeToday] = await db.execute(sql`SELECT count(*)::int AS cnt FROM users WHERE last_seen_at >= ${todayStart}`);
-    const [activeWeek] = await db.execute(sql`SELECT count(*)::int AS cnt FROM users WHERE last_seen_at >= ${sevenDaysAgo}`);
-    const [totalMessages] = await db.execute(sql`SELECT count(*)::int AS cnt FROM messages WHERE is_system_message = false`);
-    const [totalMatches] = await db.execute(sql`SELECT count(*)::int AS cnt FROM matches WHERE is_matched = true`);
+    const totalUsersRes = await db.execute(sql`SELECT count(*)::int AS cnt FROM users`);
+    const activeTodayRes = await db.execute(sql`SELECT count(*)::int AS cnt FROM users WHERE last_seen_at >= ${todayStart}`);
+    const activeWeekRes = await db.execute(sql`SELECT count(*)::int AS cnt FROM users WHERE last_seen_at >= ${sevenDaysAgo}`);
+    const totalMessagesRes = await db.execute(sql`SELECT count(*)::int AS cnt FROM messages WHERE is_system_message = false`);
+    const totalMatchesRes = await db.execute(sql`SELECT count(*)::int AS cnt FROM matches WHERE is_matched = true`);
+    const totalUsersRow = (totalUsersRes.rows || totalUsersRes as any)[0] || {};
+    const activeToday = (activeTodayRes.rows || activeTodayRes as any)[0] || {};
+    const activeWeek = (activeWeekRes.rows || activeWeekRes as any)[0] || {};
+    const totalMessages = (totalMessagesRes.rows || totalMessagesRes as any)[0] || {};
+    const totalMatches = (totalMatchesRes.rows || totalMatchesRes as any)[0] || {};
 
-    const newUsersByDay = await db.execute(sql`
+    const newUsersByDayRes = await db.execute(sql`
       SELECT date_trunc('day', created_at)::date AS day, count(*)::int AS cnt
-      FROM users
-      WHERE created_at >= ${thirtyDaysAgo}
-      GROUP BY 1 ORDER BY 1
+      FROM users WHERE created_at >= ${thirtyDaysAgo} GROUP BY 1 ORDER BY 1
     `);
-
-    const messagesByDay = await db.execute(sql`
+    const messagesByDayRes = await db.execute(sql`
       SELECT date_trunc('day', created_at)::date AS day, count(*)::int AS cnt
-      FROM messages
-      WHERE created_at >= ${thirtyDaysAgo} AND is_system_message = false
-      GROUP BY 1 ORDER BY 1
+      FROM messages WHERE created_at >= ${thirtyDaysAgo} AND is_system_message = false GROUP BY 1 ORDER BY 1
     `);
-
-    const dauByDay = await db.execute(sql`
+    const dauByDayRes = await db.execute(sql`
       SELECT date_trunc('day', last_seen_at)::date AS day, count(distinct id)::int AS cnt
-      FROM users
-      WHERE last_seen_at >= ${thirtyDaysAgo}
-      GROUP BY 1 ORDER BY 1
+      FROM users WHERE last_seen_at >= ${thirtyDaysAgo} GROUP BY 1 ORDER BY 1
     `);
-
-    const membershipBreakdown = await db.execute(sql`
+    const membershipBreakdownRes = await db.execute(sql`
       SELECT membership_tier, count(*)::int AS cnt FROM users GROUP BY 1 ORDER BY 2 DESC
     `);
+    const newUsersByDay = (newUsersByDayRes.rows || newUsersByDayRes) as any[];
+    const messagesByDay = (messagesByDayRes.rows || messagesByDayRes) as any[];
+    const dauByDay = (dauByDayRes.rows || dauByDayRes) as any[];
+    const membershipBreakdown = (membershipBreakdownRes.rows || membershipBreakdownRes) as any[];
 
     return {
       totals: {
-        users: (totalUsersRow as any).cnt,
-        activeToday: (activeToday as any).cnt,
-        activeWeek: (activeWeek as any).cnt,
-        messages: (totalMessages as any).cnt,
-        matches: (totalMatches as any).cnt,
+        users: totalUsersRow.cnt || 0,
+        activeToday: activeToday.cnt || 0,
+        activeWeek: activeWeek.cnt || 0,
+        messages: totalMessages.cnt || 0,
+        matches: totalMatches.cnt || 0,
       },
-      newUsersByDay: (newUsersByDay as any[]).map((r: any) => ({ day: r.day, count: r.cnt })),
-      messagesByDay: (messagesByDay as any[]).map((r: any) => ({ day: r.day, count: r.cnt })),
-      dauByDay: (dauByDay as any[]).map((r: any) => ({ day: r.day, count: r.cnt })),
-      membershipBreakdown: (membershipBreakdown as any[]).map((r: any) => ({ tier: r.membership_tier, count: r.cnt })),
+      newUsersByDay: newUsersByDay.map((r: any) => ({ day: r.day, count: r.cnt })),
+      messagesByDay: messagesByDay.map((r: any) => ({ day: r.day, count: r.cnt })),
+      dauByDay: dauByDay.map((r: any) => ({ day: r.day, count: r.cnt })),
+      membershipBreakdown: membershipBreakdown.map((r: any) => ({ tier: r.membership_tier, count: r.cnt })),
     };
   }
 

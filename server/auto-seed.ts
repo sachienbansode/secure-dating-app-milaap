@@ -52,19 +52,19 @@ const locations = [
 ];
 
 const bios = [
-  "Lover of chai and good conversations.",
-  "Adventure seeker and travel enthusiast.",
-  "Tech geek who loves cricket.",
-  "Bollywood buff looking for a movie partner.",
-  "Foodie exploring the best street food spots.",
+  "Software engineer by day, chai enthusiast always. I love deep conversations, weekend treks, and finding hidden biryani spots across Mumbai. Big cricket fan — will happily debate match strategy for hours. Looking for someone genuine who doesn't take life too seriously.",
+  "Adventure seeker based in Pune — if there's a hill station or a street food trail within 200km, I've probably been there. I work in design and find inspiration everywhere. Bollywood movie marathons are my love language. Let's explore the world one chai at a time.",
+  "Tech geek who codes by day and plays cricket on weekends. I'm a proud Bangalorean who still misses Mumbai's vada pav. I believe great conversations are the foundation of every good relationship. Honest, low-drama, and genuinely curious about people.",
+  "Mumbai girl with a heart full of Bollywood dreams. I work in marketing and love crafting stories — both at work and in real life. Fitness, yoga, and good food keep me balanced. Looking for someone who's kind, funny, and can keep up with my energy.",
+  "Hyderabadi foodie and travel junkie who's visited 18 states so far (and counting!). I'm a doctor who believes in work-life balance — photography and hiking are my therapy. Family matters deeply to me. Looking for a partner who shares big dreams and bigger laughter.",
 ];
 
 const coupleBios = [
-  "Fun-loving couple looking to connect with like-minded pairs!",
-  "Together 3 years and counting. Looking for double date partners!",
-  "Adventure couple - hiking, road trips, and new experiences!",
-  "We bonded over chai and cricket. Want to meet similar couples!",
-  "Foodies who love trying new restaurants together.",
+  "We met at a Bollywood karaoke night and never looked back! Together 3 years, based in Mumbai. We love road trips, trying new cuisines, and hosting game nights. Looking to connect with like-minded couples for double dates and good times.",
+  "Adventure junkies who bonded over a Ladakh road trip. We hike, travel, and cook together — life is one big project. We're warm, fun, and love meeting new people. If you enjoy the outdoors and good conversations, we'd love to meet!",
+  "Both engineers, both foodies — we debate restaurant choices more than anything else! Together 2 years in Pune. We enjoy cricket matches, art exhibitions, and lazy Sunday brunches. Seeking couple friends who appreciate genuine connections.",
+  "We bonded over chai and a heated IPL argument (she was right). Now we travel, cook, and embarrass each other at dance floors. Based in Bangalore. Looking for couples who love mixing humor, culture, and good food.",
+  "Fitness couple who met at a gym and realized we had the same playlist. We run half-marathons together and unwind with Bollywood classics. Based in Delhi. Looking for active couples who balance hustle with heart.",
 ];
 
 const interestsList = ["Bollywood", "Cricket", "Chai", "Street Food", "Yoga", "Tech", "Art", "Music", "Travel", "Reading"];

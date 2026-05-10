@@ -117,6 +117,7 @@ declare module "express-session" {
     isAdmin: boolean;
     adminUserId: string;
     sessionToken: string;
+    adminLoginAt: number;
   }
 }
 
@@ -142,6 +143,12 @@ async function requireAuth(req: Request, res: Response, next: Function) {
 async function requireAdmin(req: Request, res: Response, next: Function) {
   if (!req.session.isAdmin || !req.session.adminUserId) {
     return res.status(401).json({ message: "Admin access required. Please log in." });
+  }
+  if (req.session.adminLoginAt && Date.now() - req.session.adminLoginAt > 60 * 60 * 1000) {
+    req.session.isAdmin = false;
+    delete (req.session as any).adminUserId;
+    delete (req.session as any).adminLoginAt;
+    return res.status(401).json({ message: "Admin session expired. Please log in again." });
   }
   if (req.session.sessionToken) {
     const dbSession = await storage.getUserSession(req.session.sessionToken);
@@ -561,6 +568,7 @@ export async function registerRoutes(
       req.session.isAdmin = true;
       req.session.adminUserId = admin.id;
       req.session.sessionToken = sessionToken;
+      req.session.adminLoginAt = Date.now();
 
       await logActivity(admin.id, "admin_login", "admin", {
         email,
@@ -2710,7 +2718,8 @@ By continuing to use Milaap, you acknowledge that you have read, understood, and
       const limit = parseInt(req.query.limit as string) || 20;
       const offset = parseInt(req.query.offset as string) || 0;
       const gender = req.query.gender as string | undefined;
-      const result = await storage.getAllProfilesAdmin(limit, offset, gender);
+      const q = (req.query.q as string || "").trim();
+      const result = await storage.getAllProfilesAdmin(limit, offset, gender, q);
       return res.json(result);
     } catch (err: any) {
       console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
@@ -2725,7 +2734,14 @@ By continuing to use Milaap, you acknowledge that you have read, understood, and
       const userId = req.query.userId as string | undefined;
       const logs = await storage.getActivityLogs(limit, offset, category, userId);
       const total = await storage.getActivityLogCount(category, userId);
-      return res.json({ logs, total, limit, offset });
+      const uniqueUserIds = [...new Set(logs.map(l => l.userId).filter(Boolean))];
+      const profileMap: Record<string, string> = {};
+      for (const uid of uniqueUserIds) {
+        const p = await storage.getProfile(uid!);
+        if (p?.name) profileMap[uid!] = p.name;
+      }
+      const enriched = logs.map(l => ({ ...l, userName: l.userId ? (profileMap[l.userId] || null) : null }));
+      return res.json({ logs: enriched, total, limit, offset });
     } catch (err: any) {
       console.error(err); return res.status(500).json({ message: "Something went wrong. Please try again." });
     }
