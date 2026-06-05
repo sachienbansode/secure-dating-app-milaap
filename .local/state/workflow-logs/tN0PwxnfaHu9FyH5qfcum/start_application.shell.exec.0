@@ -1,0 +1,183 @@
+
+> rest-express@1.0.0 dev
+> NODE_ENV=development tsx server/index.ts
+
+[1G[0KAuto-seed: 20 seed profiles already exist, skipping seed profiles.
+Auto-seed: Updated all profiles to DiceBear cartoon avatars.
+8:26:20 AM [express] serving on port 5000
+[ADMIN OTP] admin@milaap.co.in: 587446
+8:26:23 AM [express] POST /api/admin/auth/login 200 in 318ms :: {"message":"Password verified. Use the OTP shown below.","otp_hint":"587446"}
+8:26:26 AM [express] GET /api/admin/auth/me 401 in 1ms :: {"message":"Admin access required. Please log in."}
+8:26:27 AM [express] GET /api/auth/me 401 in 1ms :: {"message":"Please log in to continue"}
+8:26:27 AM [express] GET /api/app-settings 304 in 25ms :: {"welcome_taglines":["Respect first. Connection next.","Safe. Honest. Meaningful.","Dating, done right.","Built on trust, not swipes.","Clarity before chemistry."],"global_screenshot_protection":true,"feature_chat_cooldown":true,"feature_enhanced_report":true,"feature_no_phone_number":true,"feature_photo_authenticity":true,"feature_date_readiness":true,"feature_couple_profiles":false,"feature_attachments":true,"attachment_extensions":".jpg,.jpeg,.png,.webp,.gif,.mp4,.mov,.avi,.mkv","bot_mode_max_hours":12,"selected_logo":"new"}
+8:26:27 AM [express] GET /api/terms 304 in 27ms :: {"content":"Welcome to Milaap. By using this application, you agree to the following Terms & Conditions:\n\n1. ELIGIBILITY: You must be 18 years or older to use this service. By registering, you confirm that you meet this age requirement.\n\n2. USER CONDUCT: You agree to treat all users with respect and dignity. Harassment, abuse, hate speech, or any form of inappropriate behavior is strictly prohibited and may result in account suspension or permanent ban.\n\n3. PRIVACY & DATA COLLECTION: Milaap collects and stores your personal information including but not limited to: name, phone number, email address, profile photos, location data, chat messages, activity logs, device information, and IP addresses. This data is encrypted and stored securely.\n\n4. DATA SHARING WITH AUTHORITIES: By using Milaap, you acknowledge and consent that the application may read, access, process, and share your personal information, profile details, chat messages, activity logs, login history, and any other user data with law enforcement agencies, regulatory bodies, or other legal authorities when requested for legitimate legal purposes. This includes but is not limited to: (a) compliance with valid legal processes such as court orders, subpoenas, or warrants; (b) cooperation with law enforcement investigations; (c) protection of the safety and security of our users and the public; (d) prevention of fraud, abuse, or illegal activities on the platform; (e) compliance with applicable laws and regulations of India.\n\n5. DATA RETENTION: Your data may be retained even after account deactivation or deletion for legal compliance purposes and to assist with any ongoing or future legal inquiries.\n\n6. SAFE DATING: We are committed to creating a safe and inclusive dating environment for everyone. Report any suspicious or inappropriate behavior using the in-app reporting feature.\n\n7. CONTENT RESPONSIBILITY: You are solely responsible for the content you share on the platform. Do not share explicit, illegal, or copyrighted content.\n\n8. MODIFICATIONS: Milaap reserves the right to modify these terms at any time. Continued use of the service after modifications constitutes acceptance of the updated terms.\n\nBy continuing to use Milaap, you acknowledge that you have read, understood, and agree to these Terms & Conditions.","version":1}
+[ADMIN OTP] admin@milaap.co.in: 735689
+8:26:31 AM [express] POST /api/admin/auth/login 200 in 133ms :: {"message":"Password verified. Use the OTP shown below.","otp_hint":"735689"}
+8:26:40 AM [express] POST /api/admin/auth/verify-otp 200 in 44ms :: {"success":true,"admin":{"id":"f9eeedea-9b21-4325-abe9-6c523c2d152a","email":"admin@milaap.co.in","name":"Super Admin","role":"super_admin"}}
+8:26:41 AM [express] GET /api/admin/auth/me 304 in 23ms :: {"admin":{"id":"f9eeedea-9b21-4325-abe9-6c523c2d152a","email":"admin@milaap.co.in","name":"Super Admin","role":"super_admin"}}
+TypeError: (intermediate value) is not iterable
+    at DatabaseStorage.getAnalyticsDashboard [90m(/home/runner/workspace/[39mserver/storage.ts:743:29[90m)[39m
+[90m    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)[39m
+    at async <anonymous> [90m(/home/runner/workspace/[39mserver/routes.ts:3715:20[90m)[39m
+8:26:41 AM [express] GET /api/admin/analytics 500 in 49ms :: {"message":"Something went wrong. Please try again."}
+8:27:04 AM [express] GET /api/admin/user-search 200 in 2161ms :: {"results":[{"userId":"e51aa9c9-2437-46de-90be-e520bf65c6f9","phone":"+919820098200","email":null,"name":"Ithan Hunt","city":"Mumbai","gender":"Male","membershipTier":"platinum","isBanned":false,"isDeactivated":false,"createdAt":"2026-02-10T19:07:28.025Z","lastSeenAt":"2026-05-10T08:01:07.054Z","photos":["https://api.dicebear.com/7.x/avataaars/svg?seed=IthanHuntFounder&backgroundColor=b6e3f4&scale=90"]}]}
+8:27:10 AM [express] GET /api/admin/user-search 200 in 2249ms :: {"results":[{"userId":"e51aa9c9-2437-46de-90be-e520bf65c6f9","phone":"+919820098200","email":null,"name":"Ithan Hunt","city":"Mumbai","gender":"Male","membershipTier":"platinum","isBanned":false,"isDeactivated":false,"createdAt":"2026-02-10T19:07:28.025Z","lastSeenAt":"2026-05-10T08:01:07.054Z","photos":["https://api.dicebear.com/7.x/avataaars/svg?seed=IthanHuntFounder&backgroundColor=b6e3f4&scale=90"]}]}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m8:27:17 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/AdminConsole.tsx[22m
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m8:27:19 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/AdminConsole.tsx[22m [33m(x2)[39m
+TypeError: (intermediate value) is not iterable
+    at DatabaseStorage.getAnalyticsDashboard [90m(/home/runner/workspace/[39mserver/storage.ts:743:29[90m)[39m
+[90m    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)[39m
+    at async <anonymous> [90m(/home/runner/workspace/[39mserver/routes.ts:3715:20[90m)[39m
+8:27:22 AM [express] GET /api/admin/analytics 500 in 34ms :: {"message":"Something went wrong. Please try again."}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m8:27:24 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/AdminConsole.tsx[22m [33m(x3)[39m
+TypeError: (intermediate value) is not iterable
+    at DatabaseStorage.getAnalyticsDashboard [90m(/home/runner/workspace/[39mserver/storage.ts:743:29[90m)[39m
+[90m    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)[39m
+    at async <anonymous> [90m(/home/runner/workspace/[39mserver/routes.ts:3715:20[90m)[39m
+8:27:27 AM [express] GET /api/admin/analytics 500 in 49ms :: {"message":"Something went wrong. Please try again."}
+TypeError: rows.map is not a function
+    at DatabaseStorage.getAllUsersActiveDuration [90m(/home/runner/workspace/[39mserver/storage.ts:797:28[90m)[39m
+[90m    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)[39m
+    at async <anonymous> [90m(/home/runner/workspace/[39mserver/routes.ts:3724:20[90m)[39m
+8:27:37 AM [express] GET /api/admin/active-duration 500 in 11ms :: {"message":"Something went wrong. Please try again."}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m8:27:38 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/AdminConsole.tsx[22m [33m(x4)[39m
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m8:27:41 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/AdminConsole.tsx[22m [33m(x5)[39m
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m8:27:44 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/AdminConsole.tsx[22m [33m(x6)[39m
